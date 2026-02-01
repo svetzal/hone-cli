@@ -1,10 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { iterate } from "./iterate.ts";
+import { iterate, sanitizeName, buildRetryPrompt } from "./iterate.ts";
 import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
-import { mkdtemp, rm } from "fs/promises";
+import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { ClaudeInvoker } from "./types.ts";
+import type { ClaudeInvoker, GateDefinition, GatesRunResult } from "./types.ts";
+
+// Mock gate resolver that returns empty gates (no Claude call needed)
+const emptyGateResolver = async () => [] as GateDefinition[];
+
+// Mock gate resolver that returns some gates
+const standardGateResolver = async () => [
+  { name: "test", command: "npm test", required: true },
+] as GateDefinition[];
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {
@@ -106,5 +114,425 @@ describe("iterate", () => {
     } finally {
       await rm(dir, { recursive: true });
     }
+  });
+
+  test("gates pass on first attempt — no retries, success", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+
+    const claudeCalls: string[][] = [];
+    const mockClaude: ClaudeInvoker = async (args) => {
+      claudeCalls.push(args);
+      const promptIdx = args.indexOf("-p");
+      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
+
+      if (prompt.startsWith("Assess")) return "Assessment content";
+      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
+      if (prompt.startsWith("Based on")) return "Plan content";
+      if (prompt.startsWith("Execute")) return "Execution content";
+      return "";
+    };
+
+    const gateRunnerCalls: Array<[GateDefinition[], string, number]> = [];
+    const mockGateRunner = async (gates: GateDefinition[], projectDir: string, timeout: number): Promise<GatesRunResult> => {
+      gateRunnerCalls.push([gates, projectDir, timeout]);
+      return {
+        allPassed: true,
+        requiredPassed: true,
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: true,
+            required: true,
+            output: "All tests passed",
+            exitCode: 0,
+          },
+        ],
+      };
+    };
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          gateRunner: mockGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.retries).toBe(0);
+      expect(result.gatesResult?.requiredPassed).toBe(true);
+
+      // Should have exactly 4 claude calls (no retries)
+      expect(claudeCalls.length).toBe(4);
+
+      // Should have exactly 1 gate runner call
+      expect(gateRunnerCalls.length).toBe(1);
+
+      // Gate runner should receive the resolved gates
+      expect(gateRunnerCalls[0]![0]).toEqual([{ name: "test", command: "npm test", required: true }]);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("required gate fails, retry succeeds — 1 retry, success", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+
+    const claudeCalls: string[][] = [];
+    const mockClaude: ClaudeInvoker = async (args) => {
+      claudeCalls.push(args);
+      const promptIdx = args.indexOf("-p");
+      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
+
+      if (prompt.startsWith("Assess")) return "Assessment content";
+      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
+      if (prompt.startsWith("Based on")) return "Plan content";
+      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
+        return "Execution content";
+      }
+      return "";
+    };
+
+    let gateRunCallCount = 0;
+    const mockGateRunner = async (): Promise<GatesRunResult> => {
+      gateRunCallCount++;
+      if (gateRunCallCount === 1) {
+        // First call — fail
+        return {
+          allPassed: false,
+          requiredPassed: false,
+          results: [
+            {
+              name: "test",
+              command: "npm test",
+              passed: false,
+              required: true,
+              output: "FAIL: 1 test failed",
+              exitCode: 1,
+            },
+          ],
+        };
+      }
+      // Second call — pass
+      return {
+        allPassed: true,
+        requiredPassed: true,
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: true,
+            required: true,
+            output: "All tests passed",
+            exitCode: 0,
+          },
+        ],
+      };
+    };
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          gateRunner: mockGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.retries).toBe(1);
+
+      // Should have 5 claude calls (4 stages + 1 retry)
+      expect(claudeCalls.length).toBe(5);
+
+      // Should have 2 gate runner calls
+      expect(gateRunCallCount).toBe(2);
+
+      // Verify retry actions file was saved
+      const auditDir = join(dir, "audit");
+      expect(await Bun.file(join(auditDir, "test-issue-name-retry-1-actions.md")).exists()).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("required gate fails, max retries exhausted — failure", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+
+    const claudeCalls: string[][] = [];
+    const mockClaude: ClaudeInvoker = async (args) => {
+      claudeCalls.push(args);
+      const promptIdx = args.indexOf("-p");
+      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
+
+      if (prompt.startsWith("Assess")) return "Assessment content";
+      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
+      if (prompt.startsWith("Based on")) return "Plan content";
+      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
+        return "Execution content";
+      }
+      return "";
+    };
+
+    let gateRunCallCount = 0;
+    const mockGateRunner = async (): Promise<GatesRunResult> => {
+      gateRunCallCount++;
+      // Always fail
+      return {
+        allPassed: false,
+        requiredPassed: false,
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: false,
+            required: true,
+            output: "FAIL: persistent error",
+            exitCode: 1,
+          },
+        ],
+      };
+    };
+
+    try {
+      const config = getDefaultConfig();
+      config.maxRetries = 2;
+
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config,
+          skipGates: false,
+          gateRunner: mockGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.retries).toBe(2);
+
+      // Should have 6 claude calls (4 stages + 2 retries)
+      expect(claudeCalls.length).toBe(6);
+
+      // Should have 3 gate runner calls (initial + 2 retries)
+      expect(gateRunCallCount).toBe(3);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("optional gate fails — no retry triggered, still success", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+
+    const claudeCalls: string[][] = [];
+    const mockClaude: ClaudeInvoker = async (args) => {
+      claudeCalls.push(args);
+      const promptIdx = args.indexOf("-p");
+      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
+
+      if (prompt.startsWith("Assess")) return "Assessment content";
+      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
+      if (prompt.startsWith("Based on")) return "Plan content";
+      if (prompt.startsWith("Execute")) return "Execution content";
+      return "";
+    };
+
+    const mockGateRunner = async (): Promise<GatesRunResult> => {
+      return {
+        allPassed: false,
+        requiredPassed: true,
+        results: [
+          {
+            name: "security",
+            command: "npm audit",
+            passed: false,
+            required: false,
+            output: "2 moderate vulnerabilities",
+            exitCode: 1,
+          },
+        ],
+      };
+    };
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          gateRunner: mockGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.retries).toBe(0);
+      expect(result.gatesResult?.allPassed).toBe(false);
+      expect(result.gatesResult?.requiredPassed).toBe(true);
+
+      // Should have exactly 4 claude calls (no retry)
+      expect(claudeCalls.length).toBe(4);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("retry prompt contains original plan and failure output", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+
+    const claudeCalls: string[][] = [];
+    const mockClaude: ClaudeInvoker = async (args) => {
+      claudeCalls.push(args);
+      const promptIdx = args.indexOf("-p");
+      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
+
+      if (prompt.startsWith("Assess")) return "Assessment content";
+      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
+      if (prompt.startsWith("Based on")) return "Plan with specific steps";
+      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
+        return "Execution content";
+      }
+      return "";
+    };
+
+    let gateRunCallCount = 0;
+    const mockGateRunner = async (): Promise<GatesRunResult> => {
+      gateRunCallCount++;
+      if (gateRunCallCount === 1) {
+        return {
+          allPassed: false,
+          requiredPassed: false,
+          results: [
+            {
+              name: "test",
+              command: "npm test",
+              passed: false,
+              required: true,
+              output: "FAIL: expected 1 got 2",
+              exitCode: 1,
+            },
+          ],
+        };
+      }
+      return {
+        allPassed: true,
+        requiredPassed: true,
+        results: [{ name: "test", command: "npm test", passed: true, required: true, output: "ok", exitCode: 0 }],
+      };
+    };
+
+    try {
+      await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          gateRunner: mockGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      // Capture the retry prompt (5th call)
+      expect(claudeCalls.length).toBe(5);
+      const retryCall = claudeCalls[4]!;
+      const promptIdx = retryCall.indexOf("-p");
+      const retryPrompt = retryCall[promptIdx + 1]!;
+
+      // Assert prompt contains original plan
+      expect(retryPrompt).toContain("## Original Plan");
+      expect(retryPrompt).toContain("Plan with specific steps");
+
+      // Assert prompt contains failed gates section
+      expect(retryPrompt).toContain("## Failed Gates");
+      expect(retryPrompt).toContain("### Gate: test");
+      expect(retryPrompt).toContain("FAIL: expected 1 got 2");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+});
+
+describe("sanitizeName", () => {
+  test("extracts first kebab-case segment from clean LLM output", () => {
+    expect(sanitizeName("fix-broken-auth-handler")).toBe("fix-broken-auth-handler");
+  });
+
+  test("extracts from output with surrounding markdown/whitespace", () => {
+    expect(sanitizeName("`improve-error-handling`")).toBe("improve-error-handling");
+  });
+
+  test("caps at 50 characters", () => {
+    const longName = "a".repeat(60);
+    expect(sanitizeName(longName)).toBe("a".repeat(50));
+  });
+
+  test("returns empty string for non-matching input", () => {
+    expect(sanitizeName("!!!INVALID!!!")).toBe("");
+    expect(sanitizeName("ALLCAPS")).toBe("");
+  });
+
+  test("extracts first lowercase run from mixed content", () => {
+    // The regex [a-z0-9-]+ will match the first run of lowercase letters/digits/hyphens
+    expect(sanitizeName("The name is fix-auth")).toBe("he");
+  });
+
+  test("handles output with leading lowercase letters correctly", () => {
+    expect(sanitizeName("fix-auth-bug\n")).toBe("fix-auth-bug");
+  });
+});
+
+describe("buildRetryPrompt", () => {
+  test("includes original plan and failed gate output", () => {
+    const prompt = buildRetryPrompt(
+      "Step 1: Fix the thing",
+      [{ name: "test", output: "FAIL: expected 1 got 2" }],
+    );
+
+    expect(prompt).toContain("## Original Plan");
+    expect(prompt).toContain("Step 1: Fix the thing");
+    expect(prompt).toContain("## Failed Gates");
+    expect(prompt).toContain("### Gate: test");
+    expect(prompt).toContain("FAIL: expected 1 got 2");
+  });
+
+  test("formats multiple failed gates", () => {
+    const prompt = buildRetryPrompt(
+      "Plan content",
+      [
+        { name: "test", output: "test failure" },
+        { name: "lint", output: "lint failure" },
+      ],
+    );
+
+    expect(prompt).toContain("### Gate: test");
+    expect(prompt).toContain("test failure");
+    expect(prompt).toContain("### Gate: lint");
+    expect(prompt).toContain("lint failure");
+  });
+
+  test("includes instruction to not regress", () => {
+    const prompt = buildRetryPrompt("Plan", [{ name: "test", output: "fail" }]);
+    expect(prompt).toContain("Fix the failures below WITHOUT regressing");
   });
 });

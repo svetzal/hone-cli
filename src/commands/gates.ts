@@ -1,16 +1,53 @@
 import { resolve } from "path";
-import { detectGates, runAllGates } from "../gates.ts";
+import { runAllGates } from "../gates.ts";
+import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
 import { loadConfig } from "../config.ts";
-import type { ParsedArgs } from "../types.ts";
+import { createClaudeInvoker } from "../claude.ts";
+import type { ParsedArgs, GateDefinition } from "../types.ts";
 
 export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
-  const folder = resolve(parsed.positional[0] || ".");
-  const shouldRun = parsed.flags.run === true;
+  // Detect whether first positional is an agent name or a folder path
+  // Agent names don't contain slashes or dots (except in filenames)
+  const hasAgent = parsed.positional.length >= 2 ||
+    (parsed.positional.length === 1 && !parsed.positional[0]!.includes("/") && !parsed.positional[0]!.startsWith("."));
 
-  const gates = await detectGates(folder);
+  let agentName: string | undefined;
+  let folder: string;
+
+  if (parsed.positional.length >= 2) {
+    agentName = parsed.positional[0];
+    folder = resolve(parsed.positional[1]!);
+  } else if (hasAgent) {
+    agentName = parsed.positional[0];
+    folder = resolve(".");
+  } else {
+    folder = resolve(parsed.positional[0] || ".");
+  }
+
+  const shouldRun = parsed.flags.run === true;
+  const config = await loadConfig();
+
+  let gates: GateDefinition[];
+
+  if (agentName) {
+    // With agent: use full resolution chain (override > agent extraction)
+    gates = await resolveGates(
+      folder,
+      agentName,
+      config.models.gates,
+      config.readOnlyTools,
+      createClaudeInvoker(),
+    );
+  } else {
+    // Without agent: only use override file
+    gates = (await loadOverrideGates(folder)) ?? [];
+  }
 
   if (gates.length === 0) {
-    console.log(`No quality gates detected for ${folder}`);
+    const hint = agentName
+      ? `No quality gates found for ${folder} (checked .hone-gates.json and agent '${agentName}')`
+      : `No quality gates found for ${folder} (no .hone-gates.json present)`;
+    console.log(hint);
     return;
   }
 
@@ -23,10 +60,8 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
     return;
   }
 
-  const config = await loadConfig();
-
   console.log(`Running quality gates for ${folder}...\n`);
-  const result = await runAllGates(folder, config.gateTimeout);
+  const result = await runAllGates(gates, folder, config.gateTimeout);
 
   for (const r of result.results) {
     const icon = r.passed ? "PASS" : "FAIL";

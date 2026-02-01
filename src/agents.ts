@@ -41,3 +41,17 @@ export async function agentExists(name: string): Promise<boolean> {
   const agents = await listAgents();
   return agents.some((a) => a.name === name);
 }
+
+export async function readAgentContent(name: string): Promise<string | null> {
+  const agents = await listAgents();
+  const agent = agents.find((a) => a.name === name);
+  if (!agent) return null;
+
+  try {
+    const filePath = join(AGENTS_DIR, agent.file);
+    const file = Bun.file(filePath);
+    return await file.text();
+  } catch {
+    return null;
+  }
+}

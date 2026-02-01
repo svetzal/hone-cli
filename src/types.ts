@@ -3,6 +3,8 @@ export interface ModelConfig {
   name: string;
   plan: string;
   execute: string;
+  gates: string;
+  derive: string;
 }
 
 export interface GateDefinition {
@@ -56,3 +58,5 @@ export interface ParsedArgs {
 }
 
 export type ClaudeInvoker = (args: string[]) => Promise<string>;
+
+export type GateRunner = (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;

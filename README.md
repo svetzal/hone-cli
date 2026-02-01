@@ -11,7 +11,7 @@ The agent never self-certifies. Hone verifies independently.
 
 ## Why this exists
 
-The iteration loop (assess → plan → execute) started as a shell script. It
+The iteration loop (assess -> plan -> execute) started as a shell script. It
 worked, but it couldn't enforce quality gates, had no retry logic, no audit
 trail, no configuration, and lived inside a single project. Hone extracts that
 workflow into a standalone tool that adds the missing enforcement layer.
@@ -64,6 +64,9 @@ bun run build    # produces ./hone
 # See what agents you have
 hone list-agents
 
+# Generate an agent and gates for a project you don't have an agent for yet
+hone derive /path/to/project
+
 # See what gates hone would enforce on a project
 hone gates /path/to/project
 
@@ -81,7 +84,7 @@ That single `iterate` command does five things:
 5. **Verify** — Hone runs your quality gates; if any required gate fails, it
    sends the agent back to fix with the failure output as context
 
-Steps 4–5 repeat up to `--max-retries` times (default: 3).
+Steps 4-5 repeat up to `--max-retries` times (default: 3).
 
 ## Commands
 
@@ -116,14 +119,42 @@ audit/
   fix-missing-error-handling-retry-1-actions.md  # First retry (if gates failed)
 ```
 
-### `hone gates [folder]`
+### `hone derive <folder>`
+
+Inspects a project and generates a craftsperson agent tailored to its tech
+stack, along with a `.hone-gates.json` file containing the appropriate quality
+gates.
+
+```bash
+hone derive .                # Agent goes to ~/.claude/agents/ (default)
+hone derive . --local        # Agent goes to ./.claude/agents/
+```
+
+This is the fastest way to get started with a new project. Derive examines your
+directory structure, package manager files, CI configuration, and linter/formatter
+configs, then asks Claude to generate an agent with principles and QA checkpoints
+appropriate for your stack.
+
+Options:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--local` | off | Write agent to `<folder>/.claude/agents/` |
+| `--global` | on | Write agent to `~/.claude/agents/` |
+
+### `hone gates [agent] [folder]`
 
 Shows what quality gates hone would enforce, or runs them.
 
 ```bash
-hone gates .           # Show detected gates
-hone gates . --run     # Actually run them and report pass/fail
+hone gates .                              # Show gates from .hone-gates.json
+hone gates typescript-craftsperson .      # Show gates (override or extracted from agent)
+hone gates . --run                        # Actually run them and report pass/fail
 ```
+
+When an agent name is provided, hone uses the full gate resolution chain
+(override file, then agent extraction). Without an agent, it only reads the
+`.hone-gates.json` override file.
 
 ### `hone list-agents`
 
@@ -139,22 +170,25 @@ Prints the active configuration (defaults merged with `~/.config/hone/config.jso
 
 ## Quality gates
 
-Hone auto-detects gates based on what's in your project root:
+Hone resolves gates using a priority chain:
 
-| Marker file | Test | Lint | Security |
-|-------------|------|------|----------|
-| `package.json` | `npm test` | `npm run lint` | `npm audit` |
-| `mix.exs` | `mix test` | `mix credo --strict && mix format --check-formatted` | `mix deps.audit && mix hex.audit && mix sobelow --config` |
-| `pyproject.toml` | `pytest` | `ruff check src && ruff format --check src` | `pip-audit` |
-| `CMakeLists.txt` | `ctest --output-on-failure` | `cppcheck --enable=all --error-exitcode=1 src/` | — |
+1. **`.hone-gates.json`** — If present in the project root, these gates are used
+   directly. No Claude call needed, and the file can be version-controlled with
+   the project.
+2. **Agent extraction** — If no override file exists, hone reads the agent's
+   definition file and uses Claude (haiku) to extract QA gate commands from its
+   principles and checkpoints section.
+3. **Empty** — If neither source provides gates, hone reports no gates found and
+   skips verification.
 
-Test and lint gates are required (failures trigger retries). Security gates are
-optional (reported but don't block).
+The recommended workflow is to run `hone derive .` on a new project. This
+generates both an agent and a `.hone-gates.json`, giving you explicit,
+version-controlled gate definitions that don't require a Claude call on every
+iteration.
 
-### Custom gates
+### Gate file format
 
-Drop a `.hone-gates.json` in your project root to override auto-detection
-entirely:
+Drop a `.hone-gates.json` in your project root:
 
 ```json
 {
@@ -167,6 +201,9 @@ entirely:
 }
 ```
 
+Gates marked `required: true` trigger the retry loop on failure. Optional gates
+(`required: false`) are reported but don't block.
+
 ## Configuration
 
 Defaults live in `~/.config/hone/config.json`. All fields are optional — missing
@@ -178,7 +215,9 @@ fields use built-in defaults:
     "assess": "opus",
     "name": "haiku",
     "plan": "opus",
-    "execute": "sonnet"
+    "execute": "sonnet",
+    "gates": "haiku",
+    "derive": "sonnet"
   },
   "auditDir": "audit",
   "readOnlyTools": "Read Glob Grep WebFetch WebSearch",
@@ -199,16 +238,21 @@ An agent should:
 
 - Define engineering principles for its domain
 - Be opinionated about what "good" looks like
+- Include QA checkpoints with concrete commands (used for gate extraction)
 - Work with both read-only tools (assessment/planning) and full tools (execution)
 
-If you don't have custom agents and want a starting point, you can grab
-pre-built quality-focused agents from
-[svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents).
-Copy any `*.md` file into `~/.claude/agents/` and you're ready to go.
+You can get agents three ways:
+
+1. **`hone derive`** — generate one from your project's structure and tooling
+2. **Pre-built agents** — grab quality-focused agents from
+   [svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents)
+   and copy any `*.md` file into `~/.claude/agents/`
+3. **Write your own** — create a markdown file in `~/.claude/agents/` with
+   principles and QA checkpoints for your domain
 
 ## How the retry loop works
 
-When execution finishes, hone runs every detected gate as a subprocess. If a
+When execution finishes, hone runs every resolved gate as a subprocess. If a
 required gate fails, the agent gets a retry prompt containing:
 
 1. The original plan
@@ -224,7 +268,7 @@ and course-corrects. Each retry's output is saved separately
 
 ```bash
 bun install                   # Install dependencies
-bun test                      # Run tests (13 tests across 5 files)
+bun test                      # Run tests (72 tests across 9 files)
 bunx tsc --noEmit             # Type check
 bun run dev -- list-agents    # Run without building
 bun run build                 # Build local executable

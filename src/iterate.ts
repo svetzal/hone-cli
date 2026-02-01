@@ -1,23 +1,26 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
-import type { HoneConfig, IterationResult, ClaudeInvoker } from "./types.ts";
+import { resolveGates } from "./resolve-gates.ts";
+import type { HoneConfig, IterationResult, ClaudeInvoker, GateDefinition, GatesRunResult } from "./types.ts";
 
 export interface IterateOptions {
   agent: string;
   folder: string;
   config: HoneConfig;
   skipGates: boolean;
+  gateRunner?: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
+  gateResolver?: (projectDir: string, agentName: string, model: string, readOnlyTools: string, claude: ClaudeInvoker) => Promise<GateDefinition[]>;
   onProgress: (stage: string, message: string) => void;
 }
 
-function sanitizeName(raw: string): string {
+export function sanitizeName(raw: string): string {
   const match = raw.match(/[a-z0-9-]+/);
   if (!match) return "";
   return match[0]!.slice(0, 50);
 }
 
-function buildRetryPrompt(
+export function buildRetryPrompt(
   plan: string,
   failedResults: { name: string; output: string }[],
 ): string {
@@ -41,7 +44,15 @@ export async function iterate(
   opts: IterateOptions,
   claude: ClaudeInvoker,
 ): Promise<IterationResult> {
-  const { agent, folder, config, skipGates, onProgress } = opts;
+  const {
+    agent,
+    folder,
+    config,
+    skipGates,
+    gateRunner = runAllGates,
+    gateResolver = resolveGates,
+    onProgress,
+  } = opts;
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
   // --- Stage 1: Assess ---
@@ -132,9 +143,17 @@ export async function iterate(
   let retries = 0;
 
   if (!skipGates) {
+    // Resolve gates once before the verify loop
+    onProgress("verify", "Resolving quality gates...");
+    const gates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
+
+    if (gates.length === 0) {
+      onProgress("verify", "No quality gates found.");
+    }
+
     for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
       onProgress("verify", `Running quality gates (attempt ${attempt + 1})...`);
-      gatesResult = await runAllGates(folder, config.gateTimeout);
+      gatesResult = await gateRunner(gates, folder, config.gateTimeout);
 
       if (gatesResult.requiredPassed) {
         onProgress("verify", "All required gates passed.");

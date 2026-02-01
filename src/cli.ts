@@ -3,11 +3,12 @@
 import { iterateCommand } from "./commands/iterate.ts";
 import { listAgentsCommand } from "./commands/list-agents.ts";
 import { gatesCommand } from "./commands/gates.ts";
+import { deriveCommand } from "./commands/derive.ts";
 import { historyCommand } from "./commands/history.ts";
 import { configCommand } from "./commands/config.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -47,7 +48,8 @@ Usage: hone <command> [options]
 
 Commands:
   iterate <agent> <folder>   Run one improvement cycle (assess, plan, execute, verify)
-  gates [folder]             Detect and show quality gates for a project
+  gates [agent] [folder]     Show quality gates for a project (agent enables extraction)
+  derive <folder>            Inspect project, generate agent + .hone-gates.json
   list-agents                Show available agents from ~/.claude/agents/
   history [folder]           Show past iterations from the audit directory
   config                     Show current configuration
@@ -62,6 +64,10 @@ Iterate Options:
 Gates Options:
   --run                      Actually run the gates and report results
 
+Derive Options:
+  --local                    Write agent to <folder>/.claude/agents/ (instead of global)
+  --global                   Write agent to ~/.claude/agents/ (default)
+
 General Options:
   --help                     Show this help message
   --version                  Show version number
@@ -71,7 +77,9 @@ Examples:
   hone iterate elixir-phoenix-craftsperson ./apps/web --skip-gates
   hone iterate python-craftsperson . --max-retries 5
   hone gates .
+  hone gates typescript-craftsperson .
   hone gates ./apps/web --run
+  hone derive .
   hone list-agents
   hone history .
   hone config
@@ -99,6 +107,9 @@ async function main(): Promise<void> {
         break;
       case "gates":
         await gatesCommand(parsed);
+        break;
+      case "derive":
+        await deriveCommand(parsed);
         break;
       case "list-agents":
         await listAgentsCommand(parsed);

@@ -1,7 +1,7 @@
 import type { ClaudeInvoker } from "./types.ts";
 
 export interface ClaudeStageArgs {
-  agent: string;
+  agent?: string;
   model: string;
   prompt: string;
   readOnly: boolean;
@@ -9,12 +9,17 @@ export interface ClaudeStageArgs {
 }
 
 export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
-  const args: string[] = [
-    "--agent", opts.agent,
+  const args: string[] = [];
+
+  if (opts.agent) {
+    args.push("--agent", opts.agent);
+  }
+
+  args.push(
     "--model", opts.model,
     "--print",
     "-p", opts.prompt,
-  ];
+  );
 
   if (opts.readOnly) {
     args.push("--allowedTools", opts.readOnlyTools);

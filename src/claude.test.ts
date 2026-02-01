@@ -38,4 +38,35 @@ describe("buildClaudeArgs", () => {
       "--dangerously-skip-permissions",
     ]);
   });
+
+  test("omits --agent flag when agent is undefined", () => {
+    const args = buildClaudeArgs({
+      model: "haiku",
+      prompt: "Extract gates",
+      readOnly: true,
+      readOnlyTools: "Read Glob Grep WebFetch WebSearch",
+    });
+
+    expect(args).not.toContain("--agent");
+    expect(args).toEqual([
+      "--model", "haiku",
+      "--print",
+      "-p", "Extract gates",
+      "--allowedTools", "Read Glob Grep WebFetch WebSearch",
+      "--dangerously-skip-permissions",
+    ]);
+  });
+
+  test("omits --agent flag when agent is empty string", () => {
+    const args = buildClaudeArgs({
+      agent: "",
+      model: "sonnet",
+      prompt: "Derive agent",
+      readOnly: true,
+      readOnlyTools: "Read Glob Grep WebFetch WebSearch",
+    });
+
+    expect(args).not.toContain("--agent");
+    expect(args[0]).toBe("--model");
+  });
 });

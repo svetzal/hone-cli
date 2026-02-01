@@ -9,6 +9,8 @@ export function getDefaultConfig(): HoneConfig {
       name: "haiku",
       plan: "opus",
       execute: "sonnet",
+      gates: "haiku",
+      derive: "sonnet",
     },
     auditDir: "audit",
     readOnlyTools: "Read Glob Grep WebFetch WebSearch",
@@ -17,12 +19,12 @@ export function getDefaultConfig(): HoneConfig {
   };
 }
 
-export async function loadConfig(): Promise<HoneConfig> {
+export async function loadConfig(configPath?: string): Promise<HoneConfig> {
   const defaults = getDefaultConfig();
-  const configPath = join(homedir(), ".config", "hone", "config.json");
+  const resolvedPath = configPath ?? join(homedir(), ".config", "hone", "config.json");
 
   try {
-    const file = Bun.file(configPath);
+    const file = Bun.file(resolvedPath);
     if (await file.exists()) {
       const userConfig = await file.json();
       return {
