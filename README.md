@@ -201,6 +201,11 @@ An agent should:
 - Be opinionated about what "good" looks like
 - Work with both read-only tools (assessment/planning) and full tools (execution)
 
+If you don't have custom agents and want a starting point, you can grab
+pre-built quality-focused agents from
+[svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents).
+Copy any `*.md` file into `~/.claude/agents/` and you're ready to go.
+
 ## How the retry loop works
 
 When execution finishes, hone runs every detected gate as a subprocess. If a
