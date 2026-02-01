@@ -71,7 +71,7 @@ describe("runGate", () => {
     }
   });
 
-  test("handles command timeout", { timeout: 15000 }, async () => {
+  test("handles command timeout", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
       const result = await runGate(
