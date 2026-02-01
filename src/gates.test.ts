@@ -75,9 +75,9 @@ describe("runGate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
       const result = await runGate(
-        { name: "slow", command: "sleep 30", required: true },
+        { name: "slow", command: "sleep 2", required: true },
         dir,
-        500, // 500ms timeout
+        500, // 500ms timeout — kill fires before sleep finishes
       );
 
       expect(result.passed).toBe(false);
