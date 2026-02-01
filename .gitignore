@@ -1,0 +1,4 @@
+node_modules
+dist
+/hone
+.DS_Store
