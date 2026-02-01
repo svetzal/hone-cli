@@ -55,7 +55,7 @@ Requires [Bun](https://bun.sh):
 
 ```bash
 bun install
-bun run build    # produces ./hone
+bun run build    # produces build/hone
 ```
 
 ## Quick start
