@@ -200,6 +200,22 @@ Agents live in `~/.claude/agents/*.agent.md` and must:
 
 The tool does not modify or manage agents — it discovers and delegates to them.
 
+## Release Process
+
+Releases follow semver. To cut a release:
+
+1. All quality gates must pass (`bun test`, `bunx tsc --noEmit`)
+2. Working tree must be clean — all changes committed to `main`
+3. Update the version in `package.json` and `src/cli.ts` (`VERSION` constant)
+4. Move the `[Unreleased]` section in `CHANGELOG.md` under a dated version heading
+5. Commit the version bump (e.g. `Bump version to 0.3.0`)
+6. Create a git tag: `git tag v0.3.0`
+7. Push the commit and tag: `git push && git push --tags`
+8. Create a GitHub release on the tag: `gh release create v0.3.0 --title "v0.3.0" --notes-from-tag`
+
+The `--notes-from-tag` flag pulls release notes from the tag. Alternatively,
+pass the changelog section content via `--notes`.
+
 ## Client Code
 
 `mojility` — this is internal Mojility tooling.

@@ -144,17 +144,30 @@ Options:
 
 ### `hone gates [agent] [folder]`
 
-Shows what quality gates hone would enforce, or runs them.
+Shows what quality gates hone would enforce, runs them, or saves them to a file.
 
 ```bash
 hone gates .                              # Show gates from .hone-gates.json
 hone gates typescript-craftsperson .      # Show gates (override or extracted from agent)
 hone gates . --run                        # Actually run them and report pass/fail
+hone gates typescript-craftsperson . --save       # Extract from agent, write .hone-gates.json
+hone gates typescript-craftsperson . --save --run  # Extract, save, then run them
 ```
 
 When an agent name is provided, hone uses the full gate resolution chain
 (override file, then agent extraction). Without an agent, it only reads the
 `.hone-gates.json` override file.
+
+Options:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--run` | off | Run the gates and report pass/fail |
+| `--save` | off | Write resolved gates to `.hone-gates.json` in the project folder |
+
+The `--save` flag writes the resolved gates to `.hone-gates.json` in the project
+folder. This is useful when you already have an agent and want to generate a
+gates file without running `hone derive`.
 
 ### `hone list-agents`
 
@@ -184,7 +197,8 @@ Hone resolves gates using a priority chain:
 The recommended workflow is to run `hone derive .` on a new project. This
 generates both an agent and a `.hone-gates.json`, giving you explicit,
 version-controlled gate definitions that don't require a Claude call on every
-iteration.
+iteration. If you already have an agent, use `hone gates <agent> . --save` to
+generate just the gates file.
 
 ### Gate file format
 

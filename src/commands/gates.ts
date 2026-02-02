@@ -1,4 +1,4 @@
-import { resolve } from "path";
+import { resolve, join } from "path";
 import { runAllGates } from "../gates.ts";
 import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
 import { loadConfig } from "../config.ts";
@@ -25,6 +25,7 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
   }
 
   const shouldRun = parsed.flags.run === true;
+  const shouldSave = parsed.flags.save === true;
   const config = await loadConfig();
 
   let gates: GateDefinition[];
@@ -49,6 +50,12 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
       : `No quality gates found for ${folder} (no .hone-gates.json present)`;
     console.log(hint);
     return;
+  }
+
+  if (shouldSave) {
+    const gatesPath = join(folder, ".hone-gates.json");
+    await Bun.write(gatesPath, JSON.stringify({ gates }, null, 2) + "\n");
+    console.log(`Gates written to: ${gatesPath}`);
   }
 
   if (!shouldRun) {

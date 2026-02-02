@@ -1,0 +1,29 @@
+{
+  "gates": [
+    {
+      "name": "typecheck",
+      "command": "bunx tsc --noEmit",
+      "required": true
+    },
+    {
+      "name": "test",
+      "command": "bun test",
+      "required": true
+    },
+    {
+      "name": "security",
+      "command": "osv-scanner .",
+      "required": true
+    },
+    {
+      "name": "build",
+      "command": "bun build src/cli.ts --compile --outfile=build/hone",
+      "required": true
+    },
+    {
+      "name": "smoke-test",
+      "command": "./build/hone --version",
+      "required": true
+    }
+  ]
+}

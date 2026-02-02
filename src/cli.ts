@@ -63,6 +63,7 @@ Iterate Options:
 
 Gates Options:
   --run                      Actually run the gates and report results
+  --save                     Write resolved gates to .hone-gates.json in project folder
 
 Derive Options:
   --local                    Write agent to <folder>/.claude/agents/ (instead of global)
@@ -79,6 +80,7 @@ Examples:
   hone gates .
   hone gates typescript-craftsperson .
   hone gates ./apps/web --run
+  hone gates typescript-craftsperson . --save
   hone derive .
   hone list-agents
   hone history .
