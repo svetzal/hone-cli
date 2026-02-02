@@ -4,7 +4,8 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { ClaudeInvoker, GateDefinition, GatesRunResult } from "./types.ts";
+import type { GateDefinition, GatesRunResult } from "./types.ts";
+import { createIterateMock, extractPrompt } from "./test-helpers.ts";
 
 // Mock gate resolver that returns empty gates (no Claude call needed)
 const emptyGateResolver = async () => [] as GateDefinition[];
@@ -19,27 +20,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
     const calls: string[][] = [];
 
-    const mockClaude: ClaudeInvoker = async (args) => {
-      calls.push(args);
-
-      // Determine which stage based on the prompt content
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) {
-        return "The project violates the single responsibility principle.";
-      }
-      if (prompt.startsWith("Output ONLY")) {
-        return "fix-srp-violation";
-      }
-      if (prompt.startsWith("Based on")) {
-        return "Step 1: Extract class\nStep 2: Move methods";
-      }
-      if (prompt.startsWith("Execute")) {
-        return "Extracted UserAuth class into its own module.";
-      }
-      return "unknown stage";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "The project violates the single responsibility principle.",
+        name: "fix-srp-violation",
+        plan: "Step 1: Extract class\nStep 2: Move methods",
+        execute: "Extracted UserAuth class into its own module.",
+      },
+      { onCall: (args) => calls.push(args) },
+    );
 
     try {
       const progress: string[] = [];
@@ -86,16 +75,12 @@ describe("iterate", () => {
   test("falls back to timestamp name when sanitization fails", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
-    const mockClaude: ClaudeInvoker = async (args) => {
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "assessment";
-      if (prompt.startsWith("Output ONLY")) return "!!!INVALID!!!";
-      if (prompt.startsWith("Based on")) return "plan";
-      if (prompt.startsWith("Execute")) return "done";
-      return "";
-    };
+    const mockClaude = createIterateMock({
+      assess: "assessment",
+      name: "!!!INVALID!!!",
+      plan: "plan",
+      execute: "done",
+    });
 
     try {
       const result = await iterate(
@@ -120,17 +105,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
     const claudeCalls: string[][] = [];
-    const mockClaude: ClaudeInvoker = async (args) => {
-      claudeCalls.push(args);
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "Assessment content";
-      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
-      if (prompt.startsWith("Based on")) return "Plan content";
-      if (prompt.startsWith("Execute")) return "Execution content";
-      return "";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "Assessment content",
+        name: "test-issue-name",
+        plan: "Plan content",
+        execute: "Execution content",
+      },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
 
     const gateRunnerCalls: Array<[GateDefinition[], string, number]> = [];
     const mockGateRunner = async (gates: GateDefinition[], projectDir: string, timeout: number): Promise<GatesRunResult> => {
@@ -186,19 +169,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
     const claudeCalls: string[][] = [];
-    const mockClaude: ClaudeInvoker = async (args) => {
-      claudeCalls.push(args);
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "Assessment content";
-      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
-      if (prompt.startsWith("Based on")) return "Plan content";
-      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
-        return "Execution content";
-      }
-      return "";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "Assessment content",
+        name: "test-issue-name",
+        plan: "Plan content",
+        execute: "Execution content",
+      },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
 
     let gateRunCallCount = 0;
     const mockGateRunner = async (): Promise<GatesRunResult> => {
@@ -272,19 +251,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
     const claudeCalls: string[][] = [];
-    const mockClaude: ClaudeInvoker = async (args) => {
-      claudeCalls.push(args);
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "Assessment content";
-      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
-      if (prompt.startsWith("Based on")) return "Plan content";
-      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
-        return "Execution content";
-      }
-      return "";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "Assessment content",
+        name: "test-issue-name",
+        plan: "Plan content",
+        execute: "Execution content",
+      },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
 
     let gateRunCallCount = 0;
     const mockGateRunner = async (): Promise<GatesRunResult> => {
@@ -340,17 +315,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
     const claudeCalls: string[][] = [];
-    const mockClaude: ClaudeInvoker = async (args) => {
-      claudeCalls.push(args);
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "Assessment content";
-      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
-      if (prompt.startsWith("Based on")) return "Plan content";
-      if (prompt.startsWith("Execute")) return "Execution content";
-      return "";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "Assessment content",
+        name: "test-issue-name",
+        plan: "Plan content",
+        execute: "Execution content",
+      },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
 
     const mockGateRunner = async (): Promise<GatesRunResult> => {
       return {
@@ -399,19 +372,15 @@ describe("iterate", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
 
     const claudeCalls: string[][] = [];
-    const mockClaude: ClaudeInvoker = async (args) => {
-      claudeCalls.push(args);
-      const promptIdx = args.indexOf("-p");
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-      if (prompt.startsWith("Assess")) return "Assessment content";
-      if (prompt.startsWith("Output ONLY")) return "test-issue-name";
-      if (prompt.startsWith("Based on")) return "Plan with specific steps";
-      if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
-        return "Execution content";
-      }
-      return "";
-    };
+    const mockClaude = createIterateMock(
+      {
+        assess: "Assessment content",
+        name: "test-issue-name",
+        plan: "Plan with specific steps",
+        execute: "Execution content",
+      },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
 
     let gateRunCallCount = 0;
     const mockGateRunner = async (): Promise<GatesRunResult> => {
@@ -455,9 +424,7 @@ describe("iterate", () => {
 
       // Capture the retry prompt (5th call)
       expect(claudeCalls.length).toBe(5);
-      const retryCall = claudeCalls[4]!;
-      const promptIdx = retryCall.indexOf("-p");
-      const retryPrompt = retryCall[promptIdx + 1]!;
+      const retryPrompt = extractPrompt(claudeCalls[4]!);
 
       // Assert prompt contains original plan
       expect(retryPrompt).toContain("## Original Plan");

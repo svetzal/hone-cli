@@ -3,7 +3,7 @@ import { gatherContext, extractAgentName, derive } from "./derive.ts";
 import { join } from "path";
 import { mkdtemp, writeFile, mkdir, rm } from "fs/promises";
 import { tmpdir } from "os";
-import type { ClaudeInvoker } from "./types.ts";
+import { createDeriveMock, extractPrompt } from "./test-helpers.ts";
 
 describe("gatherContext", () => {
   test("collects directory tree", async () => {
@@ -124,14 +124,9 @@ describe("derive", () => {
       await writeFile(join(dir, "package.json"), '{"name":"test","scripts":{"test":"bun test"}}');
 
       let callCount = 0;
-      const mockClaude: ClaudeInvoker = async (args) => {
-        callCount++;
-        const promptIdx = args.indexOf("-p");
-        const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-        if (prompt.includes("inspecting a software project")) {
-          // Derive call — return agent content
-          return `---
+      const mockClaude = createDeriveMock(
+        {
+          derive: `---
 name: test-craftsperson
 description: Test agent
 ---
@@ -139,14 +134,13 @@ description: Test agent
 # Test Craftsperson
 
 ## QA Checkpoints
-- Run \`bun test\``;
-        }
-
-        // Gate extraction call
-        return JSON.stringify([
-          { name: "test", command: "bun test", required: true },
-        ]);
-      };
+- Run \`bun test\``,
+          gateExtraction: JSON.stringify([
+            { name: "test", command: "bun test", required: true },
+          ]),
+        },
+        { onCall: () => { callCount++; } },
+      );
 
       const result = await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
 
@@ -169,16 +163,20 @@ description: Test agent
       await writeFile(join(dir, "tsconfig.json"), '{"compilerOptions":{"strict":true}}');
 
       let capturedPrompt = "";
-      const mockClaude: ClaudeInvoker = async (args) => {
-        const promptIdx = args.indexOf("-p");
-        const prompt = promptIdx >= 0 ? args[promptIdx + 1]! : "";
-
-        if (prompt.includes("inspecting a software project")) {
-          capturedPrompt = prompt;
-          return "---\nname: test\n---\n# Test";
-        }
-        return "[]";
-      };
+      const mockClaude = createDeriveMock(
+        {
+          derive: "---\nname: test\n---\n# Test",
+          gateExtraction: "[]",
+        },
+        {
+          onCall: (args) => {
+            const prompt = extractPrompt(args);
+            if (prompt.includes("inspecting a software project")) {
+              capturedPrompt = prompt;
+            }
+          },
+        },
+      );
 
       await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
 
