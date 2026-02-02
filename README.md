@@ -11,18 +11,33 @@ The agent never self-certifies. Hone verifies independently.
 
 ## Why this exists
 
-The iteration loop (assess -> plan -> execute) started as a shell script. It
-worked, but it couldn't enforce quality gates, had no retry logic, no audit
-trail, no configuration, and lived inside a single project. Hone extracts that
-workflow into a standalone tool that adds the missing enforcement layer.
+I wanted a simple iteration loop to illustrate the power of this loop as a
+continuous improvement mechanism for projects.
 
-The key insight: an agent will happily tell you it passed all tests. Hone
-doesn't ask — it runs them.
+Agents are naturally non-deterministic. They are unlikely to adhere to all of
+your rules at the same time. They're prone to leaving things out when things get
+complex.
+
+This project wraps that non-deterministic behaviour in a more deterministic loop.
+The agent doesn't decide for itself when it's done. The quality gates do. And
+they're deterministic.
+
+The iteration is a mechanism to push your implementation closer to the guardrails
+you intended in your custom agent definition and AGENTS.md files.
+
+Hone is an attempt to package up a way to do iteration like this in as simple a
+form as possible.
+
+The key insight: an agent will happily tell you it implemented all your policies,
+passed all your guardrails and validations, or confidently tell you why some of
+them don't matter. Hone diligently runs all of your validations every time, and the
+iteration pushes your implementation closer to your policies and intent.
 
 ## Prerequisites
 
 Hone delegates to the [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-CLI (`claude`), which must be installed and authenticated.
+CLI (`claude`), which must be installed and authenticated. We recommend using the
+Claude Max plan if you want to do regular iteration on your codebase.
 
 ## Install
 
@@ -210,7 +225,7 @@ Drop a `.hone-gates.json` in your project root:
     { "name": "test", "command": "bun test", "required": true },
     { "name": "typecheck", "command": "bunx tsc --noEmit", "required": true },
     { "name": "lint", "command": "bunx biome check src", "required": true },
-    { "name": "security", "command": "npm audit", "required": false }
+    { "name": "security", "command": "osv-scanner .", "required": false }
   ]
 }
 ```

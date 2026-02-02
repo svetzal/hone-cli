@@ -5,13 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-02-01
 
 ### Added
 
 - **`--save` flag for `hone gates`** — writes resolved gates to
   `.hone-gates.json` in the project folder, useful when you already have an
   agent and want a gates file without running `hone derive`
+- **MIT license**
+- **Local project agent** — `.claude/agents/typescript-craftsperson.agent.md`
+  tailored for Bun/TypeScript CLI development
+- **Security gate** — `osv-scanner` added to `.hone-gates.json` for dependency
+  vulnerability scanning
+- **Release process** documented in CLAUDE.md
 
 ## [0.2.0] - 2026-02-01
 

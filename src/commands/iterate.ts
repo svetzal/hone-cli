@@ -3,7 +3,26 @@ import { loadConfig } from "../config.ts";
 import { agentExists } from "../agents.ts";
 import { iterate } from "../iterate.ts";
 import { createClaudeInvoker } from "../claude.ts";
-import type { ParsedArgs } from "../types.ts";
+import type { ParsedArgs, HoneConfig } from "../types.ts";
+
+export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
+  const result = { ...config, models: { ...config.models } };
+
+  if (typeof flags["max-retries"] === "string") {
+    result.maxRetries = parseInt(flags["max-retries"], 10);
+  }
+  if (typeof flags["assess-model"] === "string") {
+    result.models.assess = flags["assess-model"];
+  }
+  if (typeof flags["plan-model"] === "string") {
+    result.models.plan = flags["plan-model"];
+  }
+  if (typeof flags["execute-model"] === "string") {
+    result.models.execute = flags["execute-model"];
+  }
+
+  return result;
+}
 
 export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const agent = parsed.positional[0];
@@ -24,21 +43,8 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
 
   const resolvedFolder = resolve(folder);
 
-  const config = await loadConfig();
-
-  // Apply flag overrides
-  if (typeof parsed.flags["max-retries"] === "string") {
-    config.maxRetries = parseInt(parsed.flags["max-retries"], 10);
-  }
-  if (typeof parsed.flags["assess-model"] === "string") {
-    config.models.assess = parsed.flags["assess-model"];
-  }
-  if (typeof parsed.flags["plan-model"] === "string") {
-    config.models.plan = parsed.flags["plan-model"];
-  }
-  if (typeof parsed.flags["execute-model"] === "string") {
-    config.models.execute = parsed.flags["execute-model"];
-  }
+  const baseConfig = await loadConfig();
+  const config = applyIterateFlags(baseConfig, parsed.flags);
 
   const skipGates = parsed.flags["skip-gates"] === true;
 

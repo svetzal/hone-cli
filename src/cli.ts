@@ -8,7 +8,7 @@ import { historyCommand } from "./commands/history.ts";
 import { configCommand } from "./commands/config.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};

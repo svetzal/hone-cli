@@ -1,8 +1,8 @@
 {
   "name": "hone",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI tool that hones codebases through iterative quality improvement cycles using Claude agents",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "module": "src/cli.ts",
   "type": "module",
   "private": true,

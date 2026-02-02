@@ -5,24 +5,28 @@ import { loadConfig } from "../config.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, GateDefinition } from "../types.ts";
 
-export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
+export interface GatesArgs {
+  agentName: string | undefined;
+  folder: string;
+}
+
+export function parseGatesArgs(positional: string[]): GatesArgs {
   // Detect whether first positional is an agent name or a folder path
   // Agent names don't contain slashes or dots (except in filenames)
-  const hasAgent = parsed.positional.length >= 2 ||
-    (parsed.positional.length === 1 && !parsed.positional[0]!.includes("/") && !parsed.positional[0]!.startsWith("."));
+  const hasAgent = positional.length >= 2 ||
+    (positional.length === 1 && !positional[0]!.includes("/") && !positional[0]!.startsWith("."));
 
-  let agentName: string | undefined;
-  let folder: string;
-
-  if (parsed.positional.length >= 2) {
-    agentName = parsed.positional[0];
-    folder = resolve(parsed.positional[1]!);
+  if (positional.length >= 2) {
+    return { agentName: positional[0], folder: resolve(positional[1]!) };
   } else if (hasAgent) {
-    agentName = parsed.positional[0];
-    folder = resolve(".");
+    return { agentName: positional[0], folder: resolve(".") };
   } else {
-    folder = resolve(parsed.positional[0] || ".");
+    return { agentName: undefined, folder: resolve(positional[0] || ".") };
   }
+}
+
+export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
+  const { agentName, folder } = parseGatesArgs(parsed.positional);
 
   const shouldRun = parsed.flags.run === true;
   const shouldSave = parsed.flags.save === true;

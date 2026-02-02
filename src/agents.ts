@@ -9,7 +9,7 @@ export interface AgentInfo {
   file: string;
 }
 
-function agentNameFromFile(filename: string): string | null {
+export function agentNameFromFile(filename: string): string | null {
   if (filename.endsWith(".agent.md")) {
     return filename.slice(0, -".agent.md".length);
   }
@@ -19,9 +19,10 @@ function agentNameFromFile(filename: string): string | null {
   return null;
 }
 
-export async function listAgents(): Promise<AgentInfo[]> {
+export async function listAgents(agentsDir?: string): Promise<AgentInfo[]> {
+  const dir = agentsDir ?? AGENTS_DIR;
   try {
-    const files = await readdir(AGENTS_DIR);
+    const files = await readdir(dir);
     const agents: AgentInfo[] = [];
 
     for (const file of files) {
@@ -37,18 +38,19 @@ export async function listAgents(): Promise<AgentInfo[]> {
   }
 }
 
-export async function agentExists(name: string): Promise<boolean> {
-  const agents = await listAgents();
+export async function agentExists(name: string, agentsDir?: string): Promise<boolean> {
+  const agents = await listAgents(agentsDir);
   return agents.some((a) => a.name === name);
 }
 
-export async function readAgentContent(name: string): Promise<string | null> {
-  const agents = await listAgents();
+export async function readAgentContent(name: string, agentsDir?: string): Promise<string | null> {
+  const dir = agentsDir ?? AGENTS_DIR;
+  const agents = await listAgents(agentsDir);
   const agent = agents.find((a) => a.name === name);
   if (!agent) return null;
 
   try {
-    const filePath = join(AGENTS_DIR, agent.file);
+    const filePath = join(dir, agent.file);
     const file = Bun.file(filePath);
     return await file.text();
   } catch {
