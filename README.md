@@ -13,7 +13,7 @@ See [CHARTER.md](CHARTER.md) for the design rationale behind these choices.
 
 ## Prerequisites
 
-Hone delegates to the [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+Hone currently delegates to the [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 CLI (`claude`), which must be installed and authenticated. We recommend using the
 Claude Max plan if you want to do regular iteration on your codebase.
 
