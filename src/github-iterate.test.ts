@@ -7,43 +7,9 @@ import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import type {
   CommandRunner,
-  CharterCheckResult,
-  StructuredAssessment,
-  TriageResult,
-  GateDefinition,
   GatesRunResult,
 } from "./types.ts";
-import { createIterateMock } from "./test-helpers.ts";
-
-const passingCharterChecker = async (): Promise<CharterCheckResult> => ({
-  passed: true,
-  sources: [{ file: "CHARTER.md", length: 200, sufficient: true }],
-  guidance: [],
-});
-
-const failingCharterChecker = async (): Promise<CharterCheckResult> => ({
-  passed: false,
-  sources: [],
-  guidance: ["Add a CHARTER.md"],
-});
-
-const acceptingTriageRunner = async (): Promise<TriageResult> => ({
-  accepted: true,
-  reason: "Substantive change",
-  severity: 4,
-  changeType: "architecture",
-  busyWork: false,
-});
-
-const rejectingTriageRunner = async (): Promise<TriageResult> => ({
-  accepted: false,
-  reason: "Busy-work",
-  severity: 2,
-  changeType: "cosmetic",
-  busyWork: true,
-});
-
-const emptyGateResolver = async () => [] as GateDefinition[];
+import { createIterateMock, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingTriageRunner, emptyGateResolver } from "./test-helpers.ts";
 
 function createMockGhRunner(opts: {
   owner?: string;

@@ -1,32 +1,9 @@
 import type { StructuredAssessment } from "./types.ts";
+import { extractJsonFromLlmOutput } from "./json-extraction.ts";
 
 function clampSeverity(value: number): number {
   if (!Number.isFinite(value)) return 3;
   return Math.max(1, Math.min(5, Math.round(value)));
-}
-
-function extractJsonBlock(raw: string): Record<string, unknown> | null {
-  // Try fenced code block first: ```json ... ```
-  const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\{[\s\S]*?\})\s*\n?\s*```/);
-  if (fencedMatch?.[1]) {
-    try {
-      return JSON.parse(fencedMatch[1]);
-    } catch {
-      // Fall through
-    }
-  }
-
-  // Try bare JSON object at the start of the text
-  const bareMatch = raw.match(/^\s*(\{[\s\S]*?\})/);
-  if (bareMatch?.[1]) {
-    try {
-      return JSON.parse(bareMatch[1]);
-    } catch {
-      // Fall through
-    }
-  }
-
-  return null;
 }
 
 function extractProse(raw: string): string {
@@ -41,7 +18,7 @@ function extractProse(raw: string): string {
 }
 
 export function parseAssessment(raw: string): StructuredAssessment {
-  const json = extractJsonBlock(raw);
+  const json = extractJsonFromLlmOutput(raw);
 
   if (json) {
     const severity = typeof json.severity === "number" ? clampSeverity(json.severity) : 3;

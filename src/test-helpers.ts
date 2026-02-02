@@ -1,4 +1,4 @@
-import type { ClaudeInvoker } from "./types.ts";
+import type { ClaudeInvoker, CharterCheckResult, StructuredAssessment, TriageResult, GateDefinition } from "./types.ts";
 
 /**
  * Extract the prompt string from a Claude CLI args array.
@@ -66,3 +66,88 @@ export function createDeriveMock(
     return responses.gateExtraction;
   };
 }
+
+/**
+ * Mock gate resolver that returns empty gates (no Claude call needed).
+ * Used by both iterate and github-iterate tests.
+ */
+export const emptyGateResolver = async () => [] as GateDefinition[];
+
+/**
+ * Mock gate resolver that returns a standard test gate.
+ * Used by both iterate and github-iterate tests.
+ */
+export const standardGateResolver = async () => [
+  { name: "test", command: "npm test", required: true },
+] as GateDefinition[];
+
+/**
+ * Mock charter checker that always passes.
+ * Used by both iterate and github-iterate tests.
+ */
+export const passingCharterChecker = async (): Promise<CharterCheckResult> => ({
+  passed: true,
+  sources: [{ file: "CHARTER.md", length: 200, sufficient: true }],
+  guidance: [],
+});
+
+/**
+ * Mock charter checker that always fails.
+ * Used by both iterate and github-iterate tests.
+ */
+export const failingCharterChecker = async (): Promise<CharterCheckResult> => ({
+  passed: false,
+  sources: [],
+  guidance: ["Add a CHARTER.md describing the project's goals"],
+});
+
+/**
+ * Mock triage runner that always accepts proposals.
+ * Used by both iterate and github-iterate tests.
+ */
+export const acceptingTriageRunner = async (): Promise<TriageResult> => ({
+  accepted: true,
+  reason: "Substantive change",
+  severity: 4,
+  changeType: "architecture",
+  busyWork: false,
+});
+
+/**
+ * Mock triage runner that rejects based on severity threshold.
+ * Used by both iterate and github-iterate tests.
+ */
+export const rejectingSeverityTriageRunner = async (
+  assessment: StructuredAssessment,
+  threshold: number,
+): Promise<TriageResult> => ({
+  accepted: false,
+  reason: `Severity ${assessment.severity} is below threshold ${threshold}`,
+  severity: assessment.severity,
+  changeType: "unknown",
+  busyWork: false,
+});
+
+/**
+ * Mock triage runner that rejects as busy-work.
+ * Used by both iterate and github-iterate tests.
+ */
+export const rejectingBusyWorkTriageRunner = async (): Promise<TriageResult> => ({
+  accepted: false,
+  reason: "Busy-work: Just adding comments",
+  severity: 4,
+  changeType: "cosmetic",
+  busyWork: true,
+});
+
+/**
+ * Alternative triage runner that rejects everything.
+ * Used by github-iterate tests.
+ */
+export const rejectingTriageRunner = async (): Promise<TriageResult> => ({
+  accepted: false,
+  reason: "Busy-work",
+  severity: 2,
+  changeType: "cosmetic",
+  busyWork: true,
+});

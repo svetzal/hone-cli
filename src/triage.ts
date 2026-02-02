@@ -1,4 +1,5 @@
 import { buildClaudeArgs } from "./claude.ts";
+import { extractJsonFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, StructuredAssessment, TriageResult } from "./types.ts";
 
 export function checkSeverityThreshold(
@@ -47,38 +48,17 @@ export function parseTriageResponse(raw: string): {
   busyWork: boolean;
   reason: string;
 } {
-  // Try fenced code block
-  const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\{[\s\S]*?\})\s*\n?\s*```/);
-  if (fencedMatch?.[1]) {
-    try {
-      const parsed = JSON.parse(fencedMatch[1]);
-      return {
-        changeType: typeof parsed.changeType === "string" ? parsed.changeType : "other",
-        busyWork: typeof parsed.busyWork === "boolean" ? parsed.busyWork : false,
-        reason: typeof parsed.reason === "string" ? parsed.reason : "",
-      };
-    } catch {
-      // Fall through
-    }
+  const json = extractJsonFromLlmOutput(raw);
+  if (!json) {
+    // Fail-open: don't block real work on parse errors
+    return { changeType: "other", busyWork: false, reason: "Failed to parse triage response" };
   }
 
-  // Try bare JSON
-  const bareMatch = raw.match(/(\{[\s\S]*?\})/);
-  if (bareMatch?.[1]) {
-    try {
-      const parsed = JSON.parse(bareMatch[1]);
-      return {
-        changeType: typeof parsed.changeType === "string" ? parsed.changeType : "other",
-        busyWork: typeof parsed.busyWork === "boolean" ? parsed.busyWork : false,
-        reason: typeof parsed.reason === "string" ? parsed.reason : "",
-      };
-    } catch {
-      // Fall through
-    }
-  }
-
-  // Fail-open: don't block real work on parse errors
-  return { changeType: "other", busyWork: false, reason: "Failed to parse triage response" };
+  return {
+    changeType: typeof json.changeType === "string" ? json.changeType : "other",
+    busyWork: typeof json.busyWork === "boolean" ? json.busyWork : false,
+    reason: typeof json.reason === "string" ? json.reason : "",
+  };
 }
 
 export async function triage(

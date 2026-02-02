@@ -4,60 +4,8 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { GateDefinition, GatesRunResult, CharterCheckResult, StructuredAssessment, TriageResult } from "./types.ts";
-import { createIterateMock, extractPrompt } from "./test-helpers.ts";
-
-// Mock gate resolver that returns empty gates (no Claude call needed)
-const emptyGateResolver = async () => [] as GateDefinition[];
-
-// Mock gate resolver that returns some gates
-const standardGateResolver = async () => [
-  { name: "test", command: "npm test", required: true },
-] as GateDefinition[];
-
-// Mock charter checker that always passes
-const passingCharterChecker = async (): Promise<CharterCheckResult> => ({
-  passed: true,
-  sources: [{ file: "CHARTER.md", length: 200, sufficient: true }],
-  guidance: [],
-});
-
-// Mock charter checker that always fails
-const failingCharterChecker = async (): Promise<CharterCheckResult> => ({
-  passed: false,
-  sources: [],
-  guidance: ["Add a CHARTER.md describing the project's goals"],
-});
-
-// Mock triage runner that always accepts
-const acceptingTriageRunner = async (): Promise<TriageResult> => ({
-  accepted: true,
-  reason: "Substantive change",
-  severity: 4,
-  changeType: "architecture",
-  busyWork: false,
-});
-
-// Mock triage runner that rejects (low severity)
-const rejectingSeverityTriageRunner = async (
-  assessment: StructuredAssessment,
-  threshold: number,
-): Promise<TriageResult> => ({
-  accepted: false,
-  reason: `Severity ${assessment.severity} is below threshold ${threshold}`,
-  severity: assessment.severity,
-  changeType: "unknown",
-  busyWork: false,
-});
-
-// Mock triage runner that rejects (busy-work)
-const rejectingBusyWorkTriageRunner = async (): Promise<TriageResult> => ({
-  accepted: false,
-  reason: "Busy-work: Just adding comments",
-  severity: 4,
-  changeType: "cosmetic",
-  busyWork: true,
-});
+import type { GateDefinition, GatesRunResult } from "./types.ts";
+import { createIterateMock, extractPrompt, emptyGateResolver, standardGateResolver, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingSeverityTriageRunner, rejectingBusyWorkTriageRunner } from "./test-helpers.ts";
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {

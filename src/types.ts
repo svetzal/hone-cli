@@ -71,6 +71,27 @@ export type ClaudeInvoker = (args: string[]) => Promise<string>;
 
 export type GateRunner = (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
 
+export type GateResolverFn = (
+  projectDir: string,
+  agentName: string,
+  model: string,
+  readOnlyTools: string,
+  claude: ClaudeInvoker,
+) => Promise<GateDefinition[]>;
+
+export type CharterCheckerFn = (
+  projectDir: string,
+  minLength: number,
+) => Promise<CharterCheckResult>;
+
+export type TriageRunnerFn = (
+  assessment: StructuredAssessment,
+  threshold: number,
+  model: string,
+  tools: string,
+  claude: ClaudeInvoker,
+) => Promise<TriageResult>;
+
 // Charter check types
 export interface CharterSource {
   file: string;

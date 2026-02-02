@@ -1,5 +1,4 @@
 import { join } from "path";
-import { readFile } from "fs/promises";
 import type { CharterCheckResult, CharterSource } from "./types.ts";
 
 async function readFileContent(path: string): Promise<string | null> {

@@ -14,6 +14,10 @@ import type {
   CharterCheckResult,
   StructuredAssessment,
   TriageResult,
+  GateRunner,
+  GateResolverFn,
+  CharterCheckerFn,
+  TriageRunnerFn,
 } from "./types.ts";
 
 export interface IterateOptions {
@@ -23,10 +27,10 @@ export interface IterateOptions {
   skipGates: boolean;
   skipCharter?: boolean;
   skipTriage?: boolean;
-  gateRunner?: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
-  gateResolver?: (projectDir: string, agentName: string, model: string, readOnlyTools: string, claude: ClaudeInvoker) => Promise<GateDefinition[]>;
-  charterChecker?: (projectDir: string, minLength: number) => Promise<CharterCheckResult>;
-  triageRunner?: (assessment: StructuredAssessment, threshold: number, model: string, tools: string, claude: ClaudeInvoker) => Promise<TriageResult>;
+  gateRunner?: GateRunner;
+  gateResolver?: GateResolverFn;
+  charterChecker?: CharterCheckerFn;
+  triageRunner?: TriageRunnerFn;
   onProgress: (stage: string, message: string) => void;
 }
 
