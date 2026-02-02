@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { githubIterate } from "./github-iterate.ts";
+import {
+  githubIterate,
+  closeRejectedIssues,
+  executeApprovedIssues,
+  proposeImprovements,
+} from "./github-iterate.ts";
 import { getDefaultConfig } from "./config.ts";
 import { formatIssueBody } from "./github.ts";
 import { join } from "path";
@@ -8,6 +13,7 @@ import { tmpdir } from "os";
 import type {
   CommandRunner,
   GatesRunResult,
+  HoneIssue,
 } from "./types.ts";
 import { createIterateMock, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingTriageRunner, emptyGateResolver } from "./test-helpers.ts";
 
@@ -417,6 +423,344 @@ describe("githubIterate", () => {
       expect(result.executed).toHaveLength(0);
       expect(result.proposed).toHaveLength(1);
       expect(createdIssues).toHaveLength(1);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+});
+
+describe("closeRejectedIssues", () => {
+  test("closes thumbs-downed issues and returns their numbers", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-close-"));
+    const { runner, closedIssues } = createMockGhRunner({
+      owner: "testowner",
+      issues: [
+        {
+          number: 1,
+          title: "Bad",
+          body: "x",
+          createdAt: "2024-01-01T00:00:00Z",
+          thumbsDown: ["testowner"],
+        },
+        {
+          number: 2,
+          title: "Good",
+          body: "y",
+          createdAt: "2024-01-01T00:00:00Z",
+          thumbsUp: ["testowner"],
+        },
+      ],
+    });
+
+    const issues: HoneIssue[] = [
+      { number: 1, title: "Bad", body: "x", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
+      { number: 2, title: "Good", body: "y", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
+    ];
+
+    try {
+      const closed = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
+
+      expect(closed).toEqual([1]);
+      expect(closedIssues).toEqual([1]);
+      expect(issues[1]!.reactions.thumbsUp).toContain("testowner");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("leaves non-rejected issues alone and stores their reactions", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-close-"));
+    const { runner } = createMockGhRunner({
+      owner: "testowner",
+      issues: [
+        {
+          number: 3,
+          title: "Neutral",
+          body: "z",
+          createdAt: "2024-01-01T00:00:00Z",
+          thumbsUp: ["otheruser"],
+        },
+      ],
+    });
+
+    const issues: HoneIssue[] = [
+      { number: 3, title: "Neutral", body: "z", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
+    ];
+
+    try {
+      const closed = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
+
+      expect(closed).toEqual([]);
+      expect(issues[0]!.reactions.thumbsUp).toEqual(["otheruser"]);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+});
+
+describe("executeApprovedIssues", () => {
+  test("successfully executes, commits, and closes an approved issue", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const mockClaude = createIterateMock({
+      assess: "a", name: "n", plan: "p", execute: "done",
+    });
+
+    const proposal = {
+      assessment: "The code has issues",
+      plan: "Fix it",
+      agent: "test-agent",
+      severity: 4,
+      principle: "SRP",
+    };
+
+    const { runner, closedIssues } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 10,
+        title: "[Hone] SRP: fix-something",
+        body: formatIssueBody(proposal),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        dir,
+        getDefaultConfig(),
+        mockClaude,
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gateResolver: emptyGateResolver,
+          ghRunner: runner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(executed).toHaveLength(1);
+      expect(executed[0]!.success).toBe(true);
+      expect(executed[0]!.commitHash).toBe("abc123");
+      expect(closedIssues).toContain(10);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("handles gate failure (closes with failure comment)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const mockClaude = createIterateMock({
+      assess: "a", name: "n", plan: "p", execute: "done",
+    });
+
+    const proposal = {
+      assessment: "assessment",
+      plan: "plan",
+      agent: "test-agent",
+      severity: 4,
+      principle: "SRP",
+    };
+
+    const { runner, closedIssues } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 11,
+        title: "[Hone] SRP: fix-something",
+        body: formatIssueBody(proposal),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    const failingGateRunner = async (): Promise<GatesRunResult> => ({
+      allPassed: false,
+      requiredPassed: false,
+      results: [{
+        name: "test",
+        command: "npm test",
+        passed: false,
+        required: true,
+        output: "FAIL: test error",
+        exitCode: 1,
+      }],
+    });
+
+    const config = getDefaultConfig();
+    config.maxRetries = 0;
+
+    try {
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        dir,
+        config,
+        mockClaude,
+        {
+          skipGates: false,
+          gateRunner: failingGateRunner,
+          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+          ghRunner: runner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(executed).toHaveLength(1);
+      expect(executed[0]!.success).toBe(false);
+      expect(closedIssues).toContain(11);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("skips issues that can't be parsed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const mockClaude = createIterateMock({
+      assess: "a", name: "n", plan: "p", execute: "done",
+    });
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 12,
+        title: "[Hone] Invalid",
+        body: "this is not a valid proposal body",
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        dir,
+        getDefaultConfig(),
+        mockClaude,
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gateResolver: emptyGateResolver,
+          ghRunner: runner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(executed).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+});
+
+describe("proposeImprovements", () => {
+  test("creates the expected number of proposals", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-propose-"));
+    const mockClaude = createIterateMock({
+      assess: '```json\n{ "severity": 4, "principle": "SRP", "category": "arch" }\n```\nAssessment.',
+      name: "fix-something",
+      plan: "Plan content",
+      execute: "done",
+    });
+
+    const { runner, createdIssues } = createMockGhRunner({
+      owner: "testowner",
+      createdIssueNumber: 100,
+    });
+
+    try {
+      const { proposed, skippedTriage } = await proposeImprovements(
+        "test-agent",
+        dir,
+        getDefaultConfig(),
+        mockClaude,
+        {
+          proposals: 2,
+          skipTriage: true,
+          ghRunner: runner,
+          triageRunner: acceptingTriageRunner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(proposed).toEqual([100, 101]);
+      expect(skippedTriage).toBe(0);
+      expect(createdIssues).toHaveLength(2);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("increments skippedTriage when triage rejects", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-propose-"));
+    const mockClaude = createIterateMock({
+      assess: '```json\n{ "severity": 2, "principle": "Cleanup", "category": "docs" }\n```\nNot substantive.',
+      name: "add-comments",
+      plan: "Add comments",
+      execute: "done",
+    });
+
+    const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
+
+    try {
+      const { proposed, skippedTriage } = await proposeImprovements(
+        "test-agent",
+        dir,
+        getDefaultConfig(),
+        mockClaude,
+        {
+          proposals: 1,
+          skipTriage: false,
+          ghRunner: runner,
+          triageRunner: rejectingTriageRunner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(proposed).toEqual([]);
+      expect(skippedTriage).toBe(1);
+      expect(createdIssues).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("creates zero issues when all proposals are triaged out", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-propose-"));
+    const mockClaude = createIterateMock({
+      assess: '```json\n{ "severity": 1, "principle": "Consistency", "category": "style" }\n```\nBusy work.',
+      name: "reformat-imports",
+      plan: "Reformat imports",
+      execute: "done",
+    });
+
+    const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
+
+    try {
+      const { proposed, skippedTriage } = await proposeImprovements(
+        "test-agent",
+        dir,
+        getDefaultConfig(),
+        mockClaude,
+        {
+          proposals: 3,
+          skipTriage: false,
+          ghRunner: runner,
+          triageRunner: rejectingTriageRunner,
+          onProgress: () => {},
+        },
+      );
+
+      expect(proposed).toEqual([]);
+      expect(skippedTriage).toBe(3);
+      expect(createdIssues).toHaveLength(0);
     } finally {
       await rm(dir, { recursive: true });
     }
