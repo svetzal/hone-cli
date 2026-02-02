@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   getRepoOwner,
+  ensureHoneLabel,
   listHoneIssues,
   getIssueReactions,
   createHoneIssue,
@@ -38,6 +39,26 @@ describe("getRepoOwner", () => {
     );
 
     expect(getRepoOwner("/project", run)).rejects.toThrow("Failed to get repo owner");
+  });
+});
+
+describe("ensureHoneLabel", () => {
+  test("succeeds when label is created", async () => {
+    const run = mockRunner(
+      new Map([["label create", { stdout: "", exitCode: 0 }]]),
+    );
+
+    // Should not throw
+    await ensureHoneLabel("/project", run);
+  });
+
+  test("succeeds silently when label already exists", async () => {
+    const run = mockRunner(
+      new Map([["label create", { stdout: "already exists", exitCode: 1 }]]),
+    );
+
+    // Should not throw even on failure (label already exists)
+    await ensureHoneLabel("/project", run);
   });
 });
 

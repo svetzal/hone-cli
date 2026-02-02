@@ -133,6 +133,9 @@ function createMockGhRunner(opts: {
       };
     }
 
+    // gh label create (ensure label exists)
+    if (key.includes("label create")) return { stdout: "", exitCode: 0 };
+
     // git add / commit / rev-parse
     if (key.includes("add -A")) return { stdout: "", exitCode: 0 };
     if (key.includes("commit -m")) return { stdout: "", exitCode: 0 };

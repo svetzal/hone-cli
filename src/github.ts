@@ -88,6 +88,18 @@ export async function getIssueReactions(
   return { thumbsUp, thumbsDown };
 }
 
+export async function ensureHoneLabel(
+  projectDir: string,
+  run: CommandRunner,
+): Promise<void> {
+  // Try to create the label; ignore errors if it already exists
+  await run(
+    "gh",
+    ["label", "create", "hone", "--description", "Hone improvement proposal", "--color", "0e8a16"],
+    { cwd: projectDir },
+  );
+}
+
 export async function createHoneIssue(
   projectDir: string,
   title: string,

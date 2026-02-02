@@ -12,6 +12,7 @@ import {
 } from "./iterate.ts";
 import {
   getRepoOwner,
+  ensureHoneLabel,
   listHoneIssues,
   getIssueReactions,
   createHoneIssue,
@@ -92,6 +93,9 @@ export async function githubIterate(
     }
     onProgress("charter", "Charter check passed.");
   }
+
+  // --- Ensure hone label exists ---
+  await ensureHoneLabel(folder, ghRunner);
 
   // --- Housekeeping: close thumbs-down issues ---
   onProgress("housekeeping", "Checking for rejected issues...");
