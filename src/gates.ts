@@ -1,4 +1,5 @@
 import type { GateDefinition, GateResult, GatesRunResult } from "./types.ts";
+import { runProcess } from "./process.ts";
 
 export function truncateOutput(output: string, maxLines: number = 200): string {
   const lines = output.split("\n");
@@ -15,19 +16,10 @@ export async function runGate(
   timeout: number,
 ): Promise<GateResult> {
   try {
-    const proc = Bun.spawn(["sh", "-c", gate.command], {
-      cwd: projectDir,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-
-    const timeoutId = setTimeout(() => proc.kill(), timeout);
-
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = await proc.exited;
-
-    clearTimeout(timeoutId);
+    const { stdout, stderr, exitCode } = await runProcess(
+      ["sh", "-c", gate.command],
+      { cwd: projectDir, timeout },
+    );
 
     const output = truncateOutput((stdout + "\n" + stderr).trim());
 

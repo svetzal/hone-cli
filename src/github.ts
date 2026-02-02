@@ -1,4 +1,5 @@
 import type { CommandRunner, HoneIssue, HoneProposal } from "./types.ts";
+import { runProcess } from "./process.ts";
 
 export async function getRepoOwner(
   projectDir: string,
@@ -239,15 +240,10 @@ export async function gitCommit(
 
 export function createCommandRunner(): CommandRunner {
   return async (command, args, opts) => {
-    const proc = Bun.spawn([command, ...args], {
-      cwd: opts?.cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = await proc.exited;
+    const { stdout, stderr, exitCode } = await runProcess(
+      [command, ...args],
+      { cwd: opts?.cwd },
+    );
 
     return { stdout: (stdout + stderr).trim(), exitCode };
   };

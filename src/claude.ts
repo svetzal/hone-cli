@@ -1,4 +1,5 @@
 import type { ClaudeInvoker } from "./types.ts";
+import { runProcess } from "./process.ts";
 
 export interface ClaudeStageArgs {
   agent?: string;
@@ -31,14 +32,7 @@ export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
 }
 
 export async function invokeClaude(args: string[]): Promise<string> {
-  const proc = Bun.spawn(["claude", ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  const exitCode = await proc.exited;
+  const { stdout, stderr, exitCode } = await runProcess(["claude", ...args]);
 
   if (exitCode !== 0) {
     throw new Error(`claude exited with code ${exitCode}: ${stderr || stdout}`);
