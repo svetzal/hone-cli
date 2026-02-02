@@ -4,6 +4,7 @@ import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
 import { loadConfig } from "../config.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, GateDefinition } from "../types.ts";
+import { writeJson, progress } from "../output.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;
@@ -30,6 +31,7 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   const shouldRun = parsed.flags.run === true;
   const shouldSave = parsed.flags.save === true;
+  const isJson = parsed.flags.json === true;
   const config = await loadConfig();
 
   let gates: GateDefinition[];
@@ -48,47 +50,67 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
     gates = (await loadOverrideGates(folder)) ?? [];
   }
 
+  // Handle empty gates case
   if (gates.length === 0) {
-    const hint = agentName
-      ? `No quality gates found for ${folder} (checked .hone-gates.json and agent '${agentName}')`
-      : `No quality gates found for ${folder} (no .hone-gates.json present)`;
-    console.log(hint);
+    if (isJson) {
+      writeJson([]);
+    } else {
+      const hint = agentName
+        ? `No quality gates found for ${folder} (checked .hone-gates.json and agent '${agentName}')`
+        : `No quality gates found for ${folder} (no .hone-gates.json present)`;
+      console.log(hint);
+    }
     return;
   }
 
+  // Handle --save flag (independent of --json)
   if (shouldSave) {
     const gatesPath = join(folder, ".hone-gates.json");
     await Bun.write(gatesPath, JSON.stringify({ gates }, null, 2) + "\n");
-    console.log(`Gates written to: ${gatesPath}`);
+    progress(isJson, `Gates written to: ${gatesPath}`);
   }
 
+  // Mode 1: List gates (no --run)
   if (!shouldRun) {
-    console.log(`Quality gates for ${folder}:\n`);
-    for (const gate of gates) {
-      const tag = gate.required ? "required" : "optional";
-      console.log(`  [${tag}] ${gate.name}: ${gate.command}`);
+    if (isJson) {
+      writeJson(gates);
+    } else {
+      console.log(`Quality gates for ${folder}:\n`);
+      for (const gate of gates) {
+        const tag = gate.required ? "required" : "optional";
+        console.log(`  [${tag}] ${gate.name}: ${gate.command}`);
+      }
     }
     return;
   }
 
-  console.log(`Running quality gates for ${folder}...\n`);
+  // Mode 2: Run gates (--run)
+  progress(isJson, `Running quality gates for ${folder}...\n`);
   const result = await runAllGates(gates, folder, config.gateTimeout);
 
-  for (const r of result.results) {
-    const icon = r.passed ? "PASS" : "FAIL";
-    const tag = r.required ? "required" : "optional";
-    console.log(`  [${icon}] ${r.name} (${tag})`);
-    if (!r.passed) {
-      const indented = r.output.split("\n").map((l) => `    ${l}`).join("\n");
-      console.log(indented);
+  if (isJson) {
+    writeJson(result);
+  } else {
+    for (const r of result.results) {
+      const icon = r.passed ? "PASS" : "FAIL";
+      const tag = r.required ? "required" : "optional";
+      console.log(`  [${icon}] ${r.name} (${tag})`);
+      if (!r.passed) {
+        const indented = r.output.split("\n").map((l) => `    ${l}`).join("\n");
+        console.log(indented);
+      }
+    }
+
+    console.log();
+    if (result.requiredPassed) {
+      console.log("All required gates passed.");
+    } else {
+      console.log("Required gates failed.");
     }
   }
 
-  console.log();
-  if (result.requiredPassed) {
-    console.log("All required gates passed.");
-  } else {
-    console.log("Required gates failed.");
+  // Exit code remains the same for both modes
+  if (!result.requiredPassed) {
     process.exit(1);
   }
 }

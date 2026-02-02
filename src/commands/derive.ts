@@ -5,6 +5,7 @@ import { loadConfig } from "../config.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import { derive } from "../derive.ts";
 import type { ParsedArgs } from "../types.ts";
+import { writeJson, progress } from "../output.ts";
 
 export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
   const folder = parsed.positional[0];
@@ -19,9 +20,10 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
 
   const resolvedFolder = resolve(folder);
   const isLocal = parsed.flags.local === true;
+  const isJson = parsed.flags.json === true;
   const config = await loadConfig();
 
-  console.log(`Inspecting project at ${resolvedFolder}...`);
+  progress(isJson, `Inspecting project at ${resolvedFolder}...`);
 
   const result = await derive(
     resolvedFolder,
@@ -44,17 +46,27 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
   await mkdir(agentDir, { recursive: true });
   const agentPath = join(agentDir, agentFilename);
   await Bun.write(agentPath, result.agentContent);
-  console.log(`Agent written to: ${agentPath}`);
+  progress(isJson, `Agent written to: ${agentPath}`);
 
   // Write .hone-gates.json
+  let gatesPath: string | null = null;
   if (result.gates.length > 0) {
-    const gatesPath = join(resolvedFolder, ".hone-gates.json");
+    gatesPath = join(resolvedFolder, ".hone-gates.json");
     await Bun.write(gatesPath, JSON.stringify({ gates: result.gates }, null, 2) + "\n");
-    console.log(`Gates written to: ${gatesPath}`);
+    progress(isJson, `Gates written to: ${gatesPath}`);
   } else {
-    console.log("No quality gates extracted from agent.");
+    progress(isJson, "No quality gates extracted from agent.");
   }
 
-  console.log(`\nDone. Agent name: ${result.agentName}`);
-  console.log(`Run: hone iterate ${result.agentName} ${folder}`);
+  if (isJson) {
+    writeJson({
+      agentName: result.agentName,
+      agentPath,
+      gates: result.gates,
+      gatesPath,
+    });
+  } else {
+    console.log(`\nDone. Agent name: ${result.agentName}`);
+    console.log(`Run: hone iterate ${result.agentName} ${folder}`);
+  }
 }

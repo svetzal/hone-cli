@@ -195,4 +195,90 @@ describe("gates command integration", () => {
       await rm(tempDir, { recursive: true });
     }
   });
+
+  it("should output empty JSON array when no gates with --json flag", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "gates-json-test-"));
+    try {
+      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--json"], {
+        stdout: "pipe",
+        stderr: "pipe",
+        cwd: projectRoot,
+      });
+      const exitCode = await proc.exited;
+      const stdout = await new Response(proc.stdout).text();
+
+      expect(exitCode).toBe(0);
+
+      const gates = JSON.parse(stdout);
+      expect(Array.isArray(gates)).toBe(true);
+      expect(gates.length).toBe(0);
+    } finally {
+      await rm(tempDir, { recursive: true });
+    }
+  });
+
+  it("should output gates array as JSON with --json flag", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "gates-json-test-"));
+    try {
+      const gatesConfig = {
+        gates: [
+          { name: "test", command: "bun test", required: true },
+          { name: "lint", command: "bun run lint", required: false },
+        ],
+      };
+      await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
+
+      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--json"], {
+        stdout: "pipe",
+        stderr: "pipe",
+        cwd: projectRoot,
+      });
+      const exitCode = await proc.exited;
+      const stdout = await new Response(proc.stdout).text();
+
+      expect(exitCode).toBe(0);
+
+      const gates = JSON.parse(stdout);
+      expect(Array.isArray(gates)).toBe(true);
+      expect(gates.length).toBe(2);
+      expect(gates[0]).toHaveProperty("name", "test");
+      expect(gates[0]).toHaveProperty("command", "bun test");
+      expect(gates[0]).toHaveProperty("required", true);
+    } finally {
+      await rm(tempDir, { recursive: true });
+    }
+  });
+
+  it("should output gate results as JSON with --run --json flags", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "gates-json-test-"));
+    try {
+      const gatesConfig = {
+        gates: [
+          { name: "pass", command: "true", required: true },
+        ],
+      };
+      await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
+
+      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--run", "--json"], {
+        stdout: "pipe",
+        stderr: "pipe",
+        cwd: projectRoot,
+      });
+      const exitCode = await proc.exited;
+      const stdout = await new Response(proc.stdout).text();
+
+      expect(exitCode).toBe(0);
+
+      const result = JSON.parse(stdout);
+      expect(result).toHaveProperty("allPassed");
+      expect(result).toHaveProperty("requiredPassed");
+      expect(result).toHaveProperty("results");
+      expect(Array.isArray(result.results)).toBe(true);
+      expect(result.results[0]).toHaveProperty("name", "pass");
+      expect(result.results[0]).toHaveProperty("passed", true);
+      expect(result.results[0]).toHaveProperty("required", true);
+    } finally {
+      await rm(tempDir, { recursive: true });
+    }
+  });
 });

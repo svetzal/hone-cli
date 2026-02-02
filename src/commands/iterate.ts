@@ -4,6 +4,7 @@ import { agentExists } from "../agents.ts";
 import { iterate } from "../iterate.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, HoneConfig } from "../types.ts";
+import { writeJson } from "../output.ts";
 
 export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   const result = { ...config, models: { ...config.models } };
@@ -47,6 +48,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const config = applyIterateFlags(baseConfig, parsed.flags);
 
   const skipGates = parsed.flags["skip-gates"] === true;
+  const isJson = parsed.flags.json === true;
 
   const result = await iterate(
     {
@@ -55,11 +57,20 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
       config,
       skipGates,
       onProgress: (stage, message) => {
-        console.log(`==> [${stage}] ${message}`);
+        if (isJson) {
+          // In JSON mode, route progress to stderr to keep stdout clean
+          console.error(`==> [${stage}] ${message}`);
+        } else {
+          console.log(`==> [${stage}] ${message}`);
+        }
       },
     },
     createClaudeInvoker(),
   );
+
+  if (isJson) {
+    writeJson(result);
+  }
 
   if (!result.success) {
     process.exit(1);

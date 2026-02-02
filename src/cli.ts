@@ -70,6 +70,7 @@ Derive Options:
   --global                   Write agent to ~/.claude/agents/ (default)
 
 General Options:
+  --json                     Output machine-readable JSON to stdout
   --help                     Show this help message
   --version                  Show version number
 

@@ -148,4 +148,20 @@ describe("iterate command integration", () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain("not found");
   });
+
+  it("should exit with error when agent not found with --json flag", async () => {
+    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--json"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: projectRoot,
+    });
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    const stdout = await new Response(proc.stdout).text();
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not found");
+    // Stdout should be empty (errors go to stderr)
+    expect(stdout.trim()).toBe("");
+  });
 });
