@@ -11,11 +11,15 @@ export function getDefaultConfig(): HoneConfig {
       execute: "sonnet",
       gates: "haiku",
       derive: "sonnet",
+      triage: "haiku",
     },
     auditDir: "audit",
     readOnlyTools: "Read Glob Grep WebFetch WebSearch",
     maxRetries: 3,
     gateTimeout: 120_000,
+    mode: "local",
+    minCharterLength: 100,
+    severityThreshold: 3,
   };
 }
 
@@ -33,6 +37,9 @@ export async function loadConfig(configPath?: string): Promise<HoneConfig> {
         readOnlyTools: userConfig.readOnlyTools ?? defaults.readOnlyTools,
         maxRetries: userConfig.maxRetries ?? defaults.maxRetries,
         gateTimeout: userConfig.gateTimeout ?? defaults.gateTimeout,
+        mode: userConfig.mode ?? defaults.mode,
+        minCharterLength: userConfig.minCharterLength ?? defaults.minCharterLength,
+        severityThreshold: userConfig.severityThreshold ?? defaults.severityThreshold,
       };
     }
   } catch {

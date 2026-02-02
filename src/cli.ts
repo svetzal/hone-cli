@@ -57,6 +57,12 @@ Commands:
 Iterate Options:
   --max-retries <n>          Max gate enforcement retries (default: 3)
   --skip-gates               Skip quality gate verification
+  --skip-charter             Skip charter clarity check
+  --skip-triage              Skip triage stage (severity + busy-work filter)
+  --mode <local|github>      Operational mode (default: local)
+  --proposals <n>            Number of proposals to generate (github mode only, default: 1)
+  --severity-threshold <n>   Minimum severity to proceed (1-5, default: 3)
+  --min-charter-length <n>   Minimum charter content length (default: 100)
   --assess-model <model>     Override assessment model (default: opus)
   --plan-model <model>       Override planning model (default: opus)
   --execute-model <model>    Override execution model (default: sonnet)

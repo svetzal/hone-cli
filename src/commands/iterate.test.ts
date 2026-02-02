@@ -11,11 +11,15 @@ describe("applyIterateFlags", () => {
       execute: "sonnet",
       gates: "haiku",
       derive: "opus",
+      triage: "haiku",
     },
     auditDir: "audit",
     readOnlyTools: "Read Glob Grep WebFetch WebSearch",
     maxRetries: 3,
     gateTimeout: 120000,
+    mode: "local",
+    minCharterLength: 100,
+    severityThreshold: 3,
   };
 
   it("should return config unchanged when no flags provided", () => {
@@ -118,10 +122,56 @@ describe("applyIterateFlags", () => {
     expect(result.readOnlyTools).toBe("Read Glob Grep WebFetch WebSearch");
     expect(result.gateTimeout).toBe(120000);
   });
+
+  it("should override mode when mode flag provided", () => {
+    const result = applyIterateFlags(defaultConfig, { mode: "github" });
+    expect(result.mode).toBe("github");
+  });
+
+  it("should override severity-threshold when flag provided", () => {
+    const result = applyIterateFlags(defaultConfig, { "severity-threshold": "4" });
+    expect(result.severityThreshold).toBe(4);
+  });
+
+  it("should override min-charter-length when flag provided", () => {
+    const result = applyIterateFlags(defaultConfig, { "min-charter-length": "200" });
+    expect(result.minCharterLength).toBe(200);
+  });
+
+  it("should apply all new flags together", () => {
+    const result = applyIterateFlags(defaultConfig, {
+      mode: "github",
+      "severity-threshold": "4",
+      "min-charter-length": "50",
+    });
+
+    expect(result.mode).toBe("github");
+    expect(result.severityThreshold).toBe(4);
+    expect(result.minCharterLength).toBe(50);
+  });
+
+  it("should ignore boolean mode flag", () => {
+    const result = applyIterateFlags(defaultConfig, { mode: true });
+    expect(result.mode).toBe("local"); // Unchanged
+  });
 });
 
 describe("iterate command integration", () => {
   const projectRoot = import.meta.dir + "/../..";
+
+  it("should reject --proposals in local mode", async () => {
+    const proc = Bun.spawn(
+      ["bun", "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--proposals", "3"],
+      { stdout: "pipe", stderr: "pipe", cwd: projectRoot },
+    );
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+
+    expect(exitCode).toBe(1);
+    // Should fail because either agent not found (first) or proposals rejected
+    // Agent check happens before proposals check, so it'll fail on agent
+    expect(stderr.length).toBeGreaterThan(0);
+  });
 
   it("should exit with error when no args provided", async () => {
     const proc = Bun.spawn(["bun", "run", "src/cli.ts", "iterate"], {

@@ -5,6 +5,7 @@ export interface ModelConfig {
   execute: string;
   gates: string;
   derive: string;
+  triage: string;
 }
 
 export interface GateDefinition {
@@ -41,7 +42,13 @@ export interface IterationResult {
   gatesResult: GatesRunResult | null;
   retries: number;
   success: boolean;
+  structuredAssessment: StructuredAssessment | null;
+  triageResult: TriageResult | null;
+  charterCheck: CharterCheckResult | null;
+  skippedReason: string | null;
 }
+
+export type HoneMode = "local" | "github";
 
 export interface HoneConfig {
   models: ModelConfig;
@@ -49,6 +56,9 @@ export interface HoneConfig {
   readOnlyTools: string;
   maxRetries: number;
   gateTimeout: number;
+  mode: HoneMode;
+  minCharterLength: number;
+  severityThreshold: number;
 }
 
 export interface ParsedArgs {
@@ -60,3 +70,74 @@ export interface ParsedArgs {
 export type ClaudeInvoker = (args: string[]) => Promise<string>;
 
 export type GateRunner = (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
+
+// Charter check types
+export interface CharterSource {
+  file: string;
+  length: number;
+  sufficient: boolean;
+}
+
+export interface CharterCheckResult {
+  passed: boolean;
+  sources: CharterSource[];
+  guidance: string[];
+}
+
+// Structured assessment types
+export interface StructuredAssessment {
+  severity: number;
+  principle: string;
+  category: string;
+  prose: string;
+  raw: string;
+}
+
+// Triage types
+export interface TriageResult {
+  accepted: boolean;
+  reason: string;
+  severity: number;
+  changeType: string;
+  busyWork: boolean;
+}
+
+// GitHub mode types
+export interface HoneIssue {
+  number: number;
+  title: string;
+  body: string;
+  reactions: { thumbsUp: string[]; thumbsDown: string[] };
+  createdAt: string;
+}
+
+export interface HoneProposal {
+  assessment: string;
+  plan: string;
+  agent: string;
+  severity: number;
+  principle: string;
+}
+
+export interface ExecutionOutcome {
+  issueNumber: number;
+  success: boolean;
+  commitHash: string | null;
+  gatesResult: GatesRunResult | null;
+  retries: number;
+  error?: string;
+}
+
+export interface GitHubIterateResult {
+  mode: "github";
+  housekeeping: { closed: number[] };
+  executed: ExecutionOutcome[];
+  proposed: number[];
+  skippedTriage: number;
+}
+
+export type CommandRunner = (
+  command: string,
+  args: string[],
+  opts?: { cwd?: string },
+) => Promise<{ stdout: string; exitCode: number }>;

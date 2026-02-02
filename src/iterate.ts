@@ -2,15 +2,31 @@ import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
-import type { HoneConfig, IterationResult, ClaudeInvoker, GateDefinition, GatesRunResult } from "./types.ts";
+import { checkCharter } from "./charter.ts";
+import { parseAssessment } from "./parse-assessment.ts";
+import { triage as runTriage } from "./triage.ts";
+import type {
+  HoneConfig,
+  IterationResult,
+  ClaudeInvoker,
+  GateDefinition,
+  GatesRunResult,
+  CharterCheckResult,
+  StructuredAssessment,
+  TriageResult,
+} from "./types.ts";
 
 export interface IterateOptions {
   agent: string;
   folder: string;
   config: HoneConfig;
   skipGates: boolean;
+  skipCharter?: boolean;
+  skipTriage?: boolean;
   gateRunner?: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
   gateResolver?: (projectDir: string, agentName: string, model: string, readOnlyTools: string, claude: ClaudeInvoker) => Promise<GateDefinition[]>;
+  charterChecker?: (projectDir: string, minLength: number) => Promise<CharterCheckResult>;
+  triageRunner?: (assessment: StructuredAssessment, threshold: number, model: string, tools: string, claude: ClaudeInvoker) => Promise<TriageResult>;
   onProgress: (stage: string, message: string) => void;
 }
 
@@ -40,23 +56,14 @@ export function buildRetryPrompt(
   ].join("\n");
 }
 
-export async function iterate(
-  opts: IterateOptions,
-  claude: ClaudeInvoker,
-): Promise<IterationResult> {
-  const {
-    agent,
-    folder,
-    config,
-    skipGates,
-    gateRunner = runAllGates,
-    gateResolver = resolveGates,
-    onProgress,
-  } = opts;
-  const auditDir = await ensureAuditDir(folder, config.auditDir);
+// --- Extracted stage functions ---
 
-  // --- Stage 1: Assess ---
-  onProgress("assess", `Assessing ${folder} with ${agent}...`);
+export async function runAssessStage(
+  agent: string,
+  folder: string,
+  config: HoneConfig,
+  claude: ClaudeInvoker,
+): Promise<string> {
   const assessArgs = buildClaudeArgs({
     agent,
     model: config.models.assess,
@@ -64,14 +71,27 @@ export async function iterate(
       `Assess the project in ${folder} against your principles.`,
       "Identify the principle that it is most violating,",
       "and describe how we should correct it.",
-    ].join(" "),
+      "",
+      "You MUST begin your response with a JSON block:",
+      "```json",
+      '{ "severity": <1-5>, "principle": "<name>", "category": "<category>" }',
+      "```",
+      "Then provide your full assessment below.",
+      "",
+      "Severity: 1=cosmetic, 2=minor, 3=moderate, 4=significant, 5=critical",
+    ].join("\n"),
     readOnly: true,
     readOnlyTools: config.readOnlyTools,
   });
-  const assessment = await claude(assessArgs);
+  return claude(assessArgs);
+}
 
-  // --- Stage 2: Name ---
-  onProgress("name", "Generating filename...");
+export async function runNameStage(
+  agent: string,
+  assessment: string,
+  config: HoneConfig,
+  claude: ClaudeInvoker,
+): Promise<string> {
   const nameArgs = buildClaudeArgs({
     agent,
     model: config.models.name,
@@ -87,14 +107,15 @@ export async function iterate(
     readOnlyTools: config.readOnlyTools,
   });
   const rawName = await claude(nameArgs);
-  const name = sanitizeName(rawName) || `assessment-${Date.now()}`;
+  return sanitizeName(rawName) || `assessment-${Date.now()}`;
+}
 
-  // Save assessment
-  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
-  onProgress("assess", `Saved: ${assessPath}`);
-
-  // --- Stage 3: Plan ---
-  onProgress("plan", "Creating plan...");
+export async function runPlanStage(
+  agent: string,
+  assessment: string,
+  config: HoneConfig,
+  claude: ClaudeInvoker,
+): Promise<string> {
   const planArgs = buildClaudeArgs({
     agent,
     model: config.models.plan,
@@ -111,12 +132,33 @@ export async function iterate(
     readOnly: true,
     readOnlyTools: config.readOnlyTools,
   });
-  const plan = await claude(planArgs);
+  return claude(planArgs);
+}
 
-  const planPath = await saveStageOutput(auditDir, name, "plan", plan);
-  onProgress("plan", `Saved: ${planPath}`);
+export async function runExecuteWithVerify(
+  agent: string,
+  folder: string,
+  assessment: string,
+  plan: string,
+  config: HoneConfig,
+  claude: ClaudeInvoker,
+  opts: {
+    skipGates: boolean;
+    gateRunner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
+    gateResolver: (projectDir: string, agentName: string, model: string, readOnlyTools: string, claude: ClaudeInvoker) => Promise<GateDefinition[]>;
+    auditDir: string;
+    name: string;
+    onProgress: (stage: string, message: string) => void;
+  },
+): Promise<{
+  execution: string;
+  gatesResult: GatesRunResult | null;
+  retries: number;
+  success: boolean;
+}> {
+  const { skipGates, gateRunner, gateResolver, auditDir, name, onProgress } = opts;
 
-  // --- Stage 4: Execute ---
+  // Execute
   onProgress("execute", "Executing plan...");
   const executeArgs = buildClaudeArgs({
     agent,
@@ -138,12 +180,11 @@ export async function iterate(
   const actionsPath = await saveStageOutput(auditDir, name, "actions", execution);
   onProgress("execute", `Saved: ${actionsPath}`);
 
-  // --- Stage 5: Verify (inner loop) ---
-  let gatesResult = null;
+  // Verify (inner loop)
+  let gatesResult: GatesRunResult | null = null;
   let retries = 0;
 
   if (!skipGates) {
-    // Resolve gates once before the verify loop
     onProgress("verify", "Resolving quality gates...");
     const gates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
 
@@ -165,7 +206,6 @@ export async function iterate(
         break;
       }
 
-      // Build retry prompt with failure context
       const failedGates = gatesResult.results
         .filter((r) => !r.passed && r.required)
         .map((r) => ({ name: r.name, output: r.output }));
@@ -189,16 +229,135 @@ export async function iterate(
   }
 
   const success = skipGates || (gatesResult?.requiredPassed ?? true);
+  return { execution, gatesResult, retries, success };
+}
 
-  onProgress("done", success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`);
+// --- Main iterate function ---
+
+export async function iterate(
+  opts: IterateOptions,
+  claude: ClaudeInvoker,
+): Promise<IterationResult> {
+  const {
+    agent,
+    folder,
+    config,
+    skipGates,
+    skipCharter = false,
+    skipTriage = false,
+    gateRunner = runAllGates,
+    gateResolver = resolveGates,
+    charterChecker = checkCharter,
+    triageRunner = runTriage,
+    onProgress,
+  } = opts;
+
+  // --- Charter check ---
+  let charterCheckResult: CharterCheckResult | null = null;
+  if (!skipCharter) {
+    onProgress("charter", "Checking project charter clarity...");
+    charterCheckResult = await charterChecker(folder, config.minCharterLength);
+    if (!charterCheckResult.passed) {
+      onProgress("charter", "Charter clarity insufficient.");
+      for (const g of charterCheckResult.guidance) {
+        onProgress("charter", `  → ${g}`);
+      }
+      return {
+        name: "",
+        assessment: "",
+        plan: "",
+        execution: "",
+        gatesResult: null,
+        retries: 0,
+        success: false,
+        structuredAssessment: null,
+        triageResult: null,
+        charterCheck: charterCheckResult,
+        skippedReason: "Charter clarity insufficient",
+      };
+    }
+    onProgress("charter", "Charter check passed.");
+  }
+
+  const auditDir = await ensureAuditDir(folder, config.auditDir);
+
+  // --- Stage 1: Assess ---
+  onProgress("assess", `Assessing ${folder} with ${agent}...`);
+  const assessment = await runAssessStage(agent, folder, config, claude);
+  const structuredAssessment = parseAssessment(assessment);
+
+  // --- Stage 2: Name ---
+  onProgress("name", "Generating filename...");
+  const name = await runNameStage(agent, assessment, config, claude);
+
+  // Save assessment
+  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
+  onProgress("assess", `Saved: ${assessPath}`);
+
+  // --- Stage 3: Triage ---
+  let triageResult: TriageResult | null = null;
+  if (!skipTriage) {
+    onProgress("triage", "Running triage...");
+    triageResult = await triageRunner(
+      structuredAssessment,
+      config.severityThreshold,
+      config.models.triage,
+      config.readOnlyTools,
+      claude,
+    );
+
+    if (!triageResult.accepted) {
+      onProgress("triage", `Triage rejected: ${triageResult.reason}`);
+      return {
+        name,
+        assessment,
+        plan: "",
+        execution: "",
+        gatesResult: null,
+        retries: 0,
+        success: true, // Not a failure — codebase is in good shape
+        structuredAssessment,
+        triageResult,
+        charterCheck: charterCheckResult,
+        skippedReason: `Triage: ${triageResult.reason}`,
+      };
+    }
+    onProgress("triage", "Triage accepted.");
+  }
+
+  // --- Stage 4: Plan ---
+  onProgress("plan", "Creating plan...");
+  const plan = await runPlanStage(agent, assessment, config, claude);
+
+  const planPath = await saveStageOutput(auditDir, name, "plan", plan);
+  onProgress("plan", `Saved: ${planPath}`);
+
+  // --- Stage 5: Execute + Verify ---
+  const execResult = await runExecuteWithVerify(agent, folder, assessment, plan, config, claude, {
+    skipGates,
+    gateRunner,
+    gateResolver,
+    auditDir,
+    name,
+    onProgress,
+  });
+
+  onProgress(
+    "done",
+    execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`,
+  );
 
   return {
     name,
     assessment,
     plan,
-    execution,
-    gatesResult,
-    retries,
-    success,
+    execution: execResult.execution,
+    gatesResult: execResult.gatesResult,
+    retries: execResult.retries,
+    success: execResult.success,
+    structuredAssessment,
+    triageResult,
+    charterCheck: charterCheckResult,
+    skippedReason: null,
   };
 }

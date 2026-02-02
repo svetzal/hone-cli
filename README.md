@@ -9,35 +9,16 @@ fails, it sends the agent back with the failure output until it gets it right.
 
 The agent never self-certifies. Hone verifies independently.
 
-## Why this exists
-
-I wanted a simple iteration loop to illustrate the power of this loop as a
-continuous improvement mechanism for projects.
-
-Agents are naturally non-deterministic. They are unlikely to adhere to all of
-your rules at the same time. They're prone to leaving things out when things get
-complex.
-
-This project wraps that non-deterministic behaviour in a more deterministic loop.
-The agent doesn't decide for itself when it's done. The quality gates do. And
-they're deterministic.
-
-The iteration is a mechanism to push your implementation closer to the guardrails
-you intended in your custom agent definition and AGENTS.md files.
-
-Hone is an attempt to package up a way to do iteration like this in as simple a
-form as possible.
-
-The key insight: an agent will happily tell you it implemented all your policies,
-passed all your guardrails and validations, or confidently tell you why some of
-them don't matter. Hone diligently runs all of your validations every time, and the
-iteration pushes your implementation closer to your policies and intent.
+See [CHARTER.md](CHARTER.md) for the design rationale behind these choices.
 
 ## Prerequisites
 
 Hone delegates to the [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 CLI (`claude`), which must be installed and authenticated. We recommend using the
 Claude Max plan if you want to do regular iteration on your codebase.
+
+For GitHub mode, the [GitHub CLI](https://cli.github.com/) (`gh`) must also be
+installed and authenticated.
 
 ## Install
 
@@ -73,53 +54,141 @@ bun install
 bun run build    # produces build/hone
 ```
 
-## Quick start
+## Getting started with a new project
+
+The fastest path from zero to iterating:
 
 ```bash
-# See what agents you have
-hone list-agents
-
-# Generate an agent and gates for a project you don't have an agent for yet
+# 1. Generate an agent and quality gates for your project
 hone derive /path/to/project
 
-# See what gates hone would enforce on a project
+# 2. Review what was generated
+hone list-agents
 hone gates /path/to/project
 
-# Run one improvement iteration
-hone iterate typescript-craftsperson /path/to/project
+# 3. Run your first improvement iteration
+hone iterate <agent-name> /path/to/project
 ```
 
-That single `iterate` command does five things:
+`hone derive` examines your directory structure, package manager files, CI
+configuration, and linter/formatter configs, then generates an agent with
+principles and QA checkpoints appropriate for your stack, plus a
+`.hone-gates.json` file.
 
-1. **Assess** — Opus reads your code (read-only) and identifies the most
-   violated engineering principle
-2. **Name** — Haiku generates a kebab-case filename summarizing the issue
-3. **Plan** — Opus creates a step-by-step correction plan (still read-only)
-4. **Execute** — Sonnet applies the plan (full write access)
-5. **Verify** — Hone runs your quality gates; if any required gate fails, it
-   sends the agent back to fix with the failure output as context
+If you already have an agent (from
+[svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents) or
+written by hand), skip derive and go straight to iterating.
 
-Steps 4-5 repeat up to `--max-retries` times (default: 3).
+## The iteration pipeline
+
+Each `hone iterate` invocation runs this pipeline:
+
+```
+Charter Check → Assess → Name → Triage → Plan → Execute → Verify
+```
+
+| Stage | What happens | Model | Access |
+|-------|-------------|-------|--------|
+| **Charter Check** | Verifies the project has intent documentation | none (heuristic) | read-only |
+| **Assess** | Identifies the most violated principle, produces a severity rating | opus | read-only |
+| **Name** | Generates a kebab-case filename for audit records | haiku | read-only |
+| **Triage** | Filters out low-severity and busy-work proposals | haiku | read-only |
+| **Plan** | Creates a step-by-step correction plan | opus | read-only |
+| **Execute** | Applies the plan | sonnet | full |
+| **Verify** | Runs quality gates; retries on failure | none (subprocess) | — |
+
+Execute and Verify repeat up to `--max-retries` times (default: 3).
+
+### Charter check
+
+Before any assessment, hone checks for intent documentation — a CHARTER.md, a
+CLAUDE.md with a `## Project Charter` section, a README.md, or a description
+field in your package manager config. If nothing meets the minimum length
+threshold (default: 100 characters), hone stops with guidance on what to add.
+
+Skip with `--skip-charter`. Adjust the threshold with `--min-charter-length`.
+
+### Triage
+
+After assessment, proposals pass through a two-layer filter:
+
+1. **Severity threshold** — Proposals rated below the threshold (default: 3 on
+   a 1-5 scale) are rejected immediately with no LLM call.
+
+2. **Busy-work detection** — A separate LLM pass classifies the change and
+   rejects busy-work categories: adding comments to unchanged logic,
+   reorganizing imports, adding abstractions for single-use code, and
+   "consistency" refactors that don't fix bugs or enable features.
+
+When triage rejects a proposal, hone exits with `success: true` — the codebase
+is in good shape relative to the agent's principles.
+
+Skip with `--skip-triage`. Adjust the severity bar with `--severity-threshold`.
+
+### Retry loop
+
+When a required gate fails after execution, the agent gets a retry prompt with
+the original plan, which gates failed, and the captured output (last 200 lines).
+Each retry is saved separately (`<name>-retry-N-actions.md`).
+
+## Local mode vs GitHub mode
+
+### Local mode (default)
+
+Proposals that pass triage are executed immediately. One proposal per invocation.
+
+```bash
+hone iterate typescript-craftsperson ./src
+```
+
+### GitHub mode
+
+Proposals become GitHub issues. The repo owner approves via thumbs-up reaction,
+rejects via thumbs-down. No code changes happen without sign-off.
+
+```bash
+hone iterate typescript-craftsperson ./src --mode github
+hone iterate typescript-craftsperson ./src --mode github --proposals 3
+```
+
+Each invocation:
+
+1. **Housekeeping** — closes any hone issues the repo owner has thumbs-downed
+2. **Execute approved backlog** — processes thumbs-up issues oldest-first:
+   execute, verify gates (retry loop), commit, close
+3. **Propose** — assess, triage, plan, create new GitHub issue(s)
+
+Behaviours:
+
+- `--proposals N` (default 1) controls how many proposals per invocation. Each
+  gets its own triage pass, so requesting 5 may yield 3 if two don't clear.
+- Failed executions close the issue with gate output in a comment.
+- Issues use the `hone` label and contain structured metadata for parsing.
+- Hone doesn't poll — re-invoke it via cron or CI to process approvals.
 
 ## Commands
 
 ### `hone iterate <agent> <folder>`
 
-The main event. Runs one improvement cycle.
+Runs one improvement cycle.
 
 ```bash
 hone iterate python-craftsperson .
 hone iterate elixir-phoenix-craftsperson ./apps/web --skip-gates
 hone iterate typescript-craftsperson ./src --max-retries 5
-hone iterate cpp-qt-craftsperson . --execute-model opus
+hone iterate cpp-qt-craftsperson . --mode github --proposals 3
 ```
-
-Options:
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `--max-retries <n>` | 3 | How many times to retry after gate failures |
-| `--skip-gates` | off | Skip verification entirely (assess + execute only) |
+| `--mode <local\|github>` | local | Operational mode |
+| `--proposals <n>` | 1 | Proposals to generate (GitHub mode only) |
+| `--max-retries <n>` | 3 | Retry attempts after gate failures |
+| `--skip-gates` | off | Skip quality gate verification |
+| `--skip-charter` | off | Skip charter clarity check |
+| `--skip-triage` | off | Skip triage (severity + busy-work filter) |
+| `--severity-threshold <n>` | 3 | Minimum severity to proceed (1-5) |
+| `--min-charter-length <n>` | 100 | Minimum charter content length in characters |
 | `--assess-model <m>` | opus | Override the assessment model |
 | `--plan-model <m>` | opus | Override the planning model |
 | `--execute-model <m>` | sonnet | Override the execution model |
@@ -136,21 +205,12 @@ audit/
 
 ### `hone derive <folder>`
 
-Inspects a project and generates a craftsperson agent tailored to its tech
-stack, along with a `.hone-gates.json` file containing the appropriate quality
-gates.
+Generates a craftsperson agent and `.hone-gates.json` for a project.
 
 ```bash
 hone derive .                # Agent goes to ~/.claude/agents/ (default)
 hone derive . --local        # Agent goes to ./.claude/agents/
 ```
-
-This is the fastest way to get started with a new project. Derive examines your
-directory structure, package manager files, CI configuration, and linter/formatter
-configs, then asks Claude to generate an agent with principles and QA checkpoints
-appropriate for your stack.
-
-Options:
 
 | Flag | Default | Purpose |
 |------|---------|---------|
@@ -159,34 +219,24 @@ Options:
 
 ### `hone gates [agent] [folder]`
 
-Shows what quality gates hone would enforce, runs them, or saves them to a file.
+Shows, runs, or saves quality gates.
 
 ```bash
 hone gates .                              # Show gates from .hone-gates.json
 hone gates typescript-craftsperson .      # Show gates (override or extracted from agent)
-hone gates . --run                        # Actually run them and report pass/fail
+hone gates . --run                        # Run them and report pass/fail
 hone gates typescript-craftsperson . --save       # Extract from agent, write .hone-gates.json
-hone gates typescript-craftsperson . --save --run  # Extract, save, then run them
+hone gates typescript-craftsperson . --save --run  # Extract, save, then run
 ```
-
-When an agent name is provided, hone uses the full gate resolution chain
-(override file, then agent extraction). Without an agent, it only reads the
-`.hone-gates.json` override file.
-
-Options:
 
 | Flag | Default | Purpose |
 |------|---------|---------|
 | `--run` | off | Run the gates and report pass/fail |
-| `--save` | off | Write resolved gates to `.hone-gates.json` in the project folder |
-
-The `--save` flag writes the resolved gates to `.hone-gates.json` in the project
-folder. This is useful when you already have an agent and want to generate a
-gates file without running `hone derive`.
+| `--save` | off | Write resolved gates to `.hone-gates.json` |
 
 ### `hone list-agents`
 
-Lists agents available in `~/.claude/agents/`.
+Lists agents in `~/.claude/agents/`.
 
 ### `hone history [folder]`
 
@@ -198,26 +248,17 @@ Prints the active configuration (defaults merged with `~/.config/hone/config.jso
 
 ## Quality gates
 
-Hone resolves gates using a priority chain:
+Gates are resolved in priority order:
 
-1. **`.hone-gates.json`** — If present in the project root, these gates are used
-   directly. No Claude call needed, and the file can be version-controlled with
-   the project.
-2. **Agent extraction** — If no override file exists, hone reads the agent's
-   definition file and uses Claude (haiku) to extract QA gate commands from its
-   principles and checkpoints section.
-3. **Empty** — If neither source provides gates, hone reports no gates found and
-   skips verification.
+1. **`.hone-gates.json`** in the project root (version-controlled, no Claude call)
+2. **Agent extraction** via Claude (haiku) from the agent's QA checkpoints
+3. **Empty** — no gates found, verification skipped
 
-The recommended workflow is to run `hone derive .` on a new project. This
-generates both an agent and a `.hone-gates.json`, giving you explicit,
-version-controlled gate definitions that don't require a Claude call on every
-iteration. If you already have an agent, use `hone gates <agent> . --save` to
-generate just the gates file.
+The recommended workflow: run `hone derive .` on a new project to get both an
+agent and a gates file. If you already have an agent, use
+`hone gates <agent> . --save` to generate just the gates file.
 
 ### Gate file format
-
-Drop a `.hone-gates.json` in your project root:
 
 ```json
 {
@@ -230,13 +271,12 @@ Drop a `.hone-gates.json` in your project root:
 }
 ```
 
-Gates marked `required: true` trigger the retry loop on failure. Optional gates
-(`required: false`) are reported but don't block.
+`required: true` gates trigger the retry loop. `required: false` gates are
+reported but don't block.
 
 ## Configuration
 
-Defaults live in `~/.config/hone/config.json`. All fields are optional — missing
-fields use built-in defaults:
+Defaults in `~/.config/hone/config.json` (all fields optional):
 
 ```json
 {
@@ -246,12 +286,16 @@ fields use built-in defaults:
     "plan": "opus",
     "execute": "sonnet",
     "gates": "haiku",
-    "derive": "sonnet"
+    "derive": "sonnet",
+    "triage": "haiku"
   },
   "auditDir": "audit",
   "readOnlyTools": "Read Glob Grep WebFetch WebSearch",
   "maxRetries": 3,
-  "gateTimeout": 120000
+  "gateTimeout": 120000,
+  "mode": "local",
+  "minCharterLength": 100,
+  "severityThreshold": 3
 }
 ```
 
@@ -270,34 +314,34 @@ An agent should:
 - Include QA checkpoints with concrete commands (used for gate extraction)
 - Work with both read-only tools (assessment/planning) and full tools (execution)
 
-You can get agents three ways:
+Sources:
 
 1. **`hone derive`** — generate one from your project's structure and tooling
-2. **Pre-built agents** — grab quality-focused agents from
+2. **Pre-built agents** from
    [svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents)
-   and copy any `*.md` file into `~/.claude/agents/`
-3. **Write your own** — create a markdown file in `~/.claude/agents/` with
-   principles and QA checkpoints for your domain
+3. **Write your own** — a markdown file in `~/.claude/agents/`
 
-## How the retry loop works
+## JSON output
 
-When execution finishes, hone runs every resolved gate as a subprocess. If a
-required gate fails, the agent gets a retry prompt containing:
+All commands support `--json`. Progress goes to stderr, structured data to stdout.
 
-1. The original plan
-2. Which gates failed
-3. The captured output (last 200 lines of stdout + stderr)
-4. An instruction to fix the failures without regressing on the original fix
+```bash
+hone iterate typescript-craftsperson . --json 2>/dev/null | jq .success
+hone gates . --run --json | jq '.results[] | select(.passed == false)'
+```
 
-This means the agent doesn't re-assess from scratch — it gets targeted feedback
-and course-corrects. Each retry's output is saved separately
-(`<name>-retry-N-actions.md`) so you can trace what happened.
+Local mode output includes `structuredAssessment`, `triageResult`,
+`charterCheck`, and `skippedReason` fields alongside assessment, plan,
+execution, and gates results.
+
+GitHub mode output includes `housekeeping` (closed issue numbers), `executed`
+(outcomes per issue), `proposed` (new issue numbers), and `skippedTriage`.
 
 ## Development
 
 ```bash
 bun install                   # Install dependencies
-bun test                      # Run tests (72 tests across 9 files)
+bun test                      # Run tests
 bunx tsc --noEmit             # Type check
 bun run dev -- list-agents    # Run without building
 bun run build                 # Build local executable

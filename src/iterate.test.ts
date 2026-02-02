@@ -4,7 +4,7 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { GateDefinition, GatesRunResult } from "./types.ts";
+import type { GateDefinition, GatesRunResult, CharterCheckResult, StructuredAssessment, TriageResult } from "./types.ts";
 import { createIterateMock, extractPrompt } from "./test-helpers.ts";
 
 // Mock gate resolver that returns empty gates (no Claude call needed)
@@ -14,6 +14,50 @@ const emptyGateResolver = async () => [] as GateDefinition[];
 const standardGateResolver = async () => [
   { name: "test", command: "npm test", required: true },
 ] as GateDefinition[];
+
+// Mock charter checker that always passes
+const passingCharterChecker = async (): Promise<CharterCheckResult> => ({
+  passed: true,
+  sources: [{ file: "CHARTER.md", length: 200, sufficient: true }],
+  guidance: [],
+});
+
+// Mock charter checker that always fails
+const failingCharterChecker = async (): Promise<CharterCheckResult> => ({
+  passed: false,
+  sources: [],
+  guidance: ["Add a CHARTER.md describing the project's goals"],
+});
+
+// Mock triage runner that always accepts
+const acceptingTriageRunner = async (): Promise<TriageResult> => ({
+  accepted: true,
+  reason: "Substantive change",
+  severity: 4,
+  changeType: "architecture",
+  busyWork: false,
+});
+
+// Mock triage runner that rejects (low severity)
+const rejectingSeverityTriageRunner = async (
+  assessment: StructuredAssessment,
+  threshold: number,
+): Promise<TriageResult> => ({
+  accepted: false,
+  reason: `Severity ${assessment.severity} is below threshold ${threshold}`,
+  severity: assessment.severity,
+  changeType: "unknown",
+  busyWork: false,
+});
+
+// Mock triage runner that rejects (busy-work)
+const rejectingBusyWorkTriageRunner = async (): Promise<TriageResult> => ({
+  accepted: false,
+  reason: "Busy-work: Just adding comments",
+  severity: 4,
+  changeType: "cosmetic",
+  busyWork: true,
+});
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {
@@ -38,6 +82,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: true,
+          skipCharter: true,
+          skipTriage: true,
           onProgress: (stage, msg) => {
             progress.push(`${stage}: ${msg}`);
           },
@@ -89,6 +135,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: true,
+          skipCharter: true,
+          skipTriage: true,
           onProgress: () => {},
         },
         mockClaude,
@@ -141,6 +189,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
           gateRunner: mockGateRunner,
           gateResolver: standardGateResolver,
           onProgress: () => {},
@@ -223,6 +273,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
           gateRunner: mockGateRunner,
           gateResolver: standardGateResolver,
           onProgress: () => {},
@@ -291,6 +343,8 @@ describe("iterate", () => {
           folder: dir,
           config,
           skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
           gateRunner: mockGateRunner,
           gateResolver: standardGateResolver,
           onProgress: () => {},
@@ -349,6 +403,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
           gateRunner: mockGateRunner,
           gateResolver: standardGateResolver,
           onProgress: () => {},
@@ -415,6 +471,8 @@ describe("iterate", () => {
           folder: dir,
           config: getDefaultConfig(),
           skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
           gateRunner: mockGateRunner,
           gateResolver: standardGateResolver,
           onProgress: () => {},
@@ -434,6 +492,230 @@ describe("iterate", () => {
       expect(retryPrompt).toContain("## Failed Gates");
       expect(retryPrompt).toContain("### Gate: test");
       expect(retryPrompt).toContain("FAIL: expected 1 got 2");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  // --- Charter + Triage integration tests ---
+
+  test("charter fails → early return, no Claude calls", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      { assess: "x", name: "x", plan: "x", execute: "x" },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          charterChecker: failingCharterChecker,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.skippedReason).toBe("Charter clarity insufficient");
+      expect(result.charterCheck?.passed).toBe(false);
+      expect(calls.length).toBe(0); // No Claude calls made
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("triage rejects (low severity) → assess + name calls only", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      {
+        assess: '```json\n{ "severity": 1, "principle": "DRY", "category": "duplication" }\n```\nMinor duplication.',
+        name: "minor-duplication",
+        plan: "should not be called",
+        execute: "should not be called",
+      },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          skipCharter: true,
+          triageRunner: rejectingSeverityTriageRunner,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true); // Triage rejection is a success state
+      expect(result.skippedReason).toContain("Triage:");
+      expect(result.triageResult?.accepted).toBe(false);
+      expect(result.name).toBe("minor-duplication");
+      expect(result.plan).toBe("");
+      expect(result.execution).toBe("");
+      // Only assess + name calls (2 total)
+      expect(calls.length).toBe(2);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("triage rejects (busy-work) → assess + name calls only, no plan/execute", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      {
+        assess: '```json\n{ "severity": 4, "principle": "Docs", "category": "documentation" }\n```\nNeeds docs.',
+        name: "add-docs",
+        plan: "should not be called",
+        execute: "should not be called",
+      },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          skipCharter: true,
+          triageRunner: rejectingBusyWorkTriageRunner,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.skippedReason).toContain("Busy-work");
+      expect(result.triageResult?.busyWork).toBe(true);
+      // Only assess + name calls (2 total)
+      expect(calls.length).toBe(2);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("full pipeline with triage pass → assess + name + plan + execute", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      {
+        assess: '```json\n{ "severity": 4, "principle": "SRP", "category": "architecture" }\n```\nViolation.',
+        name: "fix-srp",
+        plan: "Step 1: Extract",
+        execute: "Done",
+      },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          charterChecker: passingCharterChecker,
+          triageRunner: acceptingTriageRunner,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.skippedReason).toBeNull();
+      expect(result.structuredAssessment).not.toBeNull();
+      expect(result.triageResult?.accepted).toBe(true);
+      expect(result.charterCheck?.passed).toBe(true);
+      // 4 claude calls: assess, name, plan, execute
+      expect(calls.length).toBe(4);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("skipCharter: true → charter checker not called", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    let charterCalled = false;
+
+    const mockClaude = createIterateMock({
+      assess: "assessment",
+      name: "test-name",
+      plan: "plan",
+      execute: "done",
+    });
+
+    try {
+      await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          skipCharter: true,
+          skipTriage: true,
+          charterChecker: async () => {
+            charterCalled = true;
+            return passingCharterChecker();
+          },
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(charterCalled).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("skipTriage: true → triage not called, pipeline goes straight to plan", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    let triageCalled = false;
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      { assess: "assessment", name: "test-name", plan: "plan", execute: "done" },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: true,
+          skipCharter: true,
+          skipTriage: true,
+          triageRunner: async () => {
+            triageCalled = true;
+            return acceptingTriageRunner();
+          },
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(triageCalled).toBe(false);
+      expect(result.triageResult).toBeNull();
+      // 4 claude calls: assess, name, plan, execute (no triage)
+      expect(calls.length).toBe(4);
     } finally {
       await rm(dir, { recursive: true });
     }

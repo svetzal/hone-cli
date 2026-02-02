@@ -18,6 +18,7 @@ export interface IterateStageResponses {
   name: string;
   plan: string;
   execute: string;
+  triage?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ export function createIterateMock(
 
     if (prompt.startsWith("Assess")) return responses.assess;
     if (prompt.startsWith("Output ONLY")) return responses.name;
+    if (prompt.startsWith("You are a skeptical")) return responses.triage ?? "";
     if (prompt.startsWith("Based on")) return responses.plan;
     if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
       return responses.execute;

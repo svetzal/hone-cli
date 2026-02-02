@@ -14,10 +14,14 @@ describe("getDefaultConfig", () => {
     expect(config.models.execute).toBe("sonnet");
     expect(config.models.gates).toBe("haiku");
     expect(config.models.derive).toBe("sonnet");
+    expect(config.models.triage).toBe("haiku");
     expect(config.auditDir).toBe("audit");
     expect(config.maxRetries).toBe(3);
     expect(config.gateTimeout).toBe(120_000);
     expect(config.readOnlyTools).toBe("Read Glob Grep WebFetch WebSearch");
+    expect(config.mode).toBe("local");
+    expect(config.minCharterLength).toBe(100);
+    expect(config.severityThreshold).toBe(3);
   });
 });
 
