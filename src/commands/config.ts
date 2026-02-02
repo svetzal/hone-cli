@@ -12,14 +12,16 @@ export async function configCommand(parsed: ParsedArgs): Promise<void> {
   } else {
     console.log("Current configuration:\n");
     console.log(`  Models:`);
-    console.log(`    assess:   ${config.models.assess}`);
-    console.log(`    name:     ${config.models.name}`);
-    console.log(`    plan:     ${config.models.plan}`);
-    console.log(`    execute:  ${config.models.execute}`);
-    console.log(`  Audit dir:      ${config.auditDir}`);
-    console.log(`  Read-only tools: ${config.readOnlyTools}`);
-    console.log(`  Max retries:    ${config.maxRetries}`);
-    console.log(`  Gate timeout:   ${config.gateTimeout}ms`);
+    for (const [key, value] of Object.entries(config.models)) {
+      console.log(`    ${key}: ${value}`);
+    }
+
+    for (const [key, value] of Object.entries(config)) {
+      if (key === "models") continue; // already displayed above
+      const displayValue = key === "gateTimeout" ? `${value}ms` : String(value);
+      console.log(`  ${key}: ${displayValue}`);
+    }
+
     console.log(`\nConfig file: ~/.config/hone/config.json`);
   }
 }
