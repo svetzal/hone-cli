@@ -162,7 +162,7 @@ describe("githubIterate", () => {
         {
           number: 5,
           title: "Bad proposal",
-          body: formatIssueBody({ assessment: "a", plan: "p", agent: "test", severity: 2, principle: "x" }),
+          body: formatIssueBody({ name: "bad-proposal", assessment: "a", plan: "p", agent: "test", severity: 2, principle: "x" }),
           createdAt: "2024-01-01T00:00:00Z",
           thumbsDown: ["testowner"],
         },
@@ -200,6 +200,7 @@ describe("githubIterate", () => {
     });
 
     const proposal = {
+      name: "fix-something",
       assessment: "The code has issues",
       plan: "Step 1: Fix it",
       agent: "test-agent",
@@ -254,6 +255,7 @@ describe("githubIterate", () => {
     });
 
     const proposal = {
+      name: "fix-something",
       assessment: "assessment",
       plan: "plan",
       agent: "test-agent",
@@ -506,6 +508,7 @@ describe("executeApprovedIssues", () => {
     });
 
     const proposal = {
+      name: "fix-something",
       assessment: "The code has issues",
       plan: "Fix it",
       agent: "test-agent",
@@ -558,6 +561,7 @@ describe("executeApprovedIssues", () => {
     });
 
     const proposal = {
+      name: "fix-something",
       assessment: "assessment",
       plan: "plan",
       agent: "test-agent",

@@ -133,6 +133,7 @@ export interface HoneIssue {
 }
 
 export interface HoneProposal {
+  name: string;
   assessment: string;
   plan: string;
   agent: string;

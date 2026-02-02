@@ -144,6 +144,7 @@ const ISSUE_BODY_MARKER = "<!-- hone-metadata";
 const ISSUE_BODY_END_MARKER = "-->";
 
 export function formatIssueBody(proposal: {
+  name: string;
   assessment: string;
   plan: string;
   agent: string;
@@ -154,6 +155,7 @@ export function formatIssueBody(proposal: {
     agent: proposal.agent,
     severity: proposal.severity,
     principle: proposal.principle,
+    name: proposal.name,
   });
 
   return [
@@ -188,6 +190,7 @@ export function parseIssueBody(body: string): HoneProposal | null {
       agent: string;
       severity: number;
       principle: string;
+      name?: string;
     };
 
     // Extract assessment and plan from markdown sections
@@ -195,6 +198,7 @@ export function parseIssueBody(body: string): HoneProposal | null {
     const planMatch = body.match(/## Plan\s*\n([\s\S]*?)$/);
 
     return {
+      name: metadata.name ?? "",
       assessment: assessmentMatch?.[1]?.trim() ?? "",
       plan: planMatch?.[1]?.trim() ?? "",
       agent: metadata.agent,

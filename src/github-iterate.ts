@@ -127,7 +127,7 @@ export async function executeApprovedIssues(
     }
 
     const auditDir = await ensureAuditDir(folder, config.auditDir);
-    const name = `github-${issue.number}`;
+    const name = proposal.name || `github-${issue.number}`;
 
     const outcome: ExecutionOutcome = {
       issueNumber: issue.number,
@@ -257,6 +257,7 @@ export async function proposeImprovements(
 
     // Create issue
     const issueBody = formatIssueBody({
+      name,
       assessment,
       plan,
       agent,

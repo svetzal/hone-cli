@@ -161,6 +161,7 @@ describe("closeIssueWithComment", () => {
 describe("formatIssueBody / parseIssueBody", () => {
   test("round-trip: format then parse", () => {
     const proposal = {
+      name: "fix-srp-violation",
       assessment: "The code violates SRP.",
       plan: "Step 1: Extract class\nStep 2: Move methods",
       agent: "typescript-craftsperson",
@@ -172,6 +173,7 @@ describe("formatIssueBody / parseIssueBody", () => {
     const parsed = parseIssueBody(body);
 
     expect(parsed).not.toBeNull();
+    expect(parsed!.name).toBe("fix-srp-violation");
     expect(parsed!.agent).toBe("typescript-craftsperson");
     expect(parsed!.severity).toBe(4);
     expect(parsed!.principle).toBe("Single Responsibility");
