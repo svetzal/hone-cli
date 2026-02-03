@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-02-03
+
+### Added
+
+- **Preflight gate validation** — gates are resolved and run against the
+  unmodified codebase before any LLM work. If required gates fail before
+  changes are made, hone stops immediately instead of burning tokens on an
+  agent that can't fix environment problems. Skipped with `--skip-gates`.
+- **Gate validation in `hone derive`** — after generating `.hone-gates.json`,
+  runs the gates and reports pass/fail for each so the user can fix before
+  iterating.
+
+### Changed
+
+- `runExecuteWithVerify` now receives pre-resolved gates instead of a gate
+  resolver, eliminating redundant resolution during the verify loop.
+
 ## [0.4.0] - 2026-02-02
 
 ### Added
