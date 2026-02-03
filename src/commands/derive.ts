@@ -14,13 +14,13 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
   if (!folder) {
     console.error("Usage: hone derive <folder> [--local | --global]");
     console.error("  folder   - Project folder to inspect");
-    console.error("  --local  - Write agent to <folder>/.claude/agents/");
-    console.error("  --global - Write agent to ~/.claude/agents/ (default)");
+    console.error("  --local  - Write agent to <folder>/.claude/agents/ (default)");
+    console.error("  --global - Write agent to ~/.claude/agents/");
     process.exit(1);
   }
 
   const resolvedFolder = resolve(folder);
-  const isLocal = parsed.flags.local === true;
+  const isGlobal = parsed.flags.global === true;
   const isJson = parsed.flags.json === true;
   const config = await loadConfig();
 
@@ -38,10 +38,10 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
   const agentFilename = `${result.agentName}.agent.md`;
   let agentDir: string;
 
-  if (isLocal) {
-    agentDir = join(resolvedFolder, ".claude", "agents");
-  } else {
+  if (isGlobal) {
     agentDir = join(homedir(), ".claude", "agents");
+  } else {
+    agentDir = join(resolvedFolder, ".claude", "agents");
   }
 
   await mkdir(agentDir, { recursive: true });

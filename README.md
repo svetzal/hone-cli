@@ -219,14 +219,14 @@ audit/
 Generates a craftsperson agent and `.hone-gates.json` for a project.
 
 ```bash
-hone derive .                # Agent goes to ~/.claude/agents/ (default)
-hone derive . --local        # Agent goes to ./.claude/agents/
+hone derive .                # Agent goes to ./.claude/agents/ (default)
+hone derive . --global       # Agent goes to ~/.claude/agents/
 ```
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `--local` | off | Write agent to `<folder>/.claude/agents/` |
-| `--global` | on | Write agent to `~/.claude/agents/` |
+| `--local` | on | Write agent to `<folder>/.claude/agents/` |
+| `--global` | off | Write agent to `~/.claude/agents/` |
 
 ### `hone gates [agent] [folder]`
 
