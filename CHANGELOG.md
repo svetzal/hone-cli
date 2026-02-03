@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-02
+
+### Added
+
+- **GitHub mode** — `--mode github` creates GitHub issues from proposals,
+  supports thumbs-up/thumbs-down approval workflow, and executes approved
+  backlog with automatic commits
+- **Charter check** — verifies project has sufficient intent documentation
+  before iterating; skip with `--skip-charter`
+- **Triage stage** — filters low-severity and busy-work proposals via severity
+  threshold and LLM-based classification; skip with `--skip-triage`
+- **`--json` output mode** — all commands support structured JSON output to
+  stdout with progress on stderr
+- **Shared `runProcess` utility** — consolidated subprocess spawning into
+  `src/process.ts`, eliminating duplication across claude, gates, and github
+  modules
+
+### Changed
+
+- `githubIterate()` decomposed into three focused phase functions
+  (`closeRejectedIssues`, `executeApprovedIssues`, `proposeImprovements`)
+- Consolidated duplicate injectable function types and test mocks into shared
+  helpers
+- Config display now programmatically enumerates all fields, preventing drift
+
+### Fixed
+
+- Proposal name now preserved through GitHub issue round-trip — audit files
+  use the original kebab-case name instead of `github-N`
+- Hone label is created before attempting to create GitHub issues
+
 ## [0.3.0] - 2026-02-01
 
 ### Added
