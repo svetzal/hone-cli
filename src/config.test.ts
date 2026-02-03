@@ -13,7 +13,7 @@ describe("getDefaultConfig", () => {
     expect(config.models.plan).toBe("opus");
     expect(config.models.execute).toBe("sonnet");
     expect(config.models.gates).toBe("haiku");
-    expect(config.models.derive).toBe("sonnet");
+    expect(config.models.derive).toBe("opus");
     expect(config.models.triage).toBe("haiku");
     expect(config.auditDir).toBe("audit");
     expect(config.maxRetries).toBe(3);

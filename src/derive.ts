@@ -9,6 +9,7 @@ export interface ProjectContext {
   packageFiles: Record<string, string>;
   ciConfigs: Record<string, string>;
   toolConfigs: Record<string, string>;
+  shellScripts: Record<string, string>;
 }
 
 export interface DeriveResult {
@@ -140,7 +141,21 @@ export async function gatherContext(folder: string): Promise<ProjectContext> {
     if (content) toolConfigs[file] = content;
   }
 
-  return { directoryTree, packageFiles, ciConfigs, toolConfigs };
+  // Read shell scripts at project root for build/test command discovery
+  const shellScripts: Record<string, string> = {};
+  try {
+    const rootEntries = await readdir(folder, { withFileTypes: true });
+    for (const entry of rootEntries) {
+      if (!entry.isDirectory() && entry.name.endsWith(".sh")) {
+        const content = await readFileCapped(join(folder, entry.name));
+        if (content) shellScripts[entry.name] = content;
+      }
+    }
+  } catch {
+    // Directory not readable
+  }
+
+  return { directoryTree, packageFiles, ciConfigs, toolConfigs, shellScripts };
 }
 
 function buildDerivePrompt(context: ProjectContext): string {
@@ -178,13 +193,32 @@ function buildDerivePrompt(context: ProjectContext): string {
     }
   }
 
+  if (Object.keys(context.shellScripts).length > 0) {
+    sections.push("", "## Shell Scripts (project root)");
+    for (const [name, content] of Object.entries(context.shellScripts)) {
+      sections.push(`### ${name}`, "```bash", content, "```");
+    }
+  }
+
   sections.push(
+    "",
+    "## Agent Naming Convention",
+    "The agent name MUST follow the pattern: <primary-technology>-craftsperson",
+    "Examples: typescript-craftsperson, python-craftsperson, elixir-phoenix-craftsperson, cpp-qt-craftsperson",
+    "Pick the name based on the project's primary technology stack. If the project uses a framework (e.g., Phoenix, Qt, React), include it: elixir-phoenix-craftsperson, cpp-qt-craftsperson.",
+    "",
+    "## QA Checkpoint Guidelines",
+    "For QA checkpoints, you MUST use actual commands and scripts that exist in the project:",
+    "- If the project has build/test shell scripts (e.g., build_test.sh, run_tests.sh), use those exact scripts as gate commands (e.g., ./build_test.sh)",
+    "- Prefer existing project scripts over inventing commands",
+    "- Only suggest commands for tools that are actually configured in the project",
+    "- Do NOT hallucinate command names or flags — verify they exist in the project files shown above",
     "",
     "## Output Format",
     "Output a complete agent markdown file. Start with YAML frontmatter containing at minimum:",
     "```yaml",
     "---",
-    "name: <kebab-case-agent-name>",
+    "name: <primary-technology>-craftsperson",
     "description: <one-line description>",
     "---",
     "```",

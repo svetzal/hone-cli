@@ -297,7 +297,7 @@ Defaults in `~/.config/hone/config.json` (all fields optional):
     "plan": "opus",
     "execute": "sonnet",
     "gates": "haiku",
-    "derive": "sonnet",
+    "derive": "opus",
     "triage": "haiku"
   },
   "auditDir": "audit",

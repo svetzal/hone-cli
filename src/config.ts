@@ -10,7 +10,7 @@ export function getDefaultConfig(): HoneConfig {
       plan: "opus",
       execute: "sonnet",
       gates: "haiku",
-      derive: "sonnet",
+      derive: "opus",
       triage: "haiku",
     },
     auditDir: "audit",

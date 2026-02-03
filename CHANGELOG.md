@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-02-03
+
+### Changed
+
+- **Derive model upgraded to opus** — agent generation is a high-stakes
+  analytical task that runs once per project; opus produces better agent names
+  and more accurate gate commands than sonnet.
+- **Derive prompt improvements** — explicit naming convention guidance
+  (`<primary-technology>-craftsperson`) with examples, and QA checkpoint
+  instructions that direct the LLM to use actual project scripts instead of
+  hallucinating commands.
+- **Shell script context** — `hone derive` now reads `.sh` files at the project
+  root and includes their contents in the prompt, giving the LLM concrete
+  build/test commands to reference.
+
 ## [0.4.1] - 2026-02-03
 
 ### Added

@@ -78,6 +78,7 @@ describe("gatherContext", () => {
       expect(Object.keys(ctx.packageFiles)).toEqual([]);
       expect(Object.keys(ctx.ciConfigs)).toEqual([]);
       expect(Object.keys(ctx.toolConfigs)).toEqual([]);
+      expect(Object.keys(ctx.shellScripts)).toEqual([]);
     } finally {
       await rm(dir, { recursive: true });
     }
