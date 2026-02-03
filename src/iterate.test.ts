@@ -5,7 +5,7 @@ import { join } from "path";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import type { GateDefinition, GatesRunResult } from "./types.ts";
-import { createIterateMock, extractPrompt, emptyGateResolver, standardGateResolver, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingSeverityTriageRunner, rejectingBusyWorkTriageRunner } from "./test-helpers.ts";
+import { createIterateMock, extractPrompt, emptyGateResolver, standardGateResolver, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingSeverityTriageRunner, rejectingBusyWorkTriageRunner, createPreflightAwareGateRunner } from "./test-helpers.ts";
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {
@@ -153,8 +153,8 @@ describe("iterate", () => {
       // Should have exactly 4 claude calls (no retries)
       expect(claudeCalls.length).toBe(4);
 
-      // Should have exactly 1 gate runner call
-      expect(gateRunnerCalls.length).toBe(1);
+      // Should have exactly 2 gate runner calls (preflight + verify)
+      expect(gateRunnerCalls.length).toBe(2);
 
       // Gate runner should receive the resolved gates
       expect(gateRunnerCalls[0]![0]).toEqual([{ name: "test", command: "npm test", required: true }]);
@@ -177,28 +177,24 @@ describe("iterate", () => {
       { onCall: (args) => claudeCalls.push(args) },
     );
 
-    let gateRunCallCount = 0;
-    const mockGateRunner = async (): Promise<GatesRunResult> => {
-      gateRunCallCount++;
-      if (gateRunCallCount === 1) {
-        // First call — fail
-        return {
-          allPassed: false,
-          requiredPassed: false,
-          results: [
-            {
-              name: "test",
-              command: "npm test",
-              passed: false,
-              required: true,
-              output: "FAIL: 1 test failed",
-              exitCode: 1,
-            },
-          ],
-        };
-      }
-      // Second call — pass
-      return {
+    const { runner: mockGateRunner, callCount } = createPreflightAwareGateRunner([
+      // First post-preflight call (verify after execute) — fail
+      {
+        allPassed: false,
+        requiredPassed: false,
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: false,
+            required: true,
+            output: "FAIL: 1 test failed",
+            exitCode: 1,
+          },
+        ],
+      },
+      // Second post-preflight call (verify after retry) — pass
+      {
         allPassed: true,
         requiredPassed: true,
         results: [
@@ -211,8 +207,8 @@ describe("iterate", () => {
             exitCode: 0,
           },
         ],
-      };
-    };
+      },
+    ]);
 
     try {
       const result = await iterate(
@@ -236,8 +232,8 @@ describe("iterate", () => {
       // Should have 5 claude calls (4 stages + 1 retry)
       expect(claudeCalls.length).toBe(5);
 
-      // Should have 2 gate runner calls
-      expect(gateRunCallCount).toBe(2);
+      // Should have 3 gate runner calls (preflight + verify fail + verify pass)
+      expect(callCount()).toBe(3);
 
       // Verify retry actions file was saved
       const auditDir = join(dir, "audit");
@@ -261,25 +257,24 @@ describe("iterate", () => {
       { onCall: (args) => claudeCalls.push(args) },
     );
 
-    let gateRunCallCount = 0;
-    const mockGateRunner = async (): Promise<GatesRunResult> => {
-      gateRunCallCount++;
-      // Always fail
-      return {
-        allPassed: false,
-        requiredPassed: false,
-        results: [
-          {
-            name: "test",
-            command: "npm test",
-            passed: false,
-            required: true,
-            output: "FAIL: persistent error",
-            exitCode: 1,
-          },
-        ],
-      };
+    const alwaysFailResult: GatesRunResult = {
+      allPassed: false,
+      requiredPassed: false,
+      results: [
+        {
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output: "FAIL: persistent error",
+          exitCode: 1,
+        },
+      ],
     };
+
+    const { runner: mockGateRunner, callCount } = createPreflightAwareGateRunner([
+      alwaysFailResult,
+    ]);
 
     try {
       const config = getDefaultConfig();
@@ -306,8 +301,8 @@ describe("iterate", () => {
       // Should have 6 claude calls (4 stages + 2 retries)
       expect(claudeCalls.length).toBe(6);
 
-      // Should have 3 gate runner calls (initial + 2 retries)
-      expect(gateRunCallCount).toBe(3);
+      // Should have 4 gate runner calls (preflight + initial + 2 retries)
+      expect(callCount()).toBe(4);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -327,7 +322,9 @@ describe("iterate", () => {
       { onCall: (args) => claudeCalls.push(args) },
     );
 
+    let gateRunCallCount = 0;
     const mockGateRunner = async (): Promise<GatesRunResult> => {
+      gateRunCallCount++;
       return {
         allPassed: false,
         requiredPassed: true,
@@ -367,6 +364,9 @@ describe("iterate", () => {
 
       // Should have exactly 4 claude calls (no retry)
       expect(claudeCalls.length).toBe(4);
+
+      // Should have exactly 2 gate runner calls (preflight + verify)
+      expect(gateRunCallCount).toBe(2);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -386,31 +386,29 @@ describe("iterate", () => {
       { onCall: (args) => claudeCalls.push(args) },
     );
 
-    let gateRunCallCount = 0;
-    const mockGateRunner = async (): Promise<GatesRunResult> => {
-      gateRunCallCount++;
-      if (gateRunCallCount === 1) {
-        return {
-          allPassed: false,
-          requiredPassed: false,
-          results: [
-            {
-              name: "test",
-              command: "npm test",
-              passed: false,
-              required: true,
-              output: "FAIL: expected 1 got 2",
-              exitCode: 1,
-            },
-          ],
-        };
-      }
-      return {
+    const { runner: mockGateRunner } = createPreflightAwareGateRunner([
+      // First post-preflight call — fail
+      {
+        allPassed: false,
+        requiredPassed: false,
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: false,
+            required: true,
+            output: "FAIL: expected 1 got 2",
+            exitCode: 1,
+          },
+        ],
+      },
+      // Second post-preflight call — pass
+      {
         allPassed: true,
         requiredPassed: true,
         results: [{ name: "test", command: "npm test", passed: true, required: true, output: "ok", exitCode: 0 }],
-      };
-    };
+      },
+    ]);
 
     try {
       await iterate(
@@ -440,6 +438,96 @@ describe("iterate", () => {
       expect(retryPrompt).toContain("## Failed Gates");
       expect(retryPrompt).toContain("### Gate: test");
       expect(retryPrompt).toContain("FAIL: expected 1 got 2");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  // --- Preflight tests ---
+
+  test("preflight fails → early return, no Claude calls", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      { assess: "x", name: "x", plan: "x", execute: "x" },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    const failingGateRunner = async (): Promise<GatesRunResult> => ({
+      allPassed: false,
+      requiredPassed: false,
+      results: [{
+        name: "test",
+        command: "npm test",
+        passed: false,
+        required: true,
+        output: "FAIL: compilation error",
+        exitCode: 1,
+      }],
+    });
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
+          gateRunner: failingGateRunner,
+          gateResolver: standardGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.skippedReason).toContain("Preflight failed");
+      expect(result.gatesResult?.requiredPassed).toBe(false);
+      expect(calls.length).toBe(0); // No Claude calls made
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("no gates resolved → preflight skipped, pipeline continues", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-iter-"));
+    const calls: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      { assess: "Assessment", name: "test-name", plan: "Plan", execute: "Done" },
+      { onCall: (args) => calls.push(args) },
+    );
+
+    let gateRunnerCallCount = 0;
+    const mockGateRunner = async (): Promise<GatesRunResult> => {
+      gateRunnerCallCount++;
+      return { allPassed: true, requiredPassed: true, results: [] };
+    };
+
+    try {
+      const result = await iterate(
+        {
+          agent: "test-agent",
+          folder: dir,
+          config: getDefaultConfig(),
+          skipGates: false,
+          skipCharter: true,
+          skipTriage: true,
+          gateRunner: mockGateRunner,
+          gateResolver: emptyGateResolver,
+          onProgress: () => {},
+        },
+        mockClaude,
+      );
+
+      expect(result.success).toBe(true);
+      // 4 claude calls: assess, name, plan, execute
+      expect(calls.length).toBe(4);
+      // Gate runner called once for verify (no preflight since no gates resolved)
+      expect(gateRunnerCallCount).toBe(1);
     } finally {
       await rm(dir, { recursive: true });
     }

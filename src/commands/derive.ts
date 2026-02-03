@@ -4,7 +4,8 @@ import { mkdir } from "fs/promises";
 import { loadConfig } from "../config.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import { derive } from "../derive.ts";
-import type { ParsedArgs } from "../types.ts";
+import { runAllGates } from "../gates.ts";
+import type { ParsedArgs, GateResult } from "../types.ts";
 import { writeJson, progress } from "../output.ts";
 
 export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
@@ -58,12 +59,30 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
     progress(isJson, "No quality gates extracted from agent.");
   }
 
+  // Validate generated gates
+  let gateValidation: GateResult[] | null = null;
+  if (result.gates.length > 0) {
+    progress(isJson, "Validating generated gates...");
+    const validationResult = await runAllGates(result.gates, resolvedFolder, config.gateTimeout);
+    gateValidation = validationResult.results;
+
+    for (const r of validationResult.results) {
+      const status = r.passed ? "pass" : "FAIL";
+      progress(isJson, `  ${status}: ${r.name} (${r.command})`);
+    }
+
+    if (!validationResult.allPassed) {
+      progress(isJson, "Some gates failed. Review and fix before running hone iterate.");
+    }
+  }
+
   if (isJson) {
     writeJson({
       agentName: result.agentName,
       agentPath,
       gates: result.gates,
       gatesPath,
+      gateValidation,
     });
   } else {
     console.log(`\nDone. Agent name: ${result.agentName}`);

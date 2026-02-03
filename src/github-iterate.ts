@@ -28,12 +28,8 @@ import type {
   ClaudeInvoker,
   CommandRunner,
   GateDefinition,
-  GatesRunResult,
   GitHubIterateResult,
   ExecutionOutcome,
-  CharterCheckResult,
-  StructuredAssessment,
-  TriageResult,
   GateRunner,
   GateResolverFn,
   CharterCheckerFn,
@@ -104,12 +100,12 @@ export async function executeApprovedIssues(
   opts: {
     skipGates: boolean;
     gateRunner: GateRunner;
-    gateResolver: GateResolverFn;
+    gates: GateDefinition[];
     ghRunner: CommandRunner;
     onProgress: (stage: string, message: string) => void;
   },
 ): Promise<ExecutionOutcome[]> {
-  const { skipGates, gateRunner, gateResolver, ghRunner, onProgress } = opts;
+  const { skipGates, gateRunner, gates, ghRunner, onProgress } = opts;
   const executed: ExecutionOutcome[] = [];
 
   const approvedIssues = issues
@@ -148,7 +144,7 @@ export async function executeApprovedIssues(
         {
           skipGates,
           gateRunner,
-          gateResolver,
+          gates,
           auditDir,
           name,
           onProgress,
@@ -309,6 +305,24 @@ export async function githubIterate(
     onProgress("charter", "Charter check passed.");
   }
 
+  // --- Preflight gate validation ---
+  let preflightGates: GateDefinition[] = [];
+  if (!skipGates) {
+    onProgress("preflight", "Resolving quality gates...");
+    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
+
+    if (preflightGates.length > 0) {
+      onProgress("preflight", "Running preflight gate check on unmodified codebase...");
+      const preflightResult = await gateRunner(preflightGates, folder, config.gateTimeout);
+
+      if (!preflightResult.requiredPassed) {
+        onProgress("preflight", "Preflight failed: required gates do not pass on unmodified codebase.");
+        throw new Error("Preflight failed: required gates do not pass on unmodified codebase");
+      }
+      onProgress("preflight", "Preflight passed.");
+    }
+  }
+
   // --- Ensure hone label exists ---
   await ensureHoneLabel(folder, ghRunner);
 
@@ -328,7 +342,7 @@ export async function githubIterate(
     folder,
     config,
     claude,
-    { skipGates, gateRunner, gateResolver, ghRunner, onProgress },
+    { skipGates, gateRunner, gates: preflightGates, ghRunner, onProgress },
   );
 
   // --- Phase 3: Propose new improvements ---

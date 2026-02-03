@@ -84,12 +84,13 @@ written by hand), skip derive and go straight to iterating.
 Each `hone iterate` invocation runs this pipeline:
 
 ```
-Charter Check → Assess → Name → Triage → Plan → Execute → Verify
+Charter Check → Preflight → Assess → Name → Triage → Plan → Execute → Verify
 ```
 
 | Stage | What happens | Model | Access |
 |-------|-------------|-------|--------|
 | **Charter Check** | Verifies the project has intent documentation | none (heuristic) | read-only |
+| **Preflight** | Resolves gates, runs them against unmodified codebase — fails fast if broken | none (subprocess) | — |
 | **Assess** | Identifies the most violated principle, produces a severity rating | opus | read-only |
 | **Name** | Generates a kebab-case filename for audit records | haiku | read-only |
 | **Triage** | Filters out low-severity and busy-work proposals | haiku | read-only |
@@ -107,6 +108,16 @@ field in your package manager config. If nothing meets the minimum length
 threshold (default: 100 characters), hone stops with guidance on what to add.
 
 Skip with `--skip-charter`. Adjust the threshold with `--min-charter-length`.
+
+### Preflight
+
+After the charter check but before any LLM work, hone resolves quality gates and
+runs them against the unmodified codebase. If required gates fail before any
+changes are made, the gates themselves are broken (missing tools, wrong paths,
+pre-existing failures) — there's no point sending an agent to fix environment
+problems it can't fix.
+
+Preflight is skipped when `--skip-gates` is set or when no gates are resolved.
 
 ### Triage
 

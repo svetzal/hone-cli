@@ -12,6 +12,7 @@ import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import type {
   CommandRunner,
+  GateDefinition,
   GatesRunResult,
   HoneIssue,
 } from "./types.ts";
@@ -276,18 +277,27 @@ describe("githubIterate", () => {
       ],
     });
 
-    const failingGateRunner = async (): Promise<GatesRunResult> => ({
-      allPassed: false,
-      requiredPassed: false,
-      results: [{
-        name: "test",
-        command: "npm test",
-        passed: false,
-        required: true,
-        output: "FAIL: test error",
-        exitCode: 1,
-      }],
-    });
+    let gateRunCallCount = 0;
+    const gateRunner = async (): Promise<GatesRunResult> => {
+      gateRunCallCount++;
+      if (gateRunCallCount === 1) {
+        // Preflight — pass
+        return { allPassed: true, requiredPassed: true, results: [] };
+      }
+      // Post-execute verify — fail
+      return {
+        allPassed: false,
+        requiredPassed: false,
+        results: [{
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output: "FAIL: test error",
+          exitCode: 1,
+        }],
+      };
+    };
 
     const config = getDefaultConfig();
     config.maxRetries = 0; // Don't retry
@@ -303,7 +313,7 @@ describe("githubIterate", () => {
           skipTriage: true,
           skipCharter: true,
           ghRunner: runner,
-          gateRunner: failingGateRunner,
+          gateRunner,
           gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
           onProgress: () => {},
         },
@@ -386,6 +396,56 @@ describe("githubIterate", () => {
       expect(result.proposed).toHaveLength(3);
       expect(result.proposed).toEqual([50, 51, 52]);
       expect(createdIssues).toHaveLength(3);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("preflight fails → throws error before executing", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
+    const claudeCalls: string[][] = [];
+    const mockClaude = createIterateMock(
+      { assess: "x", name: "x", plan: "x", execute: "x" },
+      { onCall: (args) => claudeCalls.push(args) },
+    );
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const failingGateRunner = async (): Promise<GatesRunResult> => ({
+      allPassed: false,
+      requiredPassed: false,
+      results: [{
+        name: "test",
+        command: "npm test",
+        passed: false,
+        required: true,
+        output: "FAIL: compilation error",
+        exitCode: 1,
+      }],
+    });
+
+    try {
+      await expect(
+        githubIterate(
+          {
+            agent: "test-agent",
+            folder: dir,
+            config: getDefaultConfig(),
+            proposals: 1,
+            skipGates: false,
+            skipTriage: true,
+            skipCharter: true,
+            ghRunner: runner,
+            gateRunner: failingGateRunner,
+            gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+            onProgress: () => {},
+          },
+          mockClaude,
+        ),
+      ).rejects.toThrow("Preflight failed");
+
+      // No Claude calls should have been made
+      expect(claudeCalls.length).toBe(0);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -539,7 +599,7 @@ describe("executeApprovedIssues", () => {
         {
           skipGates: true,
           gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-          gateResolver: emptyGateResolver,
+          gates: [],
           ghRunner: runner,
           onProgress: () => {},
         },
@@ -608,7 +668,7 @@ describe("executeApprovedIssues", () => {
         {
           skipGates: false,
           gateRunner: failingGateRunner,
-          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+          gates: [{ name: "test", command: "npm test", required: true }],
           ghRunner: runner,
           onProgress: () => {},
         },
@@ -651,7 +711,7 @@ describe("executeApprovedIssues", () => {
         {
           skipGates: true,
           gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-          gateResolver: emptyGateResolver,
+          gates: [],
           ghRunner: runner,
           onProgress: () => {},
         },

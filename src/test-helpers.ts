@@ -1,4 +1,4 @@
-import type { ClaudeInvoker, CharterCheckResult, StructuredAssessment, TriageResult, GateDefinition } from "./types.ts";
+import type { ClaudeInvoker, CharterCheckResult, StructuredAssessment, TriageResult, GateDefinition, GatesRunResult } from "./types.ts";
 
 /**
  * Extract the prompt string from a Claude CLI args array.
@@ -151,3 +151,32 @@ export const rejectingTriageRunner = async (): Promise<TriageResult> => ({
   changeType: "cosmetic",
   busyWork: true,
 });
+
+/**
+ * Creates a gate runner that passes on the first call (preflight) and
+ * delegates to a provided sequence for subsequent calls (post-execute verify).
+ *
+ * @param postPreflightResults - Array of results to return for calls after preflight.
+ *   Cycles through the array in order; the last entry repeats for any extra calls.
+ */
+export function createPreflightAwareGateRunner(
+  postPreflightResults: GatesRunResult[],
+): { runner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>; callCount: () => number } {
+  let calls = 0;
+
+  const runner = async (): Promise<GatesRunResult> => {
+    const idx = calls;
+    calls++;
+
+    if (idx === 0) {
+      // Preflight call — always passes
+      return { allPassed: true, requiredPassed: true, results: [] };
+    }
+
+    // Post-preflight: use provided results, clamping to last entry
+    const postIdx = Math.min(idx - 1, postPreflightResults.length - 1);
+    return postPreflightResults[postIdx]!;
+  };
+
+  return { runner, callCount: () => calls };
+}

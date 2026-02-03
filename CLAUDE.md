@@ -26,6 +26,7 @@ Identifies and fixes the most violated engineering principle:
 | Stage | Purpose | Model | Tools | Output |
 |-------|---------|-------|-------|--------|
 | **Charter Check** | Verify project has intent documentation | — | Read-only | pass/fail |
+| **Preflight** | Resolve gates, run against unmodified codebase — fail fast if broken | — | — | pass/fail |
 | **Assess** | Evaluate project against agent's principles, identify most violated | opus | Read-only | `<name>.md` |
 | **Name** | Generate kebab-case filename summarizing the issue | haiku | Read-only | filename string |
 | **Triage** | Filter low-severity and busy-work proposals | haiku | Read-only | pass/reject |

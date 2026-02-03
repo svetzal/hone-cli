@@ -149,7 +149,7 @@ export async function runExecuteWithVerify(
   opts: {
     skipGates: boolean;
     gateRunner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
-    gateResolver: (projectDir: string, agentName: string, model: string, readOnlyTools: string, claude: ClaudeInvoker) => Promise<GateDefinition[]>;
+    gates: GateDefinition[];
     auditDir: string;
     name: string;
     onProgress: (stage: string, message: string) => void;
@@ -160,7 +160,7 @@ export async function runExecuteWithVerify(
   retries: number;
   success: boolean;
 }> {
-  const { skipGates, gateRunner, gateResolver, auditDir, name, onProgress } = opts;
+  const { skipGates, gateRunner, gates, auditDir, name, onProgress } = opts;
 
   // Execute
   onProgress("execute", "Executing plan...");
@@ -189,9 +189,6 @@ export async function runExecuteWithVerify(
   let retries = 0;
 
   if (!skipGates) {
-    onProgress("verify", "Resolving quality gates...");
-    const gates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
-
     if (gates.length === 0) {
       onProgress("verify", "No quality gates found.");
     }
@@ -283,6 +280,36 @@ export async function iterate(
     onProgress("charter", "Charter check passed.");
   }
 
+  // --- Preflight gate validation ---
+  let preflightGates: GateDefinition[] = [];
+  if (!skipGates) {
+    onProgress("preflight", "Resolving quality gates...");
+    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
+
+    if (preflightGates.length > 0) {
+      onProgress("preflight", "Running preflight gate check on unmodified codebase...");
+      const preflightResult = await gateRunner(preflightGates, folder, config.gateTimeout);
+
+      if (!preflightResult.requiredPassed) {
+        onProgress("preflight", "Preflight failed: required gates do not pass on unmodified codebase.");
+        return {
+          name: "",
+          assessment: "",
+          plan: "",
+          execution: "",
+          gatesResult: preflightResult,
+          retries: 0,
+          success: false,
+          structuredAssessment: null,
+          triageResult: null,
+          charterCheck: charterCheckResult,
+          skippedReason: "Preflight failed: required gates do not pass on unmodified codebase",
+        };
+      }
+      onProgress("preflight", "Preflight passed.");
+    }
+  }
+
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
   // --- Stage 1: Assess ---
@@ -340,7 +367,7 @@ export async function iterate(
   const execResult = await runExecuteWithVerify(agent, folder, assessment, plan, config, claude, {
     skipGates,
     gateRunner,
-    gateResolver,
+    gates: preflightGates,
     auditDir,
     name,
     onProgress,
