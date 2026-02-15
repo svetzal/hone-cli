@@ -82,6 +82,23 @@ describe("listAgents", () => {
     }
   });
 
+  it("should deduplicate, preferring .agent.md over .md", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
+    try {
+      await writeFile(join(tempDir, "foo.agent.md"), "# Foo Agent");
+      await writeFile(join(tempDir, "foo.md"), "# Foo Plain");
+      await writeFile(join(tempDir, "bar.md"), "# Bar Agent");
+
+      const agents = await listAgents(tempDir);
+
+      expect(agents).toHaveLength(2);
+      expect(agents[0]).toEqual({ name: "bar", file: "bar.md" });
+      expect(agents[1]).toEqual({ name: "foo", file: "foo.agent.md" });
+    } finally {
+      await rm(tempDir, { recursive: true });
+    }
+  });
+
   it("should ignore files without .md or .agent.md extension", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {

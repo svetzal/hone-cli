@@ -1,4 +1,4 @@
-import { resolve } from "path";
+import { resolve, join } from "path";
 import { loadConfig } from "../config.ts";
 import { agentExists } from "../agents.ts";
 import { iterate } from "../iterate.ts";
@@ -46,13 +46,14 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     process.exit(1);
   }
 
-  if (!(await agentExists(agent))) {
-    console.error(`Agent '${agent}' not found in ~/.claude/agents/`);
+  const resolvedFolder = resolve(folder);
+  const localAgentsDir = join(resolvedFolder, ".claude", "agents");
+
+  if (!(await agentExists(agent)) && !(await agentExists(agent, localAgentsDir))) {
+    console.error(`Agent '${agent}' not found in ~/.claude/agents/ or ${localAgentsDir}/`);
     console.error("Run 'hone list-agents' to see available agents.");
     process.exit(1);
   }
-
-  const resolvedFolder = resolve(folder);
 
   const baseConfig = await loadConfig();
   const config = applyIterateFlags(baseConfig, parsed.flags);

@@ -23,16 +23,19 @@ export async function listAgents(agentsDir?: string): Promise<AgentInfo[]> {
   const dir = agentsDir ?? AGENTS_DIR;
   try {
     const files = await readdir(dir);
-    const agents: AgentInfo[] = [];
+    const agentMap = new Map<string, AgentInfo>();
 
     for (const file of files) {
       const name = agentNameFromFile(file);
       if (name) {
-        agents.push({ name, file });
+        const existing = agentMap.get(name);
+        if (!existing || file.endsWith(".agent.md")) {
+          agentMap.set(name, { name, file });
+        }
       }
     }
 
-    return agents.sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(agentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   } catch {
     return [];
   }
