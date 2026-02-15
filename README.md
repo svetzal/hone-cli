@@ -70,10 +70,10 @@ hone gates /path/to/project
 hone iterate <agent-name> /path/to/project
 ```
 
-`hone derive` examines your directory structure, package manager files, CI
-configuration, and linter/formatter configs, then generates an agent with
-principles and QA checkpoints appropriate for your stack, plus a
-`.hone-gates.json` file.
+`hone derive` explores your project using Claude's tools (Read, Glob, Grep) to
+examine source code, architecture, conventions, and tooling, then generates an
+agent with principles, QA checkpoints, and coding guidelines derived from your
+actual codebase, plus a `.hone-gates.json` file.
 
 If you already have an agent (from
 [svetzal/guidelines](https://github.com/svetzal/guidelines/tree/main/agents) or
@@ -262,7 +262,7 @@ Prints the active configuration (defaults merged with `~/.config/hone/config.jso
 Gates are resolved in priority order:
 
 1. **`.hone-gates.json`** in the project root (version-controlled, no Claude call)
-2. **Agent extraction** via Claude (haiku) from the agent's QA checkpoints
+2. **Agent extraction** via Claude (sonnet) from the agent's QA checkpoints
 3. **Empty** — no gates found, verification skipped
 
 The recommended workflow: run `hone derive .` on a new project to get both an
@@ -296,7 +296,7 @@ Defaults in `~/.config/hone/config.json` (all fields optional):
     "name": "haiku",
     "plan": "opus",
     "execute": "sonnet",
-    "gates": "haiku",
+    "gates": "sonnet",
     "derive": "opus",
     "triage": "haiku"
   },

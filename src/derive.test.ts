@@ -22,29 +22,27 @@ describe("gatherContext", () => {
     }
   });
 
-  test("reads package files", async () => {
+  test("detects package files", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-derive-"));
     try {
       await writeFile(join(dir, "package.json"), '{"name":"test","scripts":{"test":"bun test"}}');
 
       const ctx = await gatherContext(dir);
 
-      expect(ctx.packageFiles["package.json"]).toBeDefined();
-      expect(ctx.packageFiles["package.json"]).toContain("bun test");
+      expect(ctx.packageFiles).toContain("package.json");
     } finally {
       await rm(dir, { recursive: true });
     }
   });
 
-  test("reads tool config files", async () => {
+  test("detects tool config files", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-derive-"));
     try {
       await writeFile(join(dir, "tsconfig.json"), '{"compilerOptions":{}}');
 
       const ctx = await gatherContext(dir);
 
-      expect(ctx.toolConfigs["tsconfig.json"]).toBeDefined();
-      expect(ctx.toolConfigs["tsconfig.json"]).toContain("compilerOptions");
+      expect(ctx.toolConfigs).toContain("tsconfig.json");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -75,10 +73,10 @@ describe("gatherContext", () => {
       const ctx = await gatherContext(dir);
 
       expect(ctx.directoryTree).toBe("");
-      expect(Object.keys(ctx.packageFiles)).toEqual([]);
-      expect(Object.keys(ctx.ciConfigs)).toEqual([]);
-      expect(Object.keys(ctx.toolConfigs)).toEqual([]);
-      expect(Object.keys(ctx.shellScripts)).toEqual([]);
+      expect(ctx.packageFiles).toEqual([]);
+      expect(ctx.ciConfigs).toEqual([]);
+      expect(ctx.toolConfigs).toEqual([]);
+      expect(ctx.shellScripts).toEqual([]);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -157,7 +155,7 @@ description: Test agent
     }
   });
 
-  test("prompt includes project context", async () => {
+  test("prompt includes exploration instructions and file hints", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-derive-"));
     try {
       await writeFile(join(dir, "package.json"), '{"name":"my-app"}');
@@ -172,7 +170,7 @@ description: Test agent
         {
           onCall: (args) => {
             const prompt = extractPrompt(args);
-            if (prompt.includes("inspecting a software project")) {
+            if (prompt.includes("creating a custom craftsperson agent")) {
               capturedPrompt = prompt;
             }
           },
@@ -181,10 +179,18 @@ description: Test agent
 
       await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
 
-      expect(capturedPrompt).toContain("my-app");
-      expect(capturedPrompt).toContain("strict");
-      expect(capturedPrompt).toContain("Package/Build Files");
-      expect(capturedPrompt).toContain("Tool Configurations");
+      // Should contain the project location
+      expect(capturedPrompt).toContain(dir);
+      // Should contain tool usage instructions
+      expect(capturedPrompt).toContain("Read");
+      expect(capturedPrompt).toContain("Glob");
+      expect(capturedPrompt).toContain("Grep");
+      // Should contain file names as hints
+      expect(capturedPrompt).toContain("package.json");
+      expect(capturedPrompt).toContain("tsconfig.json");
+      // Should NOT contain file contents (exploration-based, not context-stuffed)
+      expect(capturedPrompt).not.toContain("my-app");
+      expect(capturedPrompt).not.toContain("strict");
     } finally {
       await rm(dir, { recursive: true });
     }

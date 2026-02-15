@@ -5,6 +5,7 @@ import { resolveGates } from "./resolve-gates.ts";
 import { checkCharter } from "./charter.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriage } from "./triage.ts";
+import { runPreamble } from "./preamble.ts";
 import type {
   HoneConfig,
   IterationResult,
@@ -253,62 +254,38 @@ export async function iterate(
     onProgress,
   } = opts;
 
-  // --- Charter check ---
-  let charterCheckResult: CharterCheckResult | null = null;
-  if (!skipCharter) {
-    onProgress("charter", "Checking project charter clarity...");
-    charterCheckResult = await charterChecker(folder, config.minCharterLength);
-    if (!charterCheckResult.passed) {
-      onProgress("charter", "Charter clarity insufficient.");
-      for (const g of charterCheckResult.guidance) {
-        onProgress("charter", `  → ${g}`);
-      }
-      return {
-        name: "",
-        assessment: "",
-        plan: "",
-        execution: "",
-        gatesResult: null,
-        retries: 0,
-        success: false,
-        structuredAssessment: null,
-        triageResult: null,
-        charterCheck: charterCheckResult,
-        skippedReason: "Charter clarity insufficient",
-      };
-    }
-    onProgress("charter", "Charter check passed.");
+  // --- Run preamble (charter check + preflight gate validation) ---
+  const preambleResult = await runPreamble({
+    folder,
+    agent,
+    config,
+    skipCharter,
+    skipGates,
+    gateResolver,
+    gateRunner,
+    charterChecker,
+    claude,
+    onProgress,
+  });
+
+  if (!preambleResult.passed) {
+    return {
+      name: "",
+      assessment: "",
+      plan: "",
+      execution: "",
+      gatesResult: preambleResult.gatesResult ?? null,
+      retries: 0,
+      success: false,
+      structuredAssessment: null,
+      triageResult: null,
+      charterCheck: preambleResult.charterCheck,
+      skippedReason: preambleResult.failureReason,
+    };
   }
 
-  // --- Preflight gate validation ---
-  let preflightGates: GateDefinition[] = [];
-  if (!skipGates) {
-    onProgress("preflight", "Resolving quality gates...");
-    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
-
-    if (preflightGates.length > 0) {
-      onProgress("preflight", "Running preflight gate check on unmodified codebase...");
-      const preflightResult = await gateRunner(preflightGates, folder, config.gateTimeout);
-
-      if (!preflightResult.requiredPassed) {
-        onProgress("preflight", "Preflight failed: required gates do not pass on unmodified codebase.");
-        return {
-          name: "",
-          assessment: "",
-          plan: "",
-          execution: "",
-          gatesResult: preflightResult,
-          retries: 0,
-          success: false,
-          structuredAssessment: null,
-          triageResult: null,
-          charterCheck: charterCheckResult,
-          skippedReason: "Preflight failed: required gates do not pass on unmodified codebase",
-        };
-      }
-      onProgress("preflight", "Preflight passed.");
-    }
-  }
+  const charterCheckResult = preambleResult.charterCheck;
+  const preflightGates = preambleResult.gates;
 
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 

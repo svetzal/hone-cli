@@ -4,6 +4,7 @@ import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriageDefault } from "./triage.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
+import { runPreamble } from "./preamble.ts";
 import {
   runAssessStage,
   runNameStage,
@@ -291,37 +292,25 @@ export async function githubIterate(
     triageRunner = runTriageDefault,
   } = opts;
 
-  // --- Charter check ---
-  if (!skipCharter) {
-    onProgress("charter", "Checking project charter clarity...");
-    const charterResult = await charterChecker(folder, config.minCharterLength);
-    if (!charterResult.passed) {
-      onProgress("charter", "Charter clarity insufficient. Cannot proceed in GitHub mode.");
-      for (const g of charterResult.guidance) {
-        onProgress("charter", `  → ${g}`);
-      }
-      throw new Error("Charter clarity insufficient");
-    }
-    onProgress("charter", "Charter check passed.");
+  // --- Run preamble (charter check + preflight gate validation) ---
+  const preambleResult = await runPreamble({
+    folder,
+    agent,
+    config,
+    skipCharter,
+    skipGates,
+    gateResolver,
+    gateRunner,
+    charterChecker,
+    claude,
+    onProgress,
+  });
+
+  if (!preambleResult.passed) {
+    throw new Error(preambleResult.failureReason);
   }
 
-  // --- Preflight gate validation ---
-  let preflightGates: GateDefinition[] = [];
-  if (!skipGates) {
-    onProgress("preflight", "Resolving quality gates...");
-    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
-
-    if (preflightGates.length > 0) {
-      onProgress("preflight", "Running preflight gate check on unmodified codebase...");
-      const preflightResult = await gateRunner(preflightGates, folder, config.gateTimeout);
-
-      if (!preflightResult.requiredPassed) {
-        onProgress("preflight", "Preflight failed: required gates do not pass on unmodified codebase.");
-        throw new Error("Preflight failed: required gates do not pass on unmodified codebase");
-      }
-      onProgress("preflight", "Preflight passed.");
-    }
-  }
+  const preflightGates = preambleResult.gates;
 
   // --- Ensure hone label exists ---
   await ensureHoneLabel(folder, ghRunner);
