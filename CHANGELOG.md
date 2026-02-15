@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-15
+
+### Added
+
+- **`hone maintain` command** — proactive dependency maintenance that sends
+  Claude to update project dependencies and verifies quality gates still pass.
+  Unlike `iterate`, there is no assess/triage/plan pipeline — it goes straight
+  to execution with a verify/retry loop. Requires gates to be configured.
+  `hone maintain <agent> <folder> [--max-retries N] [--execute-model M]`
+
 ## [0.5.1] - 2026-02-15
 
 ### Fixed

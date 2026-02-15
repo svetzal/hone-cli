@@ -10,7 +10,7 @@ import { mixCommand } from "./commands/mix.ts";
 import { maintainCommand } from "./commands/maintain.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "0.5.1";
+const VERSION = "0.6.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
