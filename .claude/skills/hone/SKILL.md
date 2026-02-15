@@ -280,7 +280,7 @@ Audit files live in `<project>/audit/` as markdown:
 Each `hone iterate` runs this pipeline:
 
 ```
-Charter Check → Preflight → Assess → Name → Triage → Plan → Execute → Verify
+Charter Check → Preflight → Assess → Name → Triage → Plan → Execute → Verify → Summarize
 ```
 
 | Stage | Model | Access | Skip Flag |
@@ -293,8 +293,9 @@ Charter Check → Preflight → Assess → Name → Triage → Plan → Execute 
 | Plan | opus | read-only | — |
 | Execute | sonnet | full | — |
 | Verify | none | subprocess | `--skip-gates` |
+| Summarize | haiku | read-only | — (only runs on success) |
 
-Override models with `--assess-model`, `--plan-model`, `--execute-model`.
+Override models with `--assess-model`, `--plan-model`, `--execute-model`, `--summarize-model`.
 
 ## Charter Requirement
 
@@ -324,6 +325,13 @@ hone iterate typescript-craftsperson . --json 2>/dev/null | jq .success
 hone gates . --run --json | jq '.results[] | select(.passed == false)'
 ```
 
+Successful runs include `headline` (max 72 chars, imperative, for git commit subject) and `summary` (2-5 lines, for git commit body) fields:
+
+```bash
+hone iterate agent . --json 2>/dev/null | jq -r '.headline'
+hone maintain agent . --json 2>/dev/null | jq -r '.summary'
+```
+
 ## Configuration
 
 Defaults in `~/.config/hone/config.json`:
@@ -338,7 +346,8 @@ Defaults in `~/.config/hone/config.json`:
     "gates": "sonnet",
     "derive": "opus",
     "triage": "haiku",
-    "mix": "opus"
+    "mix": "opus",
+    "summarize": "haiku"
   },
   "auditDir": "audit",
   "maxRetries": 3,

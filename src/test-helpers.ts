@@ -19,6 +19,7 @@ export interface IterateStageResponses {
   plan: string;
   execute: string;
   triage?: string;
+  summarize?: string;
 }
 
 /**
@@ -40,6 +41,7 @@ export function createIterateMock(
     if (prompt.startsWith("Output ONLY")) return responses.name;
     if (prompt.startsWith("You are a skeptical")) return responses.triage ?? "";
     if (prompt.startsWith("Based on")) return responses.plan;
+    if (prompt.startsWith("Generate a headline")) return responses.summarize ?? "";
     if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution")) {
       return responses.execute;
     }
@@ -188,17 +190,26 @@ export function createMixMock(
   };
 }
 
+export interface MaintainStageResponses {
+  execute: string;
+  summarize?: string;
+}
+
 /**
  * Creates a mock ClaudeInvoker for the maintain workflow.
- * Always returns the same response regardless of prompt content.
+ * Accepts a plain string (backward-compat: always returns it) or
+ * a MaintainStageResponses object for prompt-based dispatching.
  */
 export function createMaintainMock(
-  response: string,
+  response: string | MaintainStageResponses,
   opts?: { onCall?: (args: string[]) => void },
 ): ClaudeInvoker {
   return async (args) => {
     opts?.onCall?.(args);
-    return response;
+    if (typeof response === "string") return response;
+    const prompt = extractPrompt(args);
+    if (prompt.startsWith("Generate a headline")) return response.summarize ?? "";
+    return response.execute;
   };
 }
 

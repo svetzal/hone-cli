@@ -2,6 +2,7 @@ import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
+import { summarize as runSummarize, buildMaintainSummarizePrompt } from "./summarize.ts";
 import type {
   HoneConfig,
   MaintainResult,
@@ -103,6 +104,8 @@ export async function maintain(
       gatesResult: null,
       retries: 0,
       success: false,
+      headline: null,
+      summary: null,
     };
   }
 
@@ -166,5 +169,34 @@ export async function maintain(
   }
 
   const success = gatesResult?.requiredPassed ?? false;
-  return { name, execution, gatesResult, retries, success };
+
+  // Summarize (only on success)
+  let headline: string | null = null;
+  let summary: string | null = null;
+
+  if (success) {
+    try {
+      onProgress("summarize", "Generating headline and summary...");
+      const summarizePrompt = buildMaintainSummarizePrompt({
+        name,
+        execution,
+        retries,
+        gatesResult,
+      });
+      const summarizeResult = await runSummarize(
+        summarizePrompt,
+        config.models.summarize,
+        config.readOnlyTools,
+        claude,
+      );
+      if (summarizeResult) {
+        headline = summarizeResult.headline;
+        summary = summarizeResult.summary;
+      }
+    } catch {
+      // Summarize is cosmetic — never block the pipeline
+    }
+  }
+
+  return { name, execution, gatesResult, retries, success, headline, summary };
 }

@@ -97,6 +97,7 @@ Charter Check → Preflight → Assess → Name → Triage → Plan → Execute 
 | **Plan** | Creates a step-by-step correction plan | opus | read-only |
 | **Execute** | Applies the plan | sonnet | full |
 | **Verify** | Runs quality gates; retries on failure | none (subprocess) | — |
+| **Summarize** | Generates headline + summary for commit messages (on success only) | haiku | read-only |
 
 Execute and Verify repeat up to `--max-retries` times (default: 3).
 
@@ -203,6 +204,7 @@ hone iterate cpp-qt-craftsperson . --mode github --proposals 3
 | `--assess-model <m>` | opus | Override the assessment model |
 | `--plan-model <m>` | opus | Override the planning model |
 | `--execute-model <m>` | sonnet | Override the execution model |
+| `--summarize-model <m>` | haiku | Override the summarize model |
 
 Each run produces audit files in `<folder>/audit/`:
 
@@ -298,7 +300,8 @@ Defaults in `~/.config/hone/config.json` (all fields optional):
     "execute": "sonnet",
     "gates": "sonnet",
     "derive": "opus",
-    "triage": "haiku"
+    "triage": "haiku",
+    "summarize": "haiku"
   },
   "auditDir": "audit",
   "readOnlyTools": "Read Glob Grep WebFetch WebSearch",
@@ -342,8 +345,9 @@ hone gates . --run --json | jq '.results[] | select(.passed == false)'
 ```
 
 Local mode output includes `structuredAssessment`, `triageResult`,
-`charterCheck`, and `skippedReason` fields alongside assessment, plan,
-execution, and gates results.
+`charterCheck`, `skippedReason`, `headline`, and `summary` fields alongside
+assessment, plan, execution, and gates results. The `headline` and `summary`
+fields are populated on successful runs for use as git commit messages.
 
 GitHub mode output includes `housekeeping` (closed issue numbers), `executed`
 (outcomes per issue), `proposed` (new issue numbers), and `skippedTriage`.

@@ -33,6 +33,7 @@ Identifies and fixes the most violated engineering principle:
 | **Plan** | Create step-by-step correction plan from assessment | opus | Read-only | `<name>-plan.md` |
 | **Execute** | Apply the plan — make actual code changes | sonnet | All | `<name>-actions.md` |
 | **Verify** | Run quality gates, loop until clean | — | — | gate results |
+| **Summarize** | Generate headline + summary for commit messages (on success only) | haiku | Read-only | `headline`, `summary` |
 
 Read-only tools: `Read Glob Grep WebFetch WebSearch`
 

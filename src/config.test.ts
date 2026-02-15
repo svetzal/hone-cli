@@ -16,6 +16,7 @@ describe("getDefaultConfig", () => {
     expect(config.models.derive).toBe("opus");
     expect(config.models.triage).toBe("haiku");
     expect(config.models.mix).toBe("opus");
+    expect(config.models.summarize).toBe("haiku");
     expect(config.auditDir).toBe("audit");
     expect(config.maxRetries).toBe(3);
     expect(config.gateTimeout).toBe(120_000);

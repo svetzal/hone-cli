@@ -6,6 +6,7 @@ import { checkCharter } from "./charter.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriage } from "./triage.ts";
 import { runPreamble } from "./preamble.ts";
+import { summarize as runSummarize, buildIterateSummarizePrompt } from "./summarize.ts";
 import type {
   HoneConfig,
   IterationResult,
@@ -281,6 +282,8 @@ export async function iterate(
       triageResult: null,
       charterCheck: preambleResult.charterCheck,
       skippedReason: preambleResult.failureReason,
+      headline: null,
+      summary: null,
     };
   }
 
@@ -328,6 +331,8 @@ export async function iterate(
         triageResult,
         charterCheck: charterCheckResult,
         skippedReason: `Triage: ${triageResult.reason}`,
+        headline: null,
+        summary: null,
       };
     }
     onProgress("triage", "Triage accepted.");
@@ -350,6 +355,36 @@ export async function iterate(
     onProgress,
   });
 
+  // --- Stage 6: Summarize (only on success) ---
+  let headline: string | null = null;
+  let summary: string | null = null;
+
+  if (execResult.success) {
+    try {
+      onProgress("summarize", "Generating headline and summary...");
+      const summarizePrompt = buildIterateSummarizePrompt({
+        name,
+        structuredAssessment,
+        triageResult,
+        execution: execResult.execution,
+        retries: execResult.retries,
+        gatesResult: execResult.gatesResult,
+      });
+      const summarizeResult = await runSummarize(
+        summarizePrompt,
+        config.models.summarize,
+        config.readOnlyTools,
+        claude,
+      );
+      if (summarizeResult) {
+        headline = summarizeResult.headline;
+        summary = summarizeResult.summary;
+      }
+    } catch {
+      // Summarize is cosmetic — never block the pipeline
+    }
+  }
+
   onProgress(
     "done",
     execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`,
@@ -367,5 +402,7 @@ export async function iterate(
     triageResult,
     charterCheck: charterCheckResult,
     skippedReason: null,
+    headline,
+    summary,
   };
 }

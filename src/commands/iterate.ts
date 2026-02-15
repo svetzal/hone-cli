@@ -31,6 +31,9 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
   if (typeof flags["min-charter-length"] === "string") {
     result.minCharterLength = parseInt(flags["min-charter-length"], 10);
   }
+  if (typeof flags["summarize-model"] === "string") {
+    result.models.summarize = flags["summarize-model"];
+  }
 
   return result;
 }

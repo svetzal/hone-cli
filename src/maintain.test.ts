@@ -29,19 +29,25 @@ describe("maintain", () => {
       expect(result.success).toBe(false);
       expect(result.name).toBe("");
       expect(result.gatesResult).toBeNull();
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       expect(calls.length).toBe(0);
     } finally {
       await rm(dir, { recursive: true });
     }
   });
 
-  test("execute succeeds, all gates pass on first verify → success, 1 Claude call", async () => {
+  test("execute succeeds, all gates pass on first verify → success, 2 Claude calls", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-maintain-"));
     const calls: string[][] = [];
 
-    const mockClaude = createMaintainMock("Updated all dependencies.", {
-      onCall: (args) => calls.push(args),
-    });
+    const mockClaude = createMaintainMock(
+      {
+        execute: "Updated all dependencies.",
+        summarize: '```json\n{ "headline": "Update project dependencies", "summary": "Bumped all packages to latest." }\n```',
+      },
+      { onCall: (args) => calls.push(args) },
+    );
 
     const mockGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: true,
@@ -68,18 +74,23 @@ describe("maintain", () => {
       expect(result.retries).toBe(0);
       expect(result.name).toMatch(/^maintain-\d{4}-\d{2}-\d{2}-\d{6}$/);
       expect(result.execution).toBe("Updated all dependencies.");
-      // 1 Claude call for execute (gate resolver uses standardGateResolver which doesn't call claude)
-      expect(calls.length).toBe(1);
+      expect(result.headline).toBe("Update project dependencies");
+      expect(result.summary).toBe("Bumped all packages to latest.");
+      // 2 Claude calls: execute + summarize
+      expect(calls.length).toBe(2);
     } finally {
       await rm(dir, { recursive: true });
     }
   });
 
-  test("gates fail after execute, retry fixes them → success, 2 Claude calls", async () => {
+  test("gates fail after execute, retry fixes them → success, 3 Claude calls", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-maintain-"));
     const calls: string[][] = [];
 
-    const mockClaude = createMaintainMock("Fixed.", { onCall: (args) => calls.push(args) });
+    const mockClaude = createMaintainMock(
+      { execute: "Fixed.", summarize: '{ "headline": "Fix deps", "summary": "Fixed." }' },
+      { onCall: (args) => calls.push(args) },
+    );
 
     let gateCallCount = 0;
     const mockGateRunner = async (): Promise<GatesRunResult> => {
@@ -117,8 +128,8 @@ describe("maintain", () => {
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(1);
-      // 2 Claude calls: initial execute + 1 retry
-      expect(calls.length).toBe(2);
+      // 3 Claude calls: initial execute + 1 retry + summarize
+      expect(calls.length).toBe(3);
 
       // Verify retry prompt contains failed gate output
       const retryPrompt = extractPrompt(calls[1]!);
@@ -161,6 +172,8 @@ describe("maintain", () => {
 
       expect(result.success).toBe(false);
       expect(result.retries).toBe(2);
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       // 3 Claude calls: initial execute + 2 retries
       expect(calls.length).toBe(3);
     } finally {
@@ -168,10 +181,14 @@ describe("maintain", () => {
     }
   });
 
-  test("optional gate fails only → still success", async () => {
+  test("optional gate fails only → still success, summarize called", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-maintain-"));
+    const calls: string[][] = [];
 
-    const mockClaude = createMaintainMock("Updated.");
+    const mockClaude = createMaintainMock(
+      { execute: "Updated.", summarize: '{ "headline": "Update deps", "summary": "Done." }' },
+      { onCall: (args) => calls.push(args) },
+    );
 
     const optionalGateResolver = async () => [
       { name: "security", command: "npm audit", required: false },
@@ -202,6 +219,10 @@ describe("maintain", () => {
       expect(result.retries).toBe(0);
       expect(result.gatesResult?.allPassed).toBe(false);
       expect(result.gatesResult?.requiredPassed).toBe(true);
+      expect(result.headline).toBe("Update deps");
+      expect(result.summary).toBe("Done.");
+      // 2 Claude calls: execute + summarize
+      expect(calls.length).toBe(2);
     } finally {
       await rm(dir, { recursive: true });
     }

@@ -18,6 +18,7 @@ describe("iterate", () => {
         name: "fix-srp-violation",
         plan: "Step 1: Extract class\nStep 2: Move methods",
         execute: "Extracted UserAuth class into its own module.",
+        summarize: '```json\n{ "headline": "Fix SRP violation in auth module", "summary": "Extracted UserAuth class." }\n```',
       },
       { onCall: (args) => calls.push(args) },
     );
@@ -45,9 +46,11 @@ describe("iterate", () => {
       expect(result.execution).toContain("UserAuth");
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
+      expect(result.headline).toBe("Fix SRP violation in auth module");
+      expect(result.summary).toBe("Extracted UserAuth class.");
 
-      // 4 claude calls: assess, name, plan, execute
-      expect(calls.length).toBe(4);
+      // 5 claude calls: assess, name, plan, execute, summarize
+      expect(calls.length).toBe(5);
 
       // Verify read-only stages use --allowedTools
       expect(calls[0]).toContain("--allowedTools");
@@ -55,6 +58,8 @@ describe("iterate", () => {
       expect(calls[2]).toContain("--allowedTools");
       // Execute stage does NOT have --allowedTools
       expect(calls[3]).not.toContain("--allowedTools");
+      // Summarize stage uses --allowedTools
+      expect(calls[4]).toContain("--allowedTools");
 
       // Verify audit files were created
       const auditDir = join(dir, "audit");
@@ -150,8 +155,8 @@ describe("iterate", () => {
       expect(result.retries).toBe(0);
       expect(result.gatesResult?.requiredPassed).toBe(true);
 
-      // Should have exactly 4 claude calls (no retries)
-      expect(claudeCalls.length).toBe(4);
+      // Should have exactly 5 claude calls (4 stages + summarize)
+      expect(claudeCalls.length).toBe(5);
 
       // Should have exactly 2 gate runner calls (preflight + verify)
       expect(gateRunnerCalls.length).toBe(2);
@@ -229,8 +234,8 @@ describe("iterate", () => {
       expect(result.success).toBe(true);
       expect(result.retries).toBe(1);
 
-      // Should have 5 claude calls (4 stages + 1 retry)
-      expect(claudeCalls.length).toBe(5);
+      // Should have 6 claude calls (4 stages + 1 retry + summarize)
+      expect(claudeCalls.length).toBe(6);
 
       // Should have 3 gate runner calls (preflight + verify fail + verify pass)
       expect(callCount()).toBe(3);
@@ -297,6 +302,8 @@ describe("iterate", () => {
 
       expect(result.success).toBe(false);
       expect(result.retries).toBe(2);
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
 
       // Should have 6 claude calls (4 stages + 2 retries)
       expect(claudeCalls.length).toBe(6);
@@ -362,8 +369,8 @@ describe("iterate", () => {
       expect(result.gatesResult?.allPassed).toBe(false);
       expect(result.gatesResult?.requiredPassed).toBe(true);
 
-      // Should have exactly 4 claude calls (no retry)
-      expect(claudeCalls.length).toBe(4);
+      // Should have exactly 5 claude calls (4 stages + summarize)
+      expect(claudeCalls.length).toBe(5);
 
       // Should have exactly 2 gate runner calls (preflight + verify)
       expect(gateRunCallCount).toBe(2);
@@ -426,8 +433,8 @@ describe("iterate", () => {
         mockClaude,
       );
 
-      // Capture the retry prompt (5th call)
-      expect(claudeCalls.length).toBe(5);
+      // Capture the retry prompt (5th call); 6th is summarize
+      expect(claudeCalls.length).toBe(6);
       const retryPrompt = extractPrompt(claudeCalls[4]!);
 
       // Assert prompt contains original plan
@@ -486,6 +493,8 @@ describe("iterate", () => {
       expect(result.success).toBe(false);
       expect(result.skippedReason).toContain("Preflight failed");
       expect(result.gatesResult?.requiredPassed).toBe(false);
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       expect(calls.length).toBe(0); // No Claude calls made
     } finally {
       await rm(dir, { recursive: true });
@@ -524,8 +533,8 @@ describe("iterate", () => {
       );
 
       expect(result.success).toBe(true);
-      // 4 claude calls: assess, name, plan, execute
-      expect(calls.length).toBe(4);
+      // 5 claude calls: assess, name, plan, execute, summarize
+      expect(calls.length).toBe(5);
       // Gate runner called once for verify (no preflight since no gates resolved)
       expect(gateRunnerCallCount).toBe(1);
     } finally {
@@ -560,6 +569,8 @@ describe("iterate", () => {
       expect(result.success).toBe(false);
       expect(result.skippedReason).toBe("Charter clarity insufficient");
       expect(result.charterCheck?.passed).toBe(false);
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       expect(calls.length).toBe(0); // No Claude calls made
     } finally {
       await rm(dir, { recursive: true });
@@ -600,6 +611,8 @@ describe("iterate", () => {
       expect(result.name).toBe("minor-duplication");
       expect(result.plan).toBe("");
       expect(result.execution).toBe("");
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       // Only assess + name calls (2 total)
       expect(calls.length).toBe(2);
     } finally {
@@ -638,6 +651,8 @@ describe("iterate", () => {
       expect(result.success).toBe(true);
       expect(result.skippedReason).toContain("Busy-work");
       expect(result.triageResult?.busyWork).toBe(true);
+      expect(result.headline).toBeNull();
+      expect(result.summary).toBeNull();
       // Only assess + name calls (2 total)
       expect(calls.length).toBe(2);
     } finally {
@@ -678,8 +693,8 @@ describe("iterate", () => {
       expect(result.structuredAssessment).not.toBeNull();
       expect(result.triageResult?.accepted).toBe(true);
       expect(result.charterCheck?.passed).toBe(true);
-      // 4 claude calls: assess, name, plan, execute
-      expect(calls.length).toBe(4);
+      // 5 claude calls: assess, name, plan, execute, summarize
+      expect(calls.length).toBe(5);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -750,8 +765,8 @@ describe("iterate", () => {
 
       expect(triageCalled).toBe(false);
       expect(result.triageResult).toBeNull();
-      // 4 claude calls: assess, name, plan, execute (no triage)
-      expect(calls.length).toBe(4);
+      // 5 claude calls: assess, name, plan, execute, summarize (no triage)
+      expect(calls.length).toBe(5);
     } finally {
       await rm(dir, { recursive: true });
     }

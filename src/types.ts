@@ -7,6 +7,7 @@ export interface ModelConfig {
   derive: string;
   triage: string;
   mix: string;
+  summarize: string;
 }
 
 export interface GateDefinition {
@@ -47,6 +48,8 @@ export interface IterationResult {
   triageResult: TriageResult | null;
   charterCheck: CharterCheckResult | null;
   skippedReason: string | null;
+  headline: string | null;
+  summary: string | null;
 }
 
 export type HoneMode = "local" | "github";
@@ -165,6 +168,8 @@ export interface MaintainResult {
   gatesResult: GatesRunResult | null;
   retries: number;
   success: boolean;
+  headline: string | null;
+  summary: string | null;
 }
 
 export type CommandRunner = (

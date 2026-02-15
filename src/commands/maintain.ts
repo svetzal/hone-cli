@@ -15,6 +15,9 @@ export function applyMaintainFlags(config: HoneConfig, flags: Record<string, str
   if (typeof flags["execute-model"] === "string") {
     result.models.execute = flags["execute-model"];
   }
+  if (typeof flags["summarize-model"] === "string") {
+    result.models.summarize = flags["summarize-model"];
+  }
 
   return result;
 }
