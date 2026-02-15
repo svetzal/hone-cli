@@ -59,7 +59,7 @@ export function createDeriveMock(
     opts?.onCall?.(args);
     const prompt = extractPrompt(args);
 
-    if (prompt.includes("inspecting a software project")) {
+    if (prompt.includes("creating a custom craftsperson agent")) {
       return responses.derive;
     }
     // Gate extraction call
@@ -151,6 +151,42 @@ export const rejectingTriageRunner = async (): Promise<TriageResult> => ({
   changeType: "cosmetic",
   busyWork: true,
 });
+
+/**
+ * Stage responses for the mix workflow mock.
+ * Maps each stage to the string the mock should return.
+ */
+export interface MixStageResponses {
+  principles?: string;
+  gates?: string;
+  gateExtraction?: string;
+}
+
+/**
+ * Creates a mock ClaudeInvoker for the mix workflow.
+ * Dispatches based on prompt content:
+ * - Principles prompt: contains "augmenting a LOCAL agent's engineering principles"
+ * - Gates prompt: contains "augmenting a LOCAL agent's quality assurance"
+ * - Gate extraction: fallback (same as derive pattern)
+ */
+export function createMixMock(
+  responses: MixStageResponses,
+  opts?: { onCall?: (args: string[]) => void },
+): ClaudeInvoker {
+  return async (args) => {
+    opts?.onCall?.(args);
+    const prompt = extractPrompt(args);
+
+    if (prompt.includes("augmenting a LOCAL agent's engineering principles")) {
+      return responses.principles ?? "";
+    }
+    if (prompt.includes("augmenting a LOCAL agent's quality assurance")) {
+      return responses.gates ?? "";
+    }
+    // Gate extraction call
+    return responses.gateExtraction ?? "[]";
+  };
+}
 
 /**
  * Creates a gate runner that passes on the first call (preflight) and

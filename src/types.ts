@@ -6,6 +6,7 @@ export interface ModelConfig {
   gates: string;
   derive: string;
   triage: string;
+  mix: string;
 }
 
 export interface GateDefinition {

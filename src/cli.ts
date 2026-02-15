@@ -6,6 +6,7 @@ import { gatesCommand } from "./commands/gates.ts";
 import { deriveCommand } from "./commands/derive.ts";
 import { historyCommand } from "./commands/history.ts";
 import { configCommand } from "./commands/config.ts";
+import { mixCommand } from "./commands/mix.ts";
 import type { ParsedArgs } from "./types.ts";
 
 const VERSION = "0.4.3";
@@ -50,6 +51,7 @@ Commands:
   iterate <agent> <folder>   Run one improvement cycle (assess, plan, execute, verify)
   gates [agent] [folder]     Show quality gates for a project (agent enables extraction)
   derive <folder>            Inspect project, generate agent + .hone-gates.json
+  mix <agent> <folder>       Augment a local agent with ideas from a global agent
   list-agents                Show available agents from ~/.claude/agents/
   history [folder]           Show past iterations from the audit directory
   config                     Show current configuration
@@ -72,8 +74,13 @@ Gates Options:
   --save                     Write resolved gates to .hone-gates.json in project folder
 
 Derive Options:
-  --local                    Write agent to <folder>/.claude/agents/ (instead of global)
   --global                   Write agent to ~/.claude/agents/ (default)
+  --local                    Write agent to <folder>/.claude/agents/
+
+Mix Options:
+  --from <name>              Foreign agent name (from ~/.claude/agents/)
+  --principles               Mix engineering principles / craftsmanship ideals
+  --gates                    Mix quality gates / QA checkpoints
 
 General Options:
   --json                     Output machine-readable JSON to stdout
@@ -89,6 +96,7 @@ Examples:
   hone gates ./apps/web --run
   hone gates typescript-craftsperson . --save
   hone derive .
+  hone mix local-agent . --from typescript-craftsperson --principles --gates
   hone list-agents
   hone history .
   hone config
@@ -119,6 +127,9 @@ async function main(): Promise<void> {
         break;
       case "derive":
         await deriveCommand(parsed);
+        break;
+      case "mix":
+        await mixCommand(parsed);
         break;
       case "list-agents":
         await listAgentsCommand(parsed);

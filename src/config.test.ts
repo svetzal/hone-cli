@@ -12,9 +12,10 @@ describe("getDefaultConfig", () => {
     expect(config.models.name).toBe("haiku");
     expect(config.models.plan).toBe("opus");
     expect(config.models.execute).toBe("sonnet");
-    expect(config.models.gates).toBe("haiku");
+    expect(config.models.gates).toBe("sonnet");
     expect(config.models.derive).toBe("opus");
     expect(config.models.triage).toBe("haiku");
+    expect(config.models.mix).toBe("opus");
     expect(config.auditDir).toBe("audit");
     expect(config.maxRetries).toBe(3);
     expect(config.gateTimeout).toBe(120_000);

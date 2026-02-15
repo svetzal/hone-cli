@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractPrompt, createIterateMock, createDeriveMock } from "./test-helpers.ts";
+import { extractPrompt, createIterateMock, createDeriveMock, createMixMock } from "./test-helpers.ts";
 
 describe("extractPrompt", () => {
   test("extracts prompt after -p flag", () => {
@@ -76,7 +76,7 @@ describe("createDeriveMock", () => {
       derive: "agent content",
       gateExtraction: "[]",
     });
-    const result = await mock(["-p", "You are inspecting a software project..."]);
+    const result = await mock(["-p", "You are creating a custom craftsperson agent..."]);
     expect(result).toBe("agent content");
   });
 
@@ -87,5 +87,43 @@ describe("createDeriveMock", () => {
     });
     const result = await mock(["-p", "Extract gates from..."]);
     expect(result).toBe('[{"name":"test","command":"bun test","required":true}]');
+  });
+});
+
+describe("createMixMock", () => {
+  test("dispatches principles call", async () => {
+    const mock = createMixMock({
+      principles: "principles result",
+      gates: "gates result",
+    });
+    const result = await mock(["-p", "You are augmenting a LOCAL agent's engineering principles..."]);
+    expect(result).toBe("principles result");
+  });
+
+  test("dispatches gates call", async () => {
+    const mock = createMixMock({
+      principles: "principles result",
+      gates: "gates result",
+    });
+    const result = await mock(["-p", "You are augmenting a LOCAL agent's quality assurance..."]);
+    expect(result).toBe("gates result");
+  });
+
+  test("dispatches gate extraction call", async () => {
+    const mock = createMixMock({
+      gateExtraction: '[{"name":"test","command":"bun test","required":true}]',
+    });
+    const result = await mock(["-p", "Extract quality assurance gate commands..."]);
+    expect(result).toBe('[{"name":"test","command":"bun test","required":true}]');
+  });
+
+  test("calls onCall callback with args", async () => {
+    const calls: string[][] = [];
+    const mock = createMixMock(
+      { principles: "p" },
+      { onCall: (args) => calls.push(args) },
+    );
+    await mock(["-p", "You are augmenting a LOCAL agent's engineering principles..."]);
+    expect(calls.length).toBe(1);
   });
 });

@@ -12,6 +12,7 @@ describe("applyIterateFlags", () => {
       gates: "haiku",
       derive: "opus",
       triage: "haiku",
+      mix: "opus",
     },
     auditDir: "audit",
     readOnlyTools: "Read Glob Grep WebFetch WebSearch",

@@ -2,7 +2,7 @@ import { readAgentContent } from "./agents.ts";
 import { buildClaudeArgs } from "./claude.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
-const EXTRACTION_PROMPT = `You are analyzing a Claude agent definition file. Extract all quality assurance gate commands that this agent expects to be run against a project.
+export const EXTRACTION_PROMPT = `You are analyzing a Claude agent definition file. Extract all quality assurance gate commands that this agent expects to be run against a project.
 
 Look for sections about:
 - QA checkpoints, quality gates, or verification steps
