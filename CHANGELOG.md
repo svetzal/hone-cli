@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-15
+
+### Added
+
+- **`hone mix` command** — augment a local agent with ideas from a global agent.
+  `hone mix <agent> <folder> --from <foreign-agent> --principles --gates`
+  selectively mixes engineering principles and/or quality gates. Separate Claude
+  calls per aspect prevent cross-contamination. Gate extraction distinguishes
+  parse failures from empty results to avoid clobbering existing gate files.
+- **Shared preamble module** — charter check and preflight gate validation
+  extracted into `src/preamble.ts`, shared by both iterate and github-iterate.
+
+### Changed
+
+- **Derive refactored to exploration-based** — instead of stuffing file contents
+  into the prompt, derive now gives Claude read tools (Read, Glob, Grep) and
+  file hints, producing better agents from actual code inspection.
+- **Derive defaults to global agent placement** — `hone derive` now writes the
+  agent to `~/.claude/agents/` by default so `hone iterate` can discover it
+  without `--global`. Use `--local` to write to `<folder>/.claude/agents/`.
+- **Gates model upgraded to sonnet** — gate extraction uses sonnet instead of
+  haiku for more reliable command parsing.
+
 ## [0.4.3] - 2026-02-03
 
 ### Changed
