@@ -159,6 +159,14 @@ export interface GitHubIterateResult {
   skippedTriage: number;
 }
 
+export interface MaintainResult {
+  name: string;
+  execution: string;
+  gatesResult: GatesRunResult | null;
+  retries: number;
+  success: boolean;
+}
+
 export type CommandRunner = (
   command: string,
   args: string[],

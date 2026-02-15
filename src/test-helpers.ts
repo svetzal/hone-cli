@@ -189,6 +189,20 @@ export function createMixMock(
 }
 
 /**
+ * Creates a mock ClaudeInvoker for the maintain workflow.
+ * Always returns the same response regardless of prompt content.
+ */
+export function createMaintainMock(
+  response: string,
+  opts?: { onCall?: (args: string[]) => void },
+): ClaudeInvoker {
+  return async (args) => {
+    opts?.onCall?.(args);
+    return response;
+  };
+}
+
+/**
  * Creates a gate runner that passes on the first call (preflight) and
  * delegates to a provided sequence for subsequent calls (post-execute verify).
  *

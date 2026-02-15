@@ -7,6 +7,7 @@ import { deriveCommand } from "./commands/derive.ts";
 import { historyCommand } from "./commands/history.ts";
 import { configCommand } from "./commands/config.ts";
 import { mixCommand } from "./commands/mix.ts";
+import { maintainCommand } from "./commands/maintain.ts";
 import type { ParsedArgs } from "./types.ts";
 
 const VERSION = "0.5.1";
@@ -49,6 +50,7 @@ Usage: hone <command> [options]
 
 Commands:
   iterate <agent> <folder>   Run one improvement cycle (assess, plan, execute, verify)
+  maintain <agent> <folder>  Update dependencies and verify quality gates
   gates [agent] [folder]     Show quality gates for a project (agent enables extraction)
   derive <folder>            Inspect project, generate agent + .hone-gates.json
   mix <agent> <folder>       Augment a local agent with ideas from a global agent
@@ -67,6 +69,10 @@ Iterate Options:
   --min-charter-length <n>   Minimum charter content length (default: 100)
   --assess-model <model>     Override assessment model (default: opus)
   --plan-model <model>       Override planning model (default: opus)
+  --execute-model <model>    Override execution model (default: sonnet)
+
+Maintain Options:
+  --max-retries <n>          Max gate enforcement retries (default: 3)
   --execute-model <model>    Override execution model (default: sonnet)
 
 Gates Options:
@@ -91,6 +97,7 @@ Examples:
   hone iterate typescript-craftsperson ./src
   hone iterate elixir-phoenix-craftsperson ./apps/web --skip-gates
   hone iterate python-craftsperson . --max-retries 5
+  hone maintain typescript-craftsperson ./src
   hone gates .
   hone gates typescript-craftsperson .
   hone gates ./apps/web --run
@@ -121,6 +128,9 @@ async function main(): Promise<void> {
     switch (parsed.command) {
       case "iterate":
         await iterateCommand(parsed);
+        break;
+      case "maintain":
+        await maintainCommand(parsed);
         break;
       case "gates":
         await gatesCommand(parsed);
