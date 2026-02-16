@@ -1,8 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { listIterations } from "./audit.ts";
+import { listIterations, resolveAuditDir } from "./audit.ts";
 import { join } from "path";
 import { mkdtemp, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
+
+describe("resolveAuditDir", () => {
+  test("joins relative path with project dir", () => {
+    expect(resolveAuditDir("/home/user/project", "audit")).toBe("/home/user/project/audit");
+  });
+
+  test("uses absolute path directly, ignoring project dir", () => {
+    expect(resolveAuditDir("/home/user/project", "/tmp/hone-audits")).toBe("/tmp/hone-audits");
+  });
+});
 
 describe("listIterations", () => {
   test("groups related audit files by base name", async () => {

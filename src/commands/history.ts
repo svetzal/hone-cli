@@ -1,13 +1,15 @@
-import { resolve, join } from "path";
+import { resolve } from "path";
 import { loadConfig } from "../config.ts";
-import { listIterations } from "../audit.ts";
+import { listIterations, resolveAuditDir } from "../audit.ts";
 import type { ParsedArgs } from "../types.ts";
 import { writeJson } from "../output.ts";
 
 export async function historyCommand(parsed: ParsedArgs): Promise<void> {
   const folder = resolve(parsed.positional[0] || ".");
   const config = await loadConfig();
-  const auditDir = join(folder, config.auditDir);
+  const auditDirOverride = typeof parsed.flags["audit-dir"] === "string" ? parsed.flags["audit-dir"] : undefined;
+  const effectiveAuditDir = auditDirOverride ?? config.auditDir;
+  const auditDir = resolveAuditDir(folder, effectiveAuditDir);
 
   const iterations = await listIterations(auditDir);
 

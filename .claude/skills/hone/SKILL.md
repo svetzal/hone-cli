@@ -19,6 +19,7 @@ Hone wraps an LLM in a deterministic verification loop to iteratively improve co
 | Show quality gates | `hone gates /path/to/project` |
 | Run quality gates | `hone gates /path/to/project --run` |
 | View past iterations | `hone history /path/to/project` |
+| Iterate with external audit dir | `hone iterate <agent> /path/to/project --audit-dir /tmp/audits` |
 | Show configuration | `hone config` |
 
 ## Prerequisites
@@ -206,6 +207,9 @@ hone iterate cpp-qt-craftsperson . --skip-triage
 
 # Raise the severity bar (only fix critical issues)
 hone iterate typescript-craftsperson . --severity-threshold 4
+
+# Send audit logs to an external directory (absolute path)
+hone iterate typescript-craftsperson . --audit-dir ~/hone-audits/my-project
 ```
 
 ### Running an Improvement Iteration (GitHub Mode)
@@ -240,6 +244,9 @@ hone maintain python-craftsperson . --max-retries 5
 
 # Use a stronger model for tricky updates
 hone maintain elixir-craftsperson . --execute-model opus
+
+# Send audit logs to an external directory
+hone maintain typescript-craftsperson . --audit-dir ~/hone-audits/my-project
 ```
 
 Maintain requires gates to be configured — it exits with an error if no gates are found. The agent provides coding context/principles for making good fixes during retries.
@@ -267,9 +274,12 @@ The local agent must exist in `<folder>/.claude/agents/`. The foreign agent (`--
 
 ```bash
 hone history /path/to/project
+
+# History from an external audit directory
+hone history /path/to/project --audit-dir ~/hone-audits/my-project
 ```
 
-Audit files live in `<project>/audit/` as markdown:
+Audit files live in `<project>/audit/` (or the path specified by `--audit-dir`) as markdown:
 - `<name>.md` — Assessment
 - `<name>-plan.md` — Plan
 - `<name>-actions.md` — What the agent did
@@ -296,6 +306,8 @@ Charter Check → Preflight → Assess → Name → Triage → Plan → Execute 
 | Summarize | haiku | read-only | — (only runs on success) |
 
 Override models with `--assess-model`, `--plan-model`, `--execute-model`, `--summarize-model`.
+
+Override audit directory with `--audit-dir <path>` (relative to project, or absolute). Available on `iterate`, `maintain`, and `history` commands.
 
 ## Charter Requirement
 
@@ -349,7 +361,7 @@ Defaults in `~/.config/hone/config.json`:
     "mix": "opus",
     "summarize": "haiku"
   },
-  "auditDir": "audit",
+  "auditDir": "audit",          // relative to project, or absolute path
   "maxRetries": 3,
   "gateTimeout": 120000,
   "mode": "local",

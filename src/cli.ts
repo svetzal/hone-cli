@@ -10,7 +10,7 @@ import { mixCommand } from "./commands/mix.ts";
 import { maintainCommand } from "./commands/maintain.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "0.7.0";
+const VERSION = "1.0.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -70,10 +70,12 @@ Iterate Options:
   --assess-model <model>     Override assessment model (default: opus)
   --plan-model <model>       Override planning model (default: opus)
   --execute-model <model>    Override execution model (default: sonnet)
+  --audit-dir <path>         Audit log directory (relative or absolute, default: audit)
 
 Maintain Options:
   --max-retries <n>          Max gate enforcement retries (default: 3)
   --execute-model <model>    Override execution model (default: sonnet)
+  --audit-dir <path>         Audit log directory (relative or absolute, default: audit)
 
 Gates Options:
   --run                      Actually run the gates and report results
@@ -97,6 +99,7 @@ Examples:
   hone iterate typescript-craftsperson ./src
   hone iterate elixir-phoenix-craftsperson ./apps/web --skip-gates
   hone iterate python-craftsperson . --max-retries 5
+  hone iterate python-craftsperson . --audit-dir ~/hone-audits/my-project
   hone maintain typescript-craftsperson ./src
   hone gates .
   hone gates typescript-craftsperson .
@@ -106,6 +109,7 @@ Examples:
   hone mix local-agent . --from typescript-craftsperson --principles --gates
   hone list-agents
   hone history .
+  hone history . --audit-dir ~/hone-audits/my-project
   hone config
 `);
 }

@@ -34,6 +34,9 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
   if (typeof flags["summarize-model"] === "string") {
     result.models.summarize = flags["summarize-model"];
   }
+  if (typeof flags["audit-dir"] === "string") {
+    result.auditDir = flags["audit-dir"];
+  }
 
   return result;
 }

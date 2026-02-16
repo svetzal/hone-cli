@@ -1,8 +1,12 @@
-import { join } from "path";
+import { join, isAbsolute } from "path";
 import { readdir, mkdir } from "fs/promises";
 
+export function resolveAuditDir(projectDir: string, auditDirName: string): string {
+  return isAbsolute(auditDirName) ? auditDirName : join(projectDir, auditDirName);
+}
+
 export async function ensureAuditDir(projectDir: string, auditDirName: string): Promise<string> {
-  const auditDir = join(projectDir, auditDirName);
+  const auditDir = resolveAuditDir(projectDir, auditDirName);
   await mkdir(auditDir, { recursive: true });
   return auditDir;
 }

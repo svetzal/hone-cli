@@ -205,8 +205,10 @@ hone iterate cpp-qt-craftsperson . --mode github --proposals 3
 | `--plan-model <m>` | opus | Override the planning model |
 | `--execute-model <m>` | sonnet | Override the execution model |
 | `--summarize-model <m>` | haiku | Override the summarize model |
+| `--audit-dir <path>` | audit | Audit log directory (relative or absolute) |
 
-Each run produces audit files in `<folder>/audit/`:
+Each run produces audit files in `<folder>/audit/` (or the path specified by
+`--audit-dir`):
 
 ```
 audit/
@@ -254,6 +256,10 @@ Lists agents in `~/.claude/agents/`.
 ### `hone history [folder]`
 
 Shows past iterations from the audit directory, most recent first.
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--audit-dir <path>` | audit | Audit log directory (relative or absolute) |
 
 ### `hone config`
 
@@ -303,7 +309,7 @@ Defaults in `~/.config/hone/config.json` (all fields optional):
     "triage": "haiku",
     "summarize": "haiku"
   },
-  "auditDir": "audit",
+  "auditDir": "audit",          // relative to project, or absolute path
   "readOnlyTools": "Read Glob Grep WebFetch WebSearch",
   "maxRetries": 3,
   "gateTimeout": 120000,
