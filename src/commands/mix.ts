@@ -35,11 +35,14 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const localAgentsDir = join(resolvedFolder, ".claude", "agents");
   const globalAgentsDir = join(homedir(), ".claude", "agents");
 
-  const localContent = await readAgentContent(agentName, localAgentsDir);
-  if (!localContent) {
+  // Resolve agent path upfront for validation and to pass to mix()
+  const localAgents = await import("../agents.ts").then((m) => m.listAgents(localAgentsDir));
+  const agentInfo = localAgents.find((a) => a.name === agentName);
+  if (!agentInfo) {
     console.error(`Error: Local agent "${agentName}" not found in ${localAgentsDir}`);
     process.exit(1);
   }
+  const agentPath = join(localAgentsDir, agentInfo.file);
 
   const foreignContent = await readAgentContent(foreignName, globalAgentsDir);
   if (!foreignContent) {
@@ -51,9 +54,10 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const aspects = [mixPrinciples && "principles", mixGates && "gates"].filter(Boolean).join(" + ");
   progress(isJson, `Mixing ${aspects} from "${foreignName}" into "${agentName}"...`);
 
+  const readFile = (p: string) => Bun.file(p).text();
   const result = await mix(
     {
-      localAgentContent: localContent,
+      agentPath,
       foreignAgentContent: foreignContent,
       mixPrinciples,
       mixGates,
@@ -62,13 +66,10 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
       readOnlyTools: config.readOnlyTools,
     },
     createClaudeInvoker(),
+    readFile,
   );
 
-  // Write updated agent back
-  const localAgents = await import("../agents.ts").then((m) => m.listAgents(localAgentsDir));
-  const agentInfo = localAgents.find((a) => a.name === agentName);
-  const agentPath = join(localAgentsDir, agentInfo!.file);
-  await Bun.write(agentPath, result.updatedAgentContent);
+  // Claude already edited the agent file directly — no write needed
   progress(isJson, `Agent updated: ${agentPath}`);
 
   // Write gates only when extraction succeeded (gates is an array, possibly empty).

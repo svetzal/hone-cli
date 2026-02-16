@@ -91,22 +91,26 @@ describe("createDeriveMock", () => {
 });
 
 describe("createMixMock", () => {
-  test("dispatches principles call", async () => {
-    const mock = createMixMock({
-      principles: "principles result",
-      gates: "gates result",
-    });
-    const result = await mock(["-p", "You are augmenting a LOCAL agent's engineering principles..."]);
-    expect(result).toBe("principles result");
+  test("dispatches principles call and triggers onEdit", async () => {
+    let edited = "";
+    const mock = createMixMock(
+      { principles: "principles result", gates: "gates result" },
+      { onEdit: (content) => { edited = content; } },
+    );
+    const result = await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
+    expect(result).toBe("");  // stdout ignored for edit stages
+    expect(edited).toBe("principles result");
   });
 
-  test("dispatches gates call", async () => {
-    const mock = createMixMock({
-      principles: "principles result",
-      gates: "gates result",
-    });
-    const result = await mock(["-p", "You are augmenting a LOCAL agent's quality assurance..."]);
-    expect(result).toBe("gates result");
+  test("dispatches gates call and triggers onEdit", async () => {
+    let edited = "";
+    const mock = createMixMock(
+      { principles: "principles result", gates: "gates result" },
+      { onEdit: (content) => { edited = content; } },
+    );
+    const result = await mock(["-p", "You are augmenting a local agent's quality assurance..."]);
+    expect(result).toBe("");  // stdout ignored for edit stages
+    expect(edited).toBe("gates result");
   });
 
   test("dispatches gate extraction call", async () => {
@@ -123,7 +127,7 @@ describe("createMixMock", () => {
       { principles: "p" },
       { onCall: (args) => calls.push(args) },
     );
-    await mock(["-p", "You are augmenting a LOCAL agent's engineering principles..."]);
+    await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
     expect(calls.length).toBe(1);
   });
 });

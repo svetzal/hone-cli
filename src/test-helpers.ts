@@ -156,7 +156,10 @@ export const rejectingTriageRunner = async (): Promise<TriageResult> => ({
 
 /**
  * Stage responses for the mix workflow mock.
- * Maps each stage to the string the mock should return.
+ *
+ * `principles` and `gates` are now the content that Claude's edit would produce
+ * on disk — the mock simulates this by calling `onEdit` with the new content
+ * so the test's FileReader sees the update.
  */
 export interface MixStageResponses {
   principles?: string;
@@ -167,25 +170,31 @@ export interface MixStageResponses {
 /**
  * Creates a mock ClaudeInvoker for the mix workflow.
  * Dispatches based on prompt content:
- * - Principles prompt: contains "augmenting a LOCAL agent's engineering principles"
- * - Gates prompt: contains "augmenting a LOCAL agent's quality assurance"
+ * - Principles prompt: contains "augmenting a local agent's engineering principles"
+ * - Gates prompt: contains "augmenting a local agent's quality assurance"
  * - Gate extraction: fallback (same as derive pattern)
+ *
+ * When `onEdit` is provided, the principles/gates stages call it to simulate
+ * Claude editing the file on disk. The test's FileReader should return
+ * whatever `onEdit` last set.
  */
 export function createMixMock(
   responses: MixStageResponses,
-  opts?: { onCall?: (args: string[]) => void },
+  opts?: { onCall?: (args: string[]) => void; onEdit?: (content: string) => void },
 ): ClaudeInvoker {
   return async (args) => {
     opts?.onCall?.(args);
     const prompt = extractPrompt(args);
 
-    if (prompt.includes("augmenting a LOCAL agent's engineering principles")) {
-      return responses.principles ?? "";
+    if (prompt.includes("augmenting a local agent's engineering principles")) {
+      opts?.onEdit?.(responses.principles ?? "");
+      return "";  // stdout ignored — Claude edits the file directly
     }
-    if (prompt.includes("augmenting a LOCAL agent's quality assurance")) {
-      return responses.gates ?? "";
+    if (prompt.includes("augmenting a local agent's quality assurance")) {
+      opts?.onEdit?.(responses.gates ?? "");
+      return "";  // stdout ignored — Claude edits the file directly
     }
-    // Gate extraction call
+    // Gate extraction call (still read-only, returns output)
     return responses.gateExtraction ?? "[]";
   };
 }
