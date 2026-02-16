@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-16
+
+### Added
+
+- **`hone derive-gates` command** — generates `.hone-gates.json` by inspecting
+  the project's actual tooling (package scripts, CI configs, tool configs,
+  Makefiles) with a single Claude call. Unlike `derive`, this skips agent
+  generation entirely. Optionally accepts an agent name for context prioritization.
+  Supports `--run` to validate gates after generation and `--derive-model` to
+  override the model.
+
 ## [1.0.0] - 2026-02-15
 
 ### Added

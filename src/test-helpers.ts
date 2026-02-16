@@ -241,3 +241,18 @@ export function createPreflightAwareGateRunner(
 
   return { runner, callCount: () => calls };
 }
+
+/**
+ * Creates a mock ClaudeInvoker for the derive-gates workflow.
+ * Single Claude call — returns the provided response when the prompt
+ * contains "discovering quality gates".
+ */
+export function createDeriveGatesMock(
+  response: string,
+  opts?: { onCall?: (args: string[]) => void },
+): ClaudeInvoker {
+  return async (args) => {
+    opts?.onCall?.(args);
+    return response;
+  };
+}

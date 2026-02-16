@@ -368,3 +368,7 @@ bun run dev -- list-agents    # Run without building
 bun run build                 # Build local executable
 bun run build:all             # Build for all platforms (macOS/Linux/Windows)
 ```
+
+## License
+
+MIT — see [LICENSE.md](LICENSE.md).

@@ -8,9 +8,10 @@ import { historyCommand } from "./commands/history.ts";
 import { configCommand } from "./commands/config.ts";
 import { mixCommand } from "./commands/mix.ts";
 import { maintainCommand } from "./commands/maintain.ts";
+import { deriveGatesCommand } from "./commands/derive-gates.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -53,6 +54,7 @@ Commands:
   maintain <agent> <folder>  Update dependencies and verify quality gates
   gates [agent] [folder]     Show quality gates for a project (agent enables extraction)
   derive <folder>            Inspect project, generate agent + .hone-gates.json
+  derive-gates [agent] <folder>  Generate .hone-gates.json from project inspection
   mix <agent> <folder>       Augment a local agent with ideas from a global agent
   list-agents                Show available agents from ~/.claude/agents/
   history [folder]           Show past iterations from the audit directory
@@ -85,6 +87,10 @@ Derive Options:
   --global                   Write agent to ~/.claude/agents/ (default)
   --local                    Write agent to <folder>/.claude/agents/
 
+Derive-Gates Options:
+  --run                      Run gates after generating
+  --derive-model <model>     Override model for project inspection
+
 Mix Options:
   --from <name>              Foreign agent name (from ~/.claude/agents/)
   --principles               Mix engineering principles / craftsmanship ideals
@@ -106,6 +112,9 @@ Examples:
   hone gates ./apps/web --run
   hone gates typescript-craftsperson . --save
   hone derive .
+  hone derive-gates .
+  hone derive-gates typescript-craftsperson .
+  hone derive-gates . --run
   hone mix local-agent . --from typescript-craftsperson --principles --gates
   hone list-agents
   hone history .
@@ -141,6 +150,9 @@ async function main(): Promise<void> {
         break;
       case "derive":
         await deriveCommand(parsed);
+        break;
+      case "derive-gates":
+        await deriveGatesCommand(parsed);
         break;
       case "mix":
         await mixCommand(parsed);
