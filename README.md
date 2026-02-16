@@ -323,7 +323,8 @@ CLI flags override config for that invocation.
 
 ## Agents
 
-Hone discovers agents from `~/.claude/agents/` (both `*.agent.md` and `*.md`).
+Hone discovers agents from `~/.claude/agents/` (`*.md`). Files using the legacy
+`*.agent.md` extension are still recognized for backward compatibility.
 It doesn't manage or modify them — your agents define the engineering principles
 that drive the assessment.
 

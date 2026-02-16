@@ -32,18 +32,18 @@ describe("agentNameFromFile", () => {
 });
 
 describe("listAgents", () => {
-  it("should list agents from .agent.md and .md files", async () => {
+  it("should list agents from .md and .agent.md files", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      await writeFile(join(tempDir, "foo.agent.md"), "# Foo Agent");
-      await writeFile(join(tempDir, "bar.md"), "# Bar Agent");
+      await writeFile(join(tempDir, "foo.md"), "# Foo Agent");
+      await writeFile(join(tempDir, "bar.agent.md"), "# Bar Agent");
       await writeFile(join(tempDir, "readme.txt"), "Not an agent");
 
       const agents = await listAgents(tempDir);
 
       expect(agents).toHaveLength(2);
-      expect(agents[0]).toEqual({ name: "bar", file: "bar.md" });
-      expect(agents[1]).toEqual({ name: "foo", file: "foo.agent.md" });
+      expect(agents[0]).toEqual({ name: "bar", file: "bar.agent.md" });
+      expect(agents[1]).toEqual({ name: "foo", file: "foo.md" });
     } finally {
       await rm(tempDir, { recursive: true });
     }
@@ -67,9 +67,9 @@ describe("listAgents", () => {
   it("should sort agents alphabetically by name", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      await writeFile(join(tempDir, "zebra.agent.md"), "# Zebra");
+      await writeFile(join(tempDir, "zebra.md"), "# Zebra");
       await writeFile(join(tempDir, "alpha.md"), "# Alpha");
-      await writeFile(join(tempDir, "midpoint.agent.md"), "# Midpoint");
+      await writeFile(join(tempDir, "midpoint.md"), "# Midpoint");
 
       const agents = await listAgents(tempDir);
 
@@ -82,7 +82,7 @@ describe("listAgents", () => {
     }
   });
 
-  it("should deduplicate, preferring .agent.md over .md", async () => {
+  it("should deduplicate, preferring .md over .agent.md", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
       await writeFile(join(tempDir, "foo.agent.md"), "# Foo Agent");
@@ -93,7 +93,7 @@ describe("listAgents", () => {
 
       expect(agents).toHaveLength(2);
       expect(agents[0]).toEqual({ name: "bar", file: "bar.md" });
-      expect(agents[1]).toEqual({ name: "foo", file: "foo.agent.md" });
+      expect(agents[1]).toEqual({ name: "foo", file: "foo.md" });
     } finally {
       await rm(tempDir, { recursive: true });
     }
@@ -102,7 +102,7 @@ describe("listAgents", () => {
   it("should ignore files without .md or .agent.md extension", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      await writeFile(join(tempDir, "valid.agent.md"), "# Valid");
+      await writeFile(join(tempDir, "valid.md"), "# Valid");
       await writeFile(join(tempDir, "script.sh"), "#!/bin/bash");
       await writeFile(join(tempDir, "notes.txt"), "Notes");
       await writeFile(join(tempDir, "config.json"), "{}");
@@ -121,7 +121,7 @@ describe("agentExists", () => {
   it("should return true when agent exists", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      await writeFile(join(tempDir, "typescript-craftsperson.agent.md"), "# TS Agent");
+      await writeFile(join(tempDir, "typescript-craftsperson.md"), "# TS Agent");
 
       const exists = await agentExists("typescript-craftsperson", tempDir);
       expect(exists).toBe(true);
@@ -170,7 +170,7 @@ describe("readAgentContent", () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
       const content = "# TypeScript Craftsperson\n\nYou are an expert...";
-      await writeFile(join(tempDir, "typescript-craftsperson.agent.md"), content);
+      await writeFile(join(tempDir, "typescript-craftsperson.md"), content);
 
       const result = await readAgentContent("typescript-craftsperson", tempDir);
       expect(result).toBe(content);

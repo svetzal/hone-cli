@@ -35,7 +35,7 @@ export async function deriveCommand(parsed: ParsedArgs): Promise<void> {
   );
 
   // Write agent file
-  const agentFilename = `${result.agentName}.agent.md`;
+  const agentFilename = `${result.agentName}.md`;
   let agentDir: string;
 
   if (isLocal) {

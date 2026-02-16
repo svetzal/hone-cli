@@ -127,7 +127,7 @@ tsconfig.json
 
 ## Agent Contract
 
-Agents live in `~/.claude/agents/*.agent.md` and must:
+Agents live in `~/.claude/agents/*.md` and must:
 - Define engineering principles for their domain
 - Include a quality assessment prompt structure
 - Specify mandatory QA checkpoints

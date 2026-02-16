@@ -29,7 +29,7 @@ export async function listAgents(agentsDir?: string): Promise<AgentInfo[]> {
       const name = agentNameFromFile(file);
       if (name) {
         const existing = agentMap.get(name);
-        if (!existing || file.endsWith(".agent.md")) {
+        if (!existing || (file.endsWith(".md") && !file.endsWith(".agent.md"))) {
           agentMap.set(name, { name, file });
         }
       }
