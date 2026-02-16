@@ -153,7 +153,7 @@ pass the changelog section content via `--notes`.
 
 ## Event Tracking
 
-Hone emits structured events to the MojilityNG event stream (`events/intake/YYYY-MM.jsonl`)
+Hone emits structured events to the Operations event stream (`~/Work/Operations/Events/intake/YYYY-MM.jsonl`)
 to enable cross-project visibility and integration with other Mojility skills.
 
 ### Event Types
@@ -173,16 +173,16 @@ Events automatically derive the `client.name` field from the project path:
 
 | Project Path | Client Code |
 |-------------|-------------|
-| `client-projects/ort/*` | `ort` |
-| `client-projects/continuouscoaching/*` | `coach` |
-| `client-projects/elevate21/*` | `elevate21` |
-| `client-projects/reaction/*` | `reaction` |
-| `internal-projects/*` | `mojility` |
-| `personal-projects/*` | `personal` |
+| `Projects/Clients/ORT/*` | `ort` |
+| `Projects/Clients/ContinuousCoaching/*` | `coach` |
+| `Projects/Clients/Elevate21/*` | `elevate21` |
+| `Projects/Clients/Reaction/*` | `reaction` |
+| `Projects/Mojility/*` | `mojility` |
+| `Projects/Personal/*` | `personal` |
 
 ### Graceful Fallback
 
-When hone-cli runs outside the MojilityNG repository (cannot find `pyproject.toml`),
+When hone-cli runs outside the Operations repository (cannot find the event stream),
 events are silently skipped with a warning to stderr. Hone continues to work normally
 but does not emit events.
 
