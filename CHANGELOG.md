@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never refreshed, causing infinite retry loops when the fix was in the gate
   config itself. Affects both `iterate` and `maintain` commands.
 
+## [1.1.3] - 2026-02-18
+
+### Changed
+
+- **Enrich retry prompts with cumulative attempt history** — retry prompts now
+  include the project folder, assessment/gate definitions, and a history of all
+  prior failed attempts so the agent can see patterns in its failures. Also
+  passes cwd to Claude subprocesses so they run in the target project directory.
+
 ## [1.1.2] - 2026-02-16
 
 ### Changed
