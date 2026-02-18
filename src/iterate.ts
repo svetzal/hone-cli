@@ -1,7 +1,7 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
-import { resolveGates } from "./resolve-gates.ts";
+import { resolveGates, loadOverrideGates } from "./resolve-gates.ts";
 import { checkCharter } from "./charter.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriage } from "./triage.ts";
@@ -235,8 +235,10 @@ export async function runExecuteWithVerify(
     }
 
     for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+      // Re-read .hone-gates.json in case the agent updated gate definitions
+      const currentGates = (await loadOverrideGates(folder)) ?? gates;
       onProgress("verify", `Running quality gates (attempt ${attempt + 1})...`);
-      gatesResult = await gateRunner(gates, folder, config.gateTimeout);
+      gatesResult = await gateRunner(currentGates, folder, config.gateTimeout);
 
       if (gatesResult.requiredPassed) {
         onProgress("verify", "All required gates passed.");

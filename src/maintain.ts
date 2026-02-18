@@ -1,7 +1,7 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
-import { resolveGates } from "./resolve-gates.ts";
+import { resolveGates, loadOverrideGates } from "./resolve-gates.ts";
 import { summarize as runSummarize, buildMaintainSummarizePrompt } from "./summarize.ts";
 import type {
   HoneConfig,
@@ -175,8 +175,10 @@ export async function maintain(
   const attempts: AttemptRecord[] = [];
 
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+    // Re-read .hone-gates.json in case the agent updated gate definitions
+    const currentGates = (await loadOverrideGates(folder)) ?? gates;
     onProgress("verify", `Running quality gates (attempt ${attempt + 1})...`);
-    gatesResult = await gateRunner(gates, folder, config.gateTimeout);
+    gatesResult = await gateRunner(currentGates, folder, config.gateTimeout);
 
     if (gatesResult.requiredPassed) {
       onProgress("verify", "All required gates passed.");
@@ -192,7 +194,7 @@ export async function maintain(
       .filter((r) => !r.passed && r.required)
       .map((r) => ({ name: r.name, output: r.output }));
 
-    const retryPrompt = buildMaintainRetryPrompt(folder, gates, failedGates, attempts);
+    const retryPrompt = buildMaintainRetryPrompt(folder, currentGates, failedGates, attempts);
     retries = attempt + 1;
 
     attempts.push({ attempt: retries, failedGates });
