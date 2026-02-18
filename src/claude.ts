@@ -31,8 +31,11 @@ export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
   return args;
 }
 
-export async function invokeClaude(args: string[]): Promise<string> {
-  const { stdout, stderr, exitCode } = await runProcess(["claude", ...args]);
+export async function invokeClaude(args: string[], cwd?: string): Promise<string> {
+  const { stdout, stderr, exitCode } = await runProcess(
+    ["claude", ...args],
+    cwd ? { cwd } : undefined,
+  );
 
   if (exitCode !== 0) {
     throw new Error(`claude exited with code ${exitCode}: ${stderr || stdout}`);
@@ -41,6 +44,7 @@ export async function invokeClaude(args: string[]): Promise<string> {
   return stdout.trim();
 }
 
-export function createClaudeInvoker(): ClaudeInvoker {
-  return invokeClaude;
+export function createClaudeInvoker(opts?: { cwd?: string }): ClaudeInvoker {
+  const cwd = opts?.cwd;
+  return (args) => invokeClaude(args, cwd);
 }

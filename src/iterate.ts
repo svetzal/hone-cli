@@ -42,24 +42,62 @@ export function sanitizeName(raw: string): string {
   return match[0]!.slice(0, 50);
 }
 
+type AttemptRecord = {
+  attempt: number;
+  failedGates: { name: string; output: string }[];
+};
+
 export function buildRetryPrompt(
+  folder: string,
   plan: string,
-  failedResults: { name: string; output: string }[],
+  assessment: string,
+  currentFailedGates: { name: string; output: string }[],
+  priorAttempts: AttemptRecord[],
 ): string {
-  const failures = failedResults
+  const sections: string[] = [
+    "## Goal",
+    "",
+    `Improve the project in ${folder}.`,
+    "",
+    "## Assessment",
+    "",
+    assessment,
+    "",
+    "## Original Plan",
+    "",
+    plan,
+  ];
+
+  for (const prior of priorAttempts) {
+    const priorFailures = prior.failedGates
+      .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
+      .join("\n\n");
+
+    sections.push(
+      "",
+      `## Attempt ${prior.attempt}`,
+      "",
+      priorFailures,
+    );
+  }
+
+  const currentFailures = currentFailedGates
     .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
     .join("\n\n");
 
-  return [
+  sections.push(
+    "",
+    "## Current Failed Gates",
+    "",
+    currentFailures,
+    "",
+    "## Task",
+    "",
     "The previous execution introduced quality gate failures that must be fixed.",
     "Fix the failures below WITHOUT regressing on the original improvement.",
-    "",
-    "## Original Plan",
-    plan,
-    "",
-    "## Failed Gates",
-    failures,
-  ].join("\n");
+  );
+
+  return sections.join("\n");
 }
 
 // --- Extracted stage functions ---
@@ -189,6 +227,7 @@ export async function runExecuteWithVerify(
   // Verify (inner loop)
   let gatesResult: GatesRunResult | null = null;
   let retries = 0;
+  const attempts: AttemptRecord[] = [];
 
   if (!skipGates) {
     if (gates.length === 0) {
@@ -213,8 +252,10 @@ export async function runExecuteWithVerify(
         .filter((r) => !r.passed && r.required)
         .map((r) => ({ name: r.name, output: r.output }));
 
-      const retryPrompt = buildRetryPrompt(plan, failedGates);
+      const retryPrompt = buildRetryPrompt(folder, plan, assessment, failedGates, attempts);
       retries = attempt + 1;
+
+      attempts.push({ attempt: retries, failedGates });
 
       onProgress("execute", `Retry ${retries}: fixing gate failures...`);
       const retryArgs = buildClaudeArgs({

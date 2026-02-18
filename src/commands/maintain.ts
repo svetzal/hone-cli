@@ -65,7 +65,7 @@ export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
       config,
       onProgress,
     },
-    createClaudeInvoker(),
+    createClaudeInvoker({ cwd: resolvedFolder }),
   );
 
   if (isJson) {

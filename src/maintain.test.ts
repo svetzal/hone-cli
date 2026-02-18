@@ -133,7 +133,7 @@ describe("maintain", () => {
 
       // Verify retry prompt contains failed gate output
       const retryPrompt = extractPrompt(calls[1]!);
-      expect(retryPrompt).toContain("## Failed Gates");
+      expect(retryPrompt).toContain("## Current Failed Gates");
       expect(retryPrompt).toContain("FAIL: type error");
     } finally {
       await rm(dir, { recursive: true });
@@ -283,21 +283,33 @@ describe("buildMaintainPrompt", () => {
 });
 
 describe("buildMaintainRetryPrompt", () => {
-  test("includes failed gate output", () => {
-    const prompt = buildMaintainRetryPrompt([
-      { name: "test", output: "FAIL: expected 1 got 2" },
-    ]);
+  const gates: GateDefinition[] = [
+    { name: "test", command: "bun test", required: true },
+  ];
 
-    expect(prompt).toContain("## Failed Gates");
+  test("includes failed gate output", () => {
+    const prompt = buildMaintainRetryPrompt(
+      "/my/project",
+      gates,
+      [{ name: "test", output: "FAIL: expected 1 got 2" }],
+      [],
+    );
+
+    expect(prompt).toContain("## Current Failed Gates");
     expect(prompt).toContain("### Gate: test");
     expect(prompt).toContain("FAIL: expected 1 got 2");
   });
 
   test("formats multiple failed gates", () => {
-    const prompt = buildMaintainRetryPrompt([
-      { name: "test", output: "test failure" },
-      { name: "lint", output: "lint failure" },
-    ]);
+    const prompt = buildMaintainRetryPrompt(
+      "/my/project",
+      gates,
+      [
+        { name: "test", output: "test failure" },
+        { name: "lint", output: "lint failure" },
+      ],
+      [],
+    );
 
     expect(prompt).toContain("### Gate: test");
     expect(prompt).toContain("test failure");
@@ -306,7 +318,43 @@ describe("buildMaintainRetryPrompt", () => {
   });
 
   test("includes instruction about not reverting", () => {
-    const prompt = buildMaintainRetryPrompt([{ name: "test", output: "fail" }]);
+    const prompt = buildMaintainRetryPrompt(
+      "/my/project",
+      gates,
+      [{ name: "test", output: "fail" }],
+      [],
+    );
     expect(prompt).toContain("without reverting the dependency updates");
+  });
+
+  test("includes goal section with folder and gate list", () => {
+    const prompt = buildMaintainRetryPrompt(
+      "/my/project",
+      gates,
+      [{ name: "test", output: "fail" }],
+      [],
+    );
+    expect(prompt).toContain("## Goal");
+    expect(prompt).toContain("/my/project");
+    expect(prompt).toContain("- test: `bun test`");
+  });
+
+  test("includes cumulative prior attempt history", () => {
+    const prompt = buildMaintainRetryPrompt(
+      "/my/project",
+      gates,
+      [{ name: "test", output: "FAIL: attempt 3 error" }],
+      [
+        { attempt: 1, failedGates: [{ name: "test", output: "FAIL: attempt 1 error" }] },
+        { attempt: 2, failedGates: [{ name: "test", output: "FAIL: attempt 2 error" }] },
+      ],
+    );
+
+    expect(prompt).toContain("## Attempt 1");
+    expect(prompt).toContain("FAIL: attempt 1 error");
+    expect(prompt).toContain("## Attempt 2");
+    expect(prompt).toContain("FAIL: attempt 2 error");
+    expect(prompt).toContain("## Current Failed Gates");
+    expect(prompt).toContain("FAIL: attempt 3 error");
   });
 });

@@ -442,7 +442,7 @@ describe("iterate", () => {
       expect(retryPrompt).toContain("Plan with specific steps");
 
       // Assert prompt contains failed gates section
-      expect(retryPrompt).toContain("## Failed Gates");
+      expect(retryPrompt).toContain("## Current Failed Gates");
       expect(retryPrompt).toContain("### Gate: test");
       expect(retryPrompt).toContain("FAIL: expected 1 got 2");
     } finally {
@@ -805,24 +805,30 @@ describe("sanitizeName", () => {
 describe("buildRetryPrompt", () => {
   test("includes original plan and failed gate output", () => {
     const prompt = buildRetryPrompt(
+      "/my/project",
       "Step 1: Fix the thing",
+      "Assessment content",
       [{ name: "test", output: "FAIL: expected 1 got 2" }],
+      [],
     );
 
     expect(prompt).toContain("## Original Plan");
     expect(prompt).toContain("Step 1: Fix the thing");
-    expect(prompt).toContain("## Failed Gates");
+    expect(prompt).toContain("## Current Failed Gates");
     expect(prompt).toContain("### Gate: test");
     expect(prompt).toContain("FAIL: expected 1 got 2");
   });
 
   test("formats multiple failed gates", () => {
     const prompt = buildRetryPrompt(
+      "/my/project",
       "Plan content",
+      "Assessment content",
       [
         { name: "test", output: "test failure" },
         { name: "lint", output: "lint failure" },
       ],
+      [],
     );
 
     expect(prompt).toContain("### Gate: test");
@@ -832,7 +838,47 @@ describe("buildRetryPrompt", () => {
   });
 
   test("includes instruction to not regress", () => {
-    const prompt = buildRetryPrompt("Plan", [{ name: "test", output: "fail" }]);
+    const prompt = buildRetryPrompt(
+      "/my/project",
+      "Plan",
+      "Assessment",
+      [{ name: "test", output: "fail" }],
+      [],
+    );
     expect(prompt).toContain("Fix the failures below WITHOUT regressing");
+  });
+
+  test("includes goal section with folder and assessment", () => {
+    const prompt = buildRetryPrompt(
+      "/my/project",
+      "Plan",
+      "Assessment content here",
+      [{ name: "test", output: "fail" }],
+      [],
+    );
+    expect(prompt).toContain("## Goal");
+    expect(prompt).toContain("/my/project");
+    expect(prompt).toContain("## Assessment");
+    expect(prompt).toContain("Assessment content here");
+  });
+
+  test("includes cumulative prior attempt history", () => {
+    const prompt = buildRetryPrompt(
+      "/my/project",
+      "Plan",
+      "Assessment",
+      [{ name: "test", output: "FAIL: attempt 3 error" }],
+      [
+        { attempt: 1, failedGates: [{ name: "test", output: "FAIL: attempt 1 error" }] },
+        { attempt: 2, failedGates: [{ name: "test", output: "FAIL: attempt 2 error" }] },
+      ],
+    );
+
+    expect(prompt).toContain("## Attempt 1");
+    expect(prompt).toContain("FAIL: attempt 1 error");
+    expect(prompt).toContain("## Attempt 2");
+    expect(prompt).toContain("FAIL: attempt 2 error");
+    expect(prompt).toContain("## Current Failed Gates");
+    expect(prompt).toContain("FAIL: attempt 3 error");
   });
 });

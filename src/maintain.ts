@@ -41,20 +41,60 @@ export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): st
   ].join("\n");
 }
 
+type AttemptRecord = {
+  attempt: number;
+  failedGates: { name: string; output: string }[];
+};
+
 export function buildMaintainRetryPrompt(
-  failedResults: { name: string; output: string }[],
+  folder: string,
+  gates: GateDefinition[],
+  currentFailedGates: { name: string; output: string }[],
+  priorAttempts: AttemptRecord[],
 ): string {
-  const failures = failedResults
+  const gateList = gates
+    .map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`)
+    .join("\n");
+
+  const sections: string[] = [
+    "## Goal",
+    "",
+    `Update the project dependencies in ${folder} to their latest compatible versions.`,
+    "",
+    "Quality gates:",
+    gateList,
+  ];
+
+  for (const prior of priorAttempts) {
+    const priorFailures = prior.failedGates
+      .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
+      .join("\n\n");
+
+    sections.push(
+      "",
+      `## Attempt ${prior.attempt}`,
+      "",
+      priorFailures,
+    );
+  }
+
+  const currentFailures = currentFailedGates
     .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
     .join("\n\n");
 
-  return [
+  sections.push(
+    "",
+    "## Current Failed Gates",
+    "",
+    currentFailures,
+    "",
+    "## Task",
+    "",
     "The dependency updates introduced quality gate failures that must be fixed.",
     "Fix the failures below without reverting the dependency updates unless absolutely necessary.",
-    "",
-    "## Failed Gates",
-    failures,
-  ].join("\n");
+  );
+
+  return sections.join("\n");
 }
 
 function formatTimestamp(): string {
@@ -132,6 +172,7 @@ export async function maintain(
   // Verify (inner loop)
   let gatesResult: GatesRunResult | null = null;
   let retries = 0;
+  const attempts: AttemptRecord[] = [];
 
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     onProgress("verify", `Running quality gates (attempt ${attempt + 1})...`);
@@ -151,8 +192,10 @@ export async function maintain(
       .filter((r) => !r.passed && r.required)
       .map((r) => ({ name: r.name, output: r.output }));
 
-    const retryPrompt = buildMaintainRetryPrompt(failedGates);
+    const retryPrompt = buildMaintainRetryPrompt(folder, gates, failedGates, attempts);
     retries = attempt + 1;
+
+    attempts.push({ attempt: retries, failedGates });
 
     onProgress("execute", `Retry ${retries}: fixing gate failures...`);
     const retryArgs = buildClaudeArgs({

@@ -93,7 +93,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
         skipCharter,
         onProgress,
       },
-      createClaudeInvoker(),
+      createClaudeInvoker({ cwd: resolvedFolder }),
     );
 
     if (isJson) {
@@ -116,7 +116,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
         skipTriage,
         onProgress,
       },
-      createClaudeInvoker(),
+      createClaudeInvoker({ cwd: resolvedFolder }),
     );
 
     if (result.skippedReason) {
