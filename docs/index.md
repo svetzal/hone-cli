@@ -7,8 +7,8 @@ hero:
   tagline: A CLI that hones your codebase one principle at a time
   actions:
     - theme: brand
-      text: The Iteration Pipeline
-      link: /concepts/iteration-pipeline
+      text: Get Started
+      link: /getting-started/installation
     - theme: alt
       text: View on GitHub
       link: https://github.com/svetzal/hone-cli
@@ -40,6 +40,9 @@ hone iterate <agent-name> /path/to/project
 
 ## Learn More
 
-- [The Iteration Pipeline](/concepts/iteration-pipeline) — how every stage works and why
-- [Project Charter](https://github.com/svetzal/hone-cli/blob/main/CHARTER.md) — design rationale and philosophy
-- [README](https://github.com/svetzal/hone-cli/blob/main/README.md) — full CLI reference, installation, and configuration
+- [Installation](/getting-started/installation) — prerequisites and platform-specific setup
+- [First Iteration](/getting-started/first-iteration) — walkthrough from derive to iterate
+- [Iteration Pipeline](/concepts/iteration-pipeline) — how every stage works and why
+- [Agents & Principles](/concepts/agents) — what agents are and how to create them
+- [Quality Gates](/concepts/quality-gates) — independent verification of every change
+- [CLI Commands](/reference/cli-commands) — all commands, flags, and examples

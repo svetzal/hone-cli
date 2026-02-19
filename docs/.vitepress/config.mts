@@ -8,21 +8,33 @@ export default defineConfig({
 
   themeConfig: {
     nav: [
-      { text: 'Guide', link: '/concepts/iteration-pipeline' },
+      { text: 'Guide', link: '/getting-started/installation' },
+      { text: 'Reference', link: '/reference/cli-commands' },
       { text: 'GitHub', link: 'https://github.com/svetzal/hone-cli' }
     ],
 
     sidebar: [
       {
-        text: 'Overview',
+        text: 'Getting Started',
         items: [
-          { text: 'Home', link: '/' }
+          { text: 'Installation', link: '/getting-started/installation' },
+          { text: 'First Iteration', link: '/getting-started/first-iteration' }
         ]
       },
       {
         text: 'Concepts',
         items: [
-          { text: 'Iteration Pipeline', link: '/concepts/iteration-pipeline' }
+          { text: 'Iteration Pipeline', link: '/concepts/iteration-pipeline' },
+          { text: 'Agents & Principles', link: '/concepts/agents' },
+          { text: 'Quality Gates', link: '/concepts/quality-gates' },
+          { text: 'GitHub Mode', link: '/concepts/github-mode' }
+        ]
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'CLI Commands', link: '/reference/cli-commands' },
+          { text: 'Configuration', link: '/reference/configuration' }
         ]
       }
     ],
