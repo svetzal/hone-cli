@@ -370,6 +370,19 @@ bun run build                 # Build local executable
 bun run build:all             # Build for all platforms (macOS/Linux/Windows)
 ```
 
+### Documentation
+
+The docs site is built with [VitePress](https://vitepress.dev/).
+
+```bash
+bun run docs:dev                  # Local preview at http://localhost:5173
+bun run docs:build                # Build to docs/.vitepress/dist/
+bun run docs:preview              # Preview the build
+```
+
+Docs deploy automatically to GitHub Pages on pushes to `main` that touch
+`docs/` or `package.json`.
+
 ## License
 
 MIT — see [LICENSE.md](LICENSE.md).
