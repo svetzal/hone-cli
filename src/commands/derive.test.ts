@@ -4,7 +4,7 @@ describe("derive command integration", () => {
   const projectRoot = import.meta.dir + "/../..";
 
   it("should exit with error when no args provided", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "derive"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "derive"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,

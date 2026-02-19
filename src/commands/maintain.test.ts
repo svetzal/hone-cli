@@ -60,7 +60,7 @@ describe("maintain command integration", () => {
   const projectRoot = import.meta.dir + "/../..";
 
   it("should exit with error when no args provided", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "maintain"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "maintain"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -73,7 +73,7 @@ describe("maintain command integration", () => {
   });
 
   it("should exit with error when agent not found", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "maintain", "nonexistent-agent", "./src"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "maintain", "nonexistent-agent", "./src"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -86,7 +86,7 @@ describe("maintain command integration", () => {
   });
 
   it("should show maintain in help output", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "--help"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "--help"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,

@@ -163,7 +163,7 @@ describe("iterate command integration", () => {
 
   it("should reject --proposals in local mode", async () => {
     const proc = Bun.spawn(
-      ["bun", "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--proposals", "3"],
+      [process.execPath, "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--proposals", "3"],
       { stdout: "pipe", stderr: "pipe", cwd: projectRoot },
     );
     const exitCode = await proc.exited;
@@ -176,7 +176,7 @@ describe("iterate command integration", () => {
   });
 
   it("should exit with error when no args provided", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "iterate"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "iterate"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -189,7 +189,7 @@ describe("iterate command integration", () => {
   });
 
   it("should exit with error when agent not found", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -202,7 +202,7 @@ describe("iterate command integration", () => {
   });
 
   it("should exit with error when agent not found with --json flag", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--json"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src", "--json"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,

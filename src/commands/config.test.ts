@@ -4,7 +4,7 @@ describe("config command integration", () => {
   const projectRoot = import.meta.dir + "/../..";
 
   it("should display current configuration", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -17,7 +17,7 @@ describe("config command integration", () => {
   });
 
   it("should show default model names", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -32,7 +32,7 @@ describe("config command integration", () => {
   });
 
   it("should display all model fields", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -52,7 +52,7 @@ describe("config command integration", () => {
   });
 
   it("should display all top-level config fields", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -72,7 +72,7 @@ describe("config command integration", () => {
   });
 
   it("should show config file path", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -85,7 +85,7 @@ describe("config command integration", () => {
   });
 
   it("should output valid JSON with --json flag", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "config", "--json"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config", "--json"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,

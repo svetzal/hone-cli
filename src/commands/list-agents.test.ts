@@ -4,7 +4,7 @@ describe("list-agents command integration", () => {
   const projectRoot = import.meta.dir + "/../..";
 
   it("should list available agents or show no agents message", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "list-agents"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "list-agents"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -19,7 +19,7 @@ describe("list-agents command integration", () => {
   });
 
   it("should output valid JSON array with --json flag", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "list-agents", "--json"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "list-agents", "--json"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,

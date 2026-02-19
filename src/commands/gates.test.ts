@@ -97,7 +97,7 @@ describe("gates command integration", () => {
   it("should show no gates message for empty directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "gates-test-"));
     try {
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -123,7 +123,7 @@ describe("gates command integration", () => {
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -152,7 +152,7 @@ describe("gates command integration", () => {
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--run"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir, "--run"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -180,7 +180,7 @@ describe("gates command integration", () => {
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--save"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir, "--save"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -199,7 +199,7 @@ describe("gates command integration", () => {
   it("should output empty JSON array when no gates with --json flag", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "gates-json-test-"));
     try {
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--json"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir, "--json"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -228,7 +228,7 @@ describe("gates command integration", () => {
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--json"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir, "--json"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -259,7 +259,7 @@ describe("gates command integration", () => {
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "gates", tempDir, "--run", "--json"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "gates", tempDir, "--run", "--json"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,

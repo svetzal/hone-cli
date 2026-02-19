@@ -9,7 +9,7 @@ describe("history command integration", () => {
   it("should show no history message for empty directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "history-test-"));
     try {
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "history", tempDir], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "history", tempDir], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -33,7 +33,7 @@ describe("history command integration", () => {
       await writeFile(join(auditDir, "fix-bug.md"), "# Assessment\n\nMock assessment");
       await writeFile(join(auditDir, "fix-bug-plan.md"), "# Plan\n\nMock plan");
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "history", tempDir], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "history", tempDir], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
@@ -50,7 +50,7 @@ describe("history command integration", () => {
   });
 
   it("should default to current directory when no folder provided", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "history"], {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "history"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: projectRoot,
@@ -70,7 +70,7 @@ describe("history command integration", () => {
       await writeFile(join(auditDir, "test-iteration.md"), "# Assessment\n\nTest");
       await writeFile(join(auditDir, "test-iteration-plan.md"), "# Plan\n\nTest");
 
-      const proc = Bun.spawn(["bun", "run", "src/cli.ts", "history", tempDir, "--json"], {
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "history", tempDir, "--json"], {
         stdout: "pipe",
         stderr: "pipe",
         cwd: projectRoot,
