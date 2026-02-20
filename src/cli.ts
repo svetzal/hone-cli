@@ -11,7 +11,7 @@ import { maintainCommand } from "./commands/maintain.ts";
 import { deriveGatesCommand } from "./commands/derive-gates.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "1.1.4";
+const VERSION = "1.1.5";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
