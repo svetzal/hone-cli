@@ -25,7 +25,10 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.4"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
