@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-20
+
+### Added
+
+- **Lockfile detection in `hone derive`** — scans for 10 lockfile types
+  (bun.lockb, uv.lock, poetry.lock, yarn.lock, etc.) and maps them to package
+  managers. Included in the derive prompt so Claude has explicit runtime/tooling
+  signals for better agent naming.
+- **Stronger agent naming convention** — derive prompt now instructs Claude to
+  use `<runtime-or-pkg-manager>-<language>-<framework>-craftsperson` pattern
+  (e.g., `bun-typescript-react-craftsperson`, `uv-python-fastapi-craftsperson`)
+  instead of generic `<language>-craftsperson`.
+- **`--name` flag for `hone derive`** — override the agent name Claude generates
+  (e.g., `hone derive . --name uv-python-qt-craftsperson`).
+- **Agent name conflict detection** — before writing, checks if an agent with
+  the same name already exists in the target directory. In JSON mode, outputs a
+  structured error. In interactive mode, presents four resolution options:
+  overwrite, expand name (haiku call for a more specific name), merge principles
+  into existing agent (via `mix()`), or abort.
+- **Existing agent names passed to derive prompt** — Claude sees which agent
+  names already exist and naturally avoids collisions.
+
 ## [1.1.5] - 2026-02-20
 
 ### Fixed

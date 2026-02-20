@@ -11,7 +11,7 @@ import { maintainCommand } from "./commands/maintain.ts";
 import { deriveGatesCommand } from "./commands/derive-gates.ts";
 import type { ParsedArgs } from "./types.ts";
 
-const VERSION = "1.1.5";
+const VERSION = "1.2.0";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -86,6 +86,7 @@ Gates Options:
 Derive Options:
   --global                   Write agent to ~/.claude/agents/ (default)
   --local                    Write agent to <folder>/.claude/agents/
+  --name <name>              Override agent name (skip Claude's naming)
 
 Derive-Gates Options:
   --run                      Run gates after generating

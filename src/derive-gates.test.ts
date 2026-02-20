@@ -13,6 +13,7 @@ describe("buildDeriveGatesPrompt", () => {
       ciConfigs: [],
       toolConfigs: ["tsconfig.json"],
       shellScripts: [],
+      lockfiles: [],
     });
 
     expect(prompt).toContain("/some/project");
@@ -30,6 +31,7 @@ describe("buildDeriveGatesPrompt", () => {
         ciConfigs: [],
         toolConfigs: [],
         shellScripts: [],
+        lockfiles: [],
       },
       "# My Agent\n\n## QA Checkpoints\n- Run bun test",
     );
@@ -46,6 +48,7 @@ describe("buildDeriveGatesPrompt", () => {
       ciConfigs: [],
       toolConfigs: [],
       shellScripts: [],
+      lockfiles: [],
     });
 
     expect(prompt).not.toContain("Agent Context");
@@ -58,6 +61,7 @@ describe("buildDeriveGatesPrompt", () => {
       ciConfigs: [".github/workflows/ci.yml"],
       toolConfigs: [],
       shellScripts: [],
+      lockfiles: [],
     });
 
     expect(prompt).toContain(".github/workflows/ci.yml");
@@ -70,6 +74,7 @@ describe("buildDeriveGatesPrompt", () => {
       ciConfigs: [],
       toolConfigs: [],
       shellScripts: ["run-tests.sh"],
+      lockfiles: [],
     });
 
     expect(prompt).toContain("run-tests.sh");

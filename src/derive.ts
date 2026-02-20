@@ -4,18 +4,25 @@ import { buildClaudeArgs } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
+export interface LockfileInfo {
+  file: string;
+  packageManager: string;
+}
+
 export interface ProjectContext {
   directoryTree: string;
   packageFiles: string[];
   ciConfigs: string[];
   toolConfigs: string[];
   shellScripts: string[];
+  lockfiles: LockfileInfo[];
 }
 
 export interface DeriveResult {
   agentContent: string;
   agentName: string;
   gates: GateDefinition[];
+  context: ProjectContext;
 }
 
 const PACKAGE_FILES = [
@@ -36,6 +43,19 @@ const CI_PATTERNS = [
   ".circleci/config.yml",
   "Jenkinsfile",
 ];
+
+const LOCKFILE_MAP: Record<string, string> = {
+  "bun.lockb": "bun",
+  "pnpm-lock.yaml": "pnpm",
+  "yarn.lock": "yarn",
+  "package-lock.json": "npm",
+  "uv.lock": "uv",
+  "poetry.lock": "poetry",
+  "Pipfile.lock": "pipenv",
+  "Cargo.lock": "cargo",
+  "go.sum": "go",
+  "Gemfile.lock": "bundler",
+};
 
 const TOOL_CONFIG_FILES = [
   ".eslintrc",
@@ -129,6 +149,16 @@ export async function gatherContext(folder: string): Promise<ProjectContext> {
     }
   }
 
+  const lockfiles: LockfileInfo[] = [];
+  for (const [file, packageManager] of Object.entries(LOCKFILE_MAP)) {
+    const f = Bun.file(join(folder, file));
+    try {
+      if (await f.exists()) lockfiles.push({ file, packageManager });
+    } catch {
+      // Not readable
+    }
+  }
+
   const shellScripts: string[] = [];
   try {
     const rootEntries = await readdir(folder, { withFileTypes: true });
@@ -141,10 +171,10 @@ export async function gatherContext(folder: string): Promise<ProjectContext> {
     // Directory not readable
   }
 
-  return { directoryTree, packageFiles, ciConfigs, toolConfigs, shellScripts };
+  return { directoryTree, packageFiles, ciConfigs, toolConfigs, shellScripts, lockfiles };
 }
 
-function buildDerivePrompt(folder: string, context: ProjectContext): string {
+export function buildDerivePrompt(folder: string, context: ProjectContext, existingAgentNames: string[] = []): string {
   const sections: string[] = [
     "You are creating a custom craftsperson agent for a software project.",
     "You have Read, Glob, and Grep tools available. Use them to explore the project",
@@ -192,6 +222,24 @@ function buildDerivePrompt(folder: string, context: ProjectContext): string {
     );
   }
 
+  if (context.lockfiles.length > 0) {
+    sections.push(
+      "",
+      "## Lockfiles Detected",
+      ...context.lockfiles.map((l) => `- ${l.file} (${l.packageManager})`),
+    );
+  }
+
+  if (existingAgentNames.length > 0) {
+    sections.push(
+      "",
+      "## Existing Agent Names (avoid collisions)",
+      "",
+      "The following agent names already exist. Choose a name that does NOT conflict with any of these:",
+      ...existingAgentNames.map((n) => `- ${n}`),
+    );
+  }
+
   sections.push(
     "",
     "## Exploration Instructions",
@@ -224,9 +272,22 @@ function buildDerivePrompt(folder: string, context: ProjectContext): string {
     "",
     "## Agent Naming Convention",
     "",
-    "The agent name MUST follow the pattern: `<primary-technology>-craftsperson`",
-    "Examples: typescript-craftsperson, python-craftsperson, elixir-phoenix-craftsperson, cpp-qt-craftsperson",
-    "Pick the name based on the project's primary technology stack. If the project uses a framework (e.g., Phoenix, Qt, React), include it.",
+    "The agent name MUST follow the pattern: `<runtime-or-pkg-manager>-<language>-<framework>-craftsperson`",
+    "Include segments that distinguish this project's toolchain:",
+    "- Include the runtime or package manager when distinctive (bun, uv, poetry, pnpm, cargo)",
+    "- Include the primary language (typescript, python, elixir, rust, cpp)",
+    "- Include the framework when present (react, fastapi, django, phoenix, qt)",
+    "- Omit segments that aren't distinctive or don't add clarity",
+    "",
+    "Examples:",
+    "- `bun-typescript-react-craftsperson` — Bun runtime, TypeScript, React framework",
+    "- `uv-python-fastapi-craftsperson` — uv package manager, Python, FastAPI",
+    "- `poetry-python-django-craftsperson` — Poetry package manager, Python, Django",
+    "- `elixir-phoenix-craftsperson` — no special runtime, Elixir with Phoenix",
+    "- `bun-typescript-craftsperson` — Bun runtime, TypeScript, no framework",
+    "- `rust-craftsperson` — plain Rust with no distinctive runtime or framework",
+    "",
+    "Fall back to `<language>-craftsperson` only when no distinctive runtime, package manager, or framework is detected.",
     "",
     "## QA Checkpoint Rules",
     "",
@@ -241,7 +302,7 @@ function buildDerivePrompt(folder: string, context: ProjectContext): string {
     "Output a complete agent markdown file. Start with YAML frontmatter:",
     "```yaml",
     "---",
-    "name: <primary-technology>-craftsperson",
+    "name: <runtime-language-framework>-craftsperson",
     "description: <one-line description>",
     "---",
     "```",
@@ -275,15 +336,56 @@ export function extractAgentName(agentContent: string): string {
   return "derived-agent";
 }
 
+export async function suggestExpandedName(
+  conflictingName: string,
+  context: ProjectContext,
+  existingNames: string[],
+  model: string,
+  readOnlyTools: string,
+  claude: ClaudeInvoker,
+): Promise<string> {
+  const signals: string[] = [];
+  if (context.lockfiles.length > 0) {
+    signals.push("Lockfiles: " + context.lockfiles.map((l) => `${l.file} (${l.packageManager})`).join(", "));
+  }
+  if (context.packageFiles.length > 0) {
+    signals.push("Package files: " + context.packageFiles.join(", "));
+  }
+  if (context.toolConfigs.length > 0) {
+    signals.push("Tool configs: " + context.toolConfigs.join(", "));
+  }
+
+  const prompt = `The agent name "${conflictingName}" already exists. Suggest a single more-specific kebab-case agent name ending in "-craftsperson" that distinguishes this project based on its toolchain.
+
+Project signals:
+${signals.join("\n")}
+
+Existing agent names (avoid all of these):
+${existingNames.map((n) => `- ${n}`).join("\n")}
+
+Output ONLY the new name, nothing else.`;
+
+  const args = buildClaudeArgs({
+    model,
+    prompt,
+    readOnly: true,
+    readOnlyTools,
+  });
+
+  const raw = await claude(args);
+  return raw.trim().replace(/[`"']/g, "");
+}
+
 export async function derive(
   folder: string,
   model: string,
   gatesModel: string,
   readOnlyTools: string,
   claude: ClaudeInvoker,
+  existingAgentNames: string[] = [],
 ): Promise<DeriveResult> {
   const context = await gatherContext(folder);
-  const prompt = buildDerivePrompt(folder, context);
+  const prompt = buildDerivePrompt(folder, context, existingAgentNames);
 
   const args = buildClaudeArgs({
     model,
@@ -298,5 +400,5 @@ export async function derive(
   // Extract gates from the generated agent content
   const gates = await extractGatesFromAgentContent(agentContent, gatesModel, readOnlyTools, claude);
 
-  return { agentContent, agentName, gates };
+  return { agentContent, agentName, gates, context };
 }
