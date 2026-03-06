@@ -56,6 +56,43 @@ async function readPackageDescription(projectDir: string): Promise<string | null
   return null;
 }
 
+/**
+ * Checks whether AGENTS.md or CLAUDE.md contains an @-reference to a charter file.
+ * Without this reference, the charter won't be visible to the LLM during assessment.
+ */
+async function checkCharterReferences(
+  projectDir: string,
+  charterExists: boolean,
+): Promise<string[]> {
+  const warnings: string[] = [];
+  if (!charterExists) return warnings;
+
+  const agentsContent = await readFileContent(join(projectDir, "AGENTS.md"));
+  const claudeContent = await readFileContent(join(projectDir, "CLAUDE.md"));
+
+  const agentsRefs = agentsContent !== null && /@CHARTER\.md/.test(agentsContent);
+  const claudeRefs = claudeContent !== null && /@CHARTER\.md/.test(claudeContent);
+
+  if (!agentsRefs && !claudeRefs) {
+    const files = [
+      agentsContent !== null ? "AGENTS.md" : null,
+      claudeContent !== null ? "CLAUDE.md" : null,
+    ].filter(Boolean);
+
+    if (files.length > 0) {
+      warnings.push(
+        `CHARTER.md exists but is not @-referenced in ${files.join(" or ")} — the LLM won't see it during assessment`,
+      );
+    } else {
+      warnings.push(
+        `CHARTER.md exists but no AGENTS.md or CLAUDE.md found to @-reference it — the LLM won't see it during assessment`,
+      );
+    }
+  }
+
+  return warnings;
+}
+
 export async function checkCharter(
   projectDir: string,
   minLength: number,
@@ -110,5 +147,8 @@ export async function checkCharter(
     }
   }
 
-  return { passed, sources, guidance };
+  // Check that charter is actually referenced so the LLM can see it
+  const warnings = await checkCharterReferences(projectDir, charterContent !== null);
+
+  return { passed, sources, guidance, warnings };
 }

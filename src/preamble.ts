@@ -80,6 +80,9 @@ export async function runPreamble(
       };
     }
     onProgress("charter", "Charter check passed.");
+    for (const w of charterCheckResult.warnings) {
+      onProgress("charter", `  ⚠ ${w}`);
+    }
   }
 
   // --- Preflight gate validation ---

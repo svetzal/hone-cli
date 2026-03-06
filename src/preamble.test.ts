@@ -16,7 +16,7 @@ describe("runPreamble", () => {
 
     const mockCharterChecker = async () => {
       charterCheckerCalled = true;
-      return { passed: false, sources: [], guidance: [] };
+      return { passed: false, sources: [], guidance: [], warnings: [] };
     };
 
     const result = await runPreamble({

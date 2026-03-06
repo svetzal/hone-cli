@@ -91,6 +91,7 @@ export const passingCharterChecker = async (): Promise<CharterCheckResult> => ({
   passed: true,
   sources: [{ file: "CHARTER.md", length: 200, sufficient: true }],
   guidance: [],
+  warnings: [],
 });
 
 /**
@@ -101,6 +102,7 @@ export const failingCharterChecker = async (): Promise<CharterCheckResult> => ({
   passed: false,
   sources: [],
   guidance: ["Add a CHARTER.md describing the project's goals"],
+  warnings: [],
 });
 
 /**

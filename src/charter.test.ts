@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { checkCharter } from "./charter.ts";
 import { join } from "path";
-import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
+import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 
 describe("checkCharter", () => {
@@ -138,6 +138,116 @@ describe("checkCharter", () => {
       expect(result.sources).toHaveLength(2);
       expect(result.sources.find((s) => s.file === "CHARTER.md")!.sufficient).toBe(true);
       expect(result.sources.find((s) => s.file === "README.md")!.sufficient).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("warns when CHARTER.md exists but AGENTS.md does not @-reference it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+      await writeFile(join(dir, "AGENTS.md"), "# My Agent\nSome principles.");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("not @-referenced");
+      expect(result.warnings[0]).toContain("AGENTS.md");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("warns when CHARTER.md exists but CLAUDE.md does not @-reference it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+      await writeFile(join(dir, "CLAUDE.md"), "# Project\nSome content.");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("not @-referenced");
+      expect(result.warnings[0]).toContain("CLAUDE.md");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("no warning when AGENTS.md @-references CHARTER.md", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+      await writeFile(join(dir, "AGENTS.md"), "# Agent\n\nSee @CHARTER.md for goals.");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("no warning when CLAUDE.md @-references CHARTER.md", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+      await writeFile(join(dir, "CLAUDE.md"), "# Project\n\n@CHARTER.md");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("no warning when CHARTER.md does not exist", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "README.md"), "x".repeat(200));
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("warns when CHARTER.md exists but no AGENTS.md or CLAUDE.md found", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("no AGENTS.md or CLAUDE.md found");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("mentions both files in warning when both exist without @-reference", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CHARTER.md"), "x".repeat(200));
+      await writeFile(join(dir, "AGENTS.md"), "# Agent\nNo ref.");
+      await writeFile(join(dir, "CLAUDE.md"), "# Project\nNo ref.");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("AGENTS.md or CLAUDE.md");
     } finally {
       await rm(dir, { recursive: true });
     }

@@ -107,6 +107,7 @@ export interface CharterCheckResult {
   passed: boolean;
   sources: CharterSource[];
   guidance: string[];
+  warnings: string[];
 }
 
 // Structured assessment types
