@@ -178,3 +178,8 @@ export type CommandRunner = (
   args: string[],
   opts?: { cwd?: string },
 ) => Promise<{ stdout: string; exitCode: number }>;
+
+export type AttemptRecord = {
+  attempt: number;
+  failedGates: { name: string; output: string }[];
+};

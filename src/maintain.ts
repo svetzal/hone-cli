@@ -1,8 +1,9 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
-import { resolveGates, loadOverrideGates } from "./resolve-gates.ts";
+import { resolveGates } from "./resolve-gates.ts";
 import { summarize as runSummarize, buildMaintainSummarizePrompt } from "./summarize.ts";
+import { verifyWithRetry } from "./verify-loop.ts";
 import type {
   HoneConfig,
   MaintainResult,
@@ -11,6 +12,7 @@ import type {
   GatesRunResult,
   GateRunner,
   GateResolverFn,
+  AttemptRecord,
 } from "./types.ts";
 
 export interface MaintainOptions {
@@ -40,11 +42,6 @@ export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): st
     gateList,
   ].join("\n");
 }
-
-type AttemptRecord = {
-  attempt: number;
-  failedGates: { name: string; output: string }[];
-};
 
 export function buildMaintainRetryPrompt(
   folder: string,
@@ -170,49 +167,25 @@ export async function maintain(
   onProgress("execute", `Saved: ${actionsPath}`);
 
   // Verify (inner loop)
-  let gatesResult: GatesRunResult | null = null;
-  let retries = 0;
-  const attempts: AttemptRecord[] = [];
+  const verifyResult = await verifyWithRetry(execution, {
+    gates,
+    gateRunner,
+    maxRetries: config.maxRetries,
+    gateTimeout: config.gateTimeout,
+    executeModel: config.models.execute,
+    readOnlyTools: config.readOnlyTools,
+    agent,
+    folder,
+    auditDir,
+    name,
+    claude,
+    buildRetryPrompt: (failedGates, priorAttempts) =>
+      buildMaintainRetryPrompt(folder, gates, failedGates, priorAttempts),
+    onProgress,
+  });
 
-  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
-    // Re-read .hone-gates.json in case the agent updated gate definitions
-    const currentGates = (await loadOverrideGates(folder)) ?? gates;
-    onProgress("verify", `Running quality gates (attempt ${attempt + 1})...`);
-    gatesResult = await gateRunner(currentGates, folder, config.gateTimeout);
-
-    if (gatesResult.requiredPassed) {
-      onProgress("verify", "All required gates passed.");
-      break;
-    }
-
-    if (attempt === config.maxRetries) {
-      onProgress("verify", `Required gates still failing after ${config.maxRetries} retries.`);
-      break;
-    }
-
-    const failedGates = gatesResult.results
-      .filter((r) => !r.passed && r.required)
-      .map((r) => ({ name: r.name, output: r.output }));
-
-    const retryPrompt = buildMaintainRetryPrompt(folder, currentGates, failedGates, attempts);
-    retries = attempt + 1;
-
-    attempts.push({ attempt: retries, failedGates });
-
-    onProgress("execute", `Retry ${retries}: fixing gate failures...`);
-    const retryArgs = buildClaudeArgs({
-      agent,
-      model: config.models.execute,
-      prompt: retryPrompt,
-      readOnly: false,
-      readOnlyTools: config.readOnlyTools,
-    });
-    execution = await claude(retryArgs);
-
-    const retryPath = await saveStageOutput(auditDir, name, `retry-${retries}-actions`, execution);
-    onProgress("execute", `Saved: ${retryPath}`);
-  }
-
+  const { gatesResult, retries } = verifyResult;
+  execution = verifyResult.execution;
   const success = gatesResult?.requiredPassed ?? false;
 
   // Summarize (only on success)
