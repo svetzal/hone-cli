@@ -171,13 +171,14 @@ to enable cross-project visibility and integration with other Mojility skills.
 
 Events automatically derive the `client.name` field from the project path:
 
-| Project Path | Client Code |
+| Project Path | Client Name |
 |-------------|-------------|
-| `Projects/Clients/ORT/*` | `ort` |
-| `Projects/Clients/ContinuousCoaching/*` | `coach` |
-| `Projects/Clients/Elevate21/*` | `elevate21` |
-| `Projects/Clients/Reaction/*` | `reaction` |
-| `Projects/Mojility/*` | `mojility` |
+| `Projects/Clients/ORT/*` | `ORT` |
+| `Projects/Clients/ContinuousCoaching/*` | `ContinuousCoaching` |
+| `Projects/Clients/Elevate21/*` | `Elevate21` |
+| `Projects/Clients/HaliburtonElectric/*` | `HaliburtonElectric` |
+| `Projects/Clients/Reaction/*` | `Reaction` |
+| `Projects/Mojility/*` | `Mojility` |
 | `Projects/Personal/*` | `personal` |
 
 ### Graceful Fallback
