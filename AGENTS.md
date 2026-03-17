@@ -108,6 +108,7 @@ claude --dangerously-skip-permissions --agent <agent> --model sonnet \
 ```
 src/
   cli.ts              # Entry point, argument parsing, help
+  constants.ts        # Shared constants (VERSION)
   types.ts            # Shared type definitions
   iterate.ts          # Core iteration workflow (outer + inner loops)
   claude.ts           # Claude CLI subprocess wrapper
@@ -116,14 +117,30 @@ src/
   audit.ts            # Audit output management (read/write/list)
   config.ts           # Configuration loading/defaults
   commands/
+    init.ts           # init command handler (skill installation)
     iterate.ts        # iterate command handler
     list-agents.ts    # list-agents command handler
     gates.ts          # gates command handler
     history.ts        # history command handler
     config.ts         # config command handler
+skills/
+  hone/
+    SKILL.md          # Source of truth for the hone skill (no version field)
 package.json
 tsconfig.json
 ```
+
+## Skill Distribution
+
+Hone distributes a Claude Code skill that provides usage guidance to Claude
+when users invoke hone through conversational prompts.
+
+- **Source of truth:** `skills/hone/SKILL.md` in the repo root
+- **Install:** `hone init` (local, to `.claude/skills/hone/`) or `hone init --global` (to `~/.claude/skills/hone/`)
+- **Build-time embedding:** The skill content is embedded in the binary via Bun text imports — no file reads at runtime
+- **Version stamping:** `hone init` injects `hone-version: <VERSION>` into the SKILL.md frontmatter at install time
+- **Version guard:** If the installed skill has a newer `hone-version` than the running binary, `hone init` refuses to overwrite (warns the user). Use `--force` to bypass.
+- `.claude/skills/hone/` is gitignored — it is a generated artifact, not source
 
 ## Agent Contract
 
@@ -141,7 +158,7 @@ Releases follow semver. To cut a release:
 
 1. All quality gates must pass (`bun test`, `bunx tsc --noEmit`)
 2. Working tree must be clean — all changes committed to `main`
-3. Update the version in `package.json` and `src/cli.ts` (`VERSION` constant)
+3. Update the version in `package.json` and `src/constants.ts` (`VERSION` constant)
 4. Move the `[Unreleased]` section in `CHANGELOG.md` under a dated version heading
 5. Commit the version bump (e.g. `Bump version to 0.3.0`)
 6. Create a git tag: `git tag v0.3.0`

@@ -9,9 +9,9 @@ import { configCommand } from "./commands/config.ts";
 import { mixCommand } from "./commands/mix.ts";
 import { maintainCommand } from "./commands/maintain.ts";
 import { deriveGatesCommand } from "./commands/derive-gates.ts";
+import { initCommand } from "./commands/init.ts";
 import type { ParsedArgs } from "./types.ts";
-
-const VERSION = "1.2.1";
+import { VERSION } from "./constants.ts";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -56,6 +56,7 @@ Commands:
   derive <folder>            Inspect project, generate agent + .hone-gates.json
   derive-gates [agent] <folder>  Generate .hone-gates.json from project inspection
   mix <agent> <folder>       Augment a local agent with ideas from a global agent
+  init                       Install hone skill files for Claude Code
   list-agents                Show available agents from ~/.claude/agents/
   history [folder]           Show past iterations from the audit directory
   config                     Show current configuration
@@ -92,6 +93,10 @@ Derive-Gates Options:
   --run                      Run gates after generating
   --derive-model <model>     Override model for project inspection
 
+Init Options:
+  --global                   Install to ~/.claude/ (default: .claude/ in cwd)
+  --force                    Overwrite even if installed version is newer
+
 Mix Options:
   --from <name>              Foreign agent name (from ~/.claude/agents/)
   --principles               Mix engineering principles / craftsmanship ideals
@@ -117,6 +122,9 @@ Examples:
   hone derive-gates typescript-craftsperson .
   hone derive-gates . --run
   hone mix local-agent . --from typescript-craftsperson --principles --gates
+  hone init
+  hone init --global
+  hone init --force
   hone list-agents
   hone history .
   hone history . --audit-dir ~/hone-audits/my-project
@@ -154,6 +162,9 @@ async function main(): Promise<void> {
         break;
       case "derive-gates":
         await deriveGatesCommand(parsed);
+        break;
+      case "init":
+        await initCommand(parsed);
         break;
       case "mix":
         await mixCommand(parsed);
