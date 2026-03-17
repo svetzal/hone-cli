@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-03-17
+
+### Added
+
+- **`hone init` command for skill distribution** — installs the hone skill
+  into a project's `.claude/skills/hone/` directory with version stamping,
+  version guard (blocks accidental downgrades unless `--force`), and
+  `--global`/`--force` flags. Extracted `VERSION` constant into
+  `src/constants.ts` for shared use.
+- **CHARTER.md reference warning** — the charter check now verifies that
+  `CHARTER.md` is `@`-referenced in the project's `AGENTS.md` or `CLAUDE.md`
+  so the LLM can see it during assessment. Emits a non-blocking warning when
+  the reference is missing.
+
+### Changed
+
+- **Consolidated verify-retry loop** — extracted the shared verify/retry logic
+  from `iterate` and `maintain` into a single `src/verify-loop.ts` module,
+  eliminating duplication and adding dedicated tests.
+
+### Fixed
+
+- **Dependency updates** — bumped esbuild, @types/bun, rollup, vitepress, and
+  other transitive dependencies to latest compatible versions.
+
 ## [1.2.1] - 2026-02-21
 
 ### Fixed
