@@ -252,4 +252,104 @@ describe("checkCharter", () => {
       await rm(dir, { recursive: true });
     }
   });
+
+  test("passes when mix.exs has description", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      const content = `defmodule MyApp.MixProject do
+  def project do
+    [app: :my_app, description: "${"A comprehensive Elixir application for managing distributed systems".padEnd(120, ".")}"]
+  end
+end`;
+      await writeFile(join(dir, "mix.exs"), content);
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.sources.some((s) => s.file === "package description" && s.sufficient)).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("passes when pyproject.toml has description", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      const content = `[project]
+name = "my-app"
+description = "${"A comprehensive Python application for data processing and analysis".padEnd(120, ".")}"`;
+      await writeFile(join(dir, "pyproject.toml"), content);
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.sources.some((s) => s.file === "package description" && s.sufficient)).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("handles invalid package.json gracefully", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "package.json"), "{invalid json}}");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(false);
+      // Should not crash — just no package description source
+      expect(result.sources.every((s) => s.file !== "package description")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("ignores package.json with empty description", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "package.json"), JSON.stringify({ description: "" }));
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(false);
+      expect(result.sources.every((s) => s.file !== "package description")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("CLAUDE.md without Project Charter section is not a source", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      await writeFile(join(dir, "CLAUDE.md"), "# Project\n\n## Setup\nSome instructions.");
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(false);
+      expect(result.sources.every((s) => !s.file.includes("CLAUDE.md"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("CLAUDE.md Project Charter section at end of file (no next heading)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
+    try {
+      const content = [
+        "# My Project",
+        "",
+        "## Project Charter",
+        "",
+        "This project aims to " + "x".repeat(150),
+      ].join("\n");
+      await writeFile(join(dir, "CLAUDE.md"), content);
+
+      const result = await checkCharter(dir, 100);
+
+      expect(result.passed).toBe(true);
+      expect(result.sources.some((s) => s.file.includes("CLAUDE.md") && s.sufficient)).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
 });

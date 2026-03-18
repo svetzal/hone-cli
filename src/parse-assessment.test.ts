@@ -108,4 +108,76 @@ describe("parseAssessment", () => {
     expect(result.principle).toBe("unknown");
     expect(result.prose).toBe(raw.trim());
   });
+
+  test("rounds fractional severity", () => {
+    const raw = '{ "severity": 3.7, "principle": "test", "category": "test" }\nSome text.';
+
+    const result = parseAssessment(raw);
+    expect(result.severity).toBe(4);
+  });
+
+  test("clamps negative severity to 1", () => {
+    const raw = '{ "severity": -5, "principle": "test", "category": "test" }\nSome text.';
+
+    const result = parseAssessment(raw);
+    expect(result.severity).toBe(1);
+  });
+
+  test("handles NaN severity with default", () => {
+    const raw = '{ "severity": NaN, "principle": "test", "category": "test" }';
+    // NaN is not valid JSON, so JSON.parse won't produce this — but Infinity test:
+    // This raw string won't parse as JSON, falls back to no-JSON path
+    const result = parseAssessment(raw);
+    expect(result.severity).toBe(3);
+  });
+
+  test("extracts prose after removing fenced JSON block", () => {
+    const raw = [
+      '```json',
+      '{ "severity": 4, "principle": "DRY", "category": "duplication" }',
+      '```',
+      '',
+      'This is the prose assessment.',
+      'It spans multiple lines.',
+    ].join("\n");
+
+    const result = parseAssessment(raw);
+    expect(result.prose).toContain("This is the prose assessment.");
+    expect(result.prose).toContain("It spans multiple lines.");
+    expect(result.prose).not.toContain("```");
+  });
+
+  test("extracts prose after removing bare JSON block", () => {
+    const raw = [
+      '{ "severity": 3, "principle": "KISS", "category": "complexity" }',
+      '',
+      'The code is overly complex.',
+    ].join("\n");
+
+    const result = parseAssessment(raw);
+    expect(result.prose).toContain("The code is overly complex.");
+    expect(result.prose).not.toContain('"severity"');
+  });
+
+  test("uses raw as prose when JSON removal produces empty string", () => {
+    const raw = '```json\n{ "severity": 4, "principle": "test", "category": "test" }\n```';
+
+    const result = parseAssessment(raw);
+    // extractProse returns empty after removal, so prose falls back to raw.trim()
+    expect(result.prose).toBe(raw.trim());
+  });
+
+  test("handles non-string principle field", () => {
+    const raw = '{ "severity": 3, "principle": 42, "category": "test" }';
+
+    const result = parseAssessment(raw);
+    expect(result.principle).toBe("unknown");
+  });
+
+  test("handles non-string category field", () => {
+    const raw = '{ "severity": 3, "principle": "test", "category": true }';
+
+    const result = parseAssessment(raw);
+    expect(result.category).toBe("other");
+  });
 });

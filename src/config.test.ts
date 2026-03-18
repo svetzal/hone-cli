@@ -118,4 +118,118 @@ describe("loadConfig", () => {
       await rm(dir, { recursive: true });
     }
   });
+
+  test("overrides mode to github", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const configPath = join(dir, "config.json");
+      await writeFile(
+        configPath,
+        JSON.stringify({ mode: "github" }),
+      );
+
+      const config = await loadConfig(configPath);
+
+      expect(config.mode).toBe("github");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("overrides severityThreshold and minCharterLength", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const configPath = join(dir, "config.json");
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          severityThreshold: 4,
+          minCharterLength: 200,
+        }),
+      );
+
+      const config = await loadConfig(configPath);
+
+      expect(config.severityThreshold).toBe(4);
+      expect(config.minCharterLength).toBe(200);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("overrides auditDir", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const configPath = join(dir, "config.json");
+      await writeFile(
+        configPath,
+        JSON.stringify({ auditDir: "/custom/audit" }),
+      );
+
+      const config = await loadConfig(configPath);
+
+      expect(config.auditDir).toBe("/custom/audit");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("overrides readOnlyTools", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const configPath = join(dir, "config.json");
+      await writeFile(
+        configPath,
+        JSON.stringify({ readOnlyTools: "Read Glob" }),
+      );
+
+      const config = await loadConfig(configPath);
+
+      expect(config.readOnlyTools).toBe("Read Glob");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("full config override preserves all fields", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const configPath = join(dir, "config.json");
+      const fullOverride = {
+        models: {
+          assess: "sonnet",
+          name: "sonnet",
+          plan: "sonnet",
+          execute: "haiku",
+          gates: "haiku",
+          derive: "sonnet",
+          triage: "sonnet",
+          mix: "sonnet",
+          summarize: "sonnet",
+        },
+        auditDir: "custom-audit",
+        readOnlyTools: "Read",
+        maxRetries: 10,
+        gateTimeout: 60000,
+        mode: "github",
+        minCharterLength: 50,
+        severityThreshold: 1,
+      };
+      await writeFile(configPath, JSON.stringify(fullOverride));
+
+      const config = await loadConfig(configPath);
+
+      expect(config.models.assess).toBe("sonnet");
+      expect(config.models.execute).toBe("haiku");
+      expect(config.auditDir).toBe("custom-audit");
+      expect(config.readOnlyTools).toBe("Read");
+      expect(config.maxRetries).toBe(10);
+      expect(config.gateTimeout).toBe(60000);
+      expect(config.mode).toBe("github");
+      expect(config.minCharterLength).toBe(50);
+      expect(config.severityThreshold).toBe(1);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
 });
