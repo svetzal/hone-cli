@@ -96,6 +96,15 @@ claude --dangerously-skip-permissions --agent <agent> --model sonnet \
   -p "<execution prompt with assessment + plan>"
 ```
 
+## Local Installation
+
+```bash
+brew tap svetzal/tap
+brew install hone
+```
+
+To upgrade: `brew upgrade hone`
+
 ## Tech Stack
 
 - **Runtime:** Bun (TypeScript, compiles to native executable)
