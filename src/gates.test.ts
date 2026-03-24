@@ -85,6 +85,37 @@ describe("runGate", () => {
       await rm(dir, { recursive: true });
     }
   });
+
+  test("uses per-gate timeout when set", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      // Gate has a generous timeout, global is too short — should pass
+      const result = await runGate(
+        { name: "slow", command: "sleep 0.3", required: true, timeout: 5000 },
+        dir,
+        100, // global timeout too short
+      );
+
+      expect(result.passed).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("falls back to global timeout when gate has no timeout", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const result = await runGate(
+        { name: "slow", command: "sleep 2", required: true },
+        dir,
+        500, // global timeout kills it
+      );
+
+      expect(result.passed).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
 });
 
 describe("runAllGates", () => {

@@ -93,7 +93,9 @@ Maximum number of times hone will send the agent back to fix gate failures after
 |------|---------|
 | number (ms) | `120000` |
 
-Timeout in milliseconds for each gate command. If a command exceeds this, the process is killed and the gate is marked as failed. Increase this for projects with slow test suites.
+Default timeout in milliseconds for each gate command. If a command exceeds this, the process is killed and the gate is marked as failed. Increase this for projects with slow test suites.
+
+Individual gates can override this value with a `timeout` field in `.hone-gates.json`. Per-gate timeouts take precedence over the global `gateTimeout`. Gates without a `timeout` field fall back to this value.
 
 ### mode
 

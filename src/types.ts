@@ -14,6 +14,7 @@ export interface GateDefinition {
   name: string;
   command: string;
   required: boolean;
+  timeout?: number;
 }
 
 export interface GateResult {
