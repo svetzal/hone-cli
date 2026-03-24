@@ -17,13 +17,14 @@ Gates are defined in `.hone-gates.json` at your project root:
 }
 ```
 
-Each gate has three fields:
+Each gate has these fields:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | — | Display name for progress output |
 | `command` | string | — | Shell command to run (via `sh -c`) |
 | `required` | boolean | `true` | Whether failure triggers the retry loop |
+| `timeout` | number (ms) | — | Per-gate timeout override (falls back to global `gateTimeout`) |
 
 ## Required vs optional gates
 
@@ -91,4 +92,22 @@ During the verify loop, hone re-reads `.hone-gates.json` before each attempt. Th
 
 Gates run sequentially as shell commands via `sh -c`. Output (stdout and stderr combined) is captured and truncated to the last 200 lines if it's longer. A gate passes when its command exits with code 0.
 
-The gate timeout defaults to 120 seconds (configurable via `gateTimeout` in [config](/reference/configuration)). If a command exceeds the timeout, the process is killed and the gate is marked as failed.
+The gate timeout defaults to 120 seconds (configurable via `gateTimeout` in [config](/reference/configuration)). Individual gates can override this with a `timeout` field in milliseconds. If a command exceeds its timeout, the process is killed and the gate is marked as failed.
+
+For projects with gates that vary widely in execution time — for example, a fast linter alongside a slow build-and-test pipeline — per-gate timeouts let you keep the global default tight while giving specific gates more room:
+
+```json
+{
+  "gates": [
+    {
+      "name": "coverage",
+      "command": "cmake -B build && cmake --build build && cmake --build build --target coverage",
+      "required": true,
+      "timeout": 300000
+    },
+    { "name": "cppcheck", "command": "cmake --build build --target cppcheck", "required": true }
+  ]
+}
+```
+
+Here, the coverage gate gets 5 minutes while cppcheck uses the global `gateTimeout` (default 120s).

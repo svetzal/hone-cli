@@ -24,6 +24,7 @@ export async function readGatesFile(projectDir: string): Promise<GateDefinition[
         name: g.name,
         command: g.command,
         required: g.required ?? true,
+        ...(g.timeout !== undefined && { timeout: g.timeout }),
       }));
     }
   } catch {

@@ -140,4 +140,46 @@ describe("readGatesFile", () => {
       await rm(dir, { recursive: true });
     }
   });
+
+  it("should preserve timeout when specified", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-gates-test-"));
+    try {
+      await writeFile(
+        join(dir, ".hone-gates.json"),
+        JSON.stringify({
+          gates: [
+            { name: "coverage", command: "make coverage", required: true, timeout: 300000 },
+          ],
+        }),
+      );
+
+      const gates = await readGatesFile(dir);
+
+      expect(gates).not.toBeNull();
+      expect(gates![0]!.timeout).toBe(300000);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  it("should omit timeout when not specified in JSON", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-gates-test-"));
+    try {
+      await writeFile(
+        join(dir, ".hone-gates.json"),
+        JSON.stringify({
+          gates: [
+            { name: "test", command: "bun test", required: true },
+          ],
+        }),
+      );
+
+      const gates = await readGatesFile(dir);
+
+      expect(gates).not.toBeNull();
+      expect(gates![0]).not.toHaveProperty("timeout");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
 });

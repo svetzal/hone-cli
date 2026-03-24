@@ -18,7 +18,7 @@ export async function runGate(
   try {
     const { stdout, stderr, exitCode } = await runProcess(
       ["sh", "-c", gate.command],
-      { cwd: projectDir, timeout },
+      { cwd: projectDir, timeout: gate.timeout ?? timeout },
     );
 
     const output = truncateOutput((stdout + "\n" + stderr).trim());
