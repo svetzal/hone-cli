@@ -1,25 +1,9 @@
-import { join } from "path";
 import { extractGatesFromAgent } from "./extract-gates.ts";
+import { readGatesFile } from "./gates-file.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
 export async function loadOverrideGates(projectDir: string): Promise<GateDefinition[] | null> {
-  const overridePath = join(projectDir, ".hone-gates.json");
-  const overrideFile = Bun.file(overridePath);
-
-  try {
-    if (await overrideFile.exists()) {
-      const config = await overrideFile.json();
-      return (config.gates as GateDefinition[]).map((g) => ({
-        name: g.name,
-        command: g.command,
-        required: g.required ?? true,
-      }));
-    }
-  } catch {
-    // Invalid JSON or read error — fall through
-  }
-
-  return null;
+  return readGatesFile(projectDir);
 }
 
 export async function resolveGates(

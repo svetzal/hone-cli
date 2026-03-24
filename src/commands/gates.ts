@@ -1,10 +1,11 @@
-import { resolve, join } from "path";
+import { resolve } from "path";
 import { runAllGates } from "../gates.ts";
 import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
 import { loadConfig } from "../config.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, GateDefinition } from "../types.ts";
 import { writeJson, progress } from "../output.ts";
+import { writeGatesFile } from "../gates-file.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;
@@ -65,8 +66,7 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   // Handle --save flag (independent of --json)
   if (shouldSave) {
-    const gatesPath = join(folder, ".hone-gates.json");
-    await Bun.write(gatesPath, JSON.stringify({ gates }, null, 2) + "\n");
+    const gatesPath = await writeGatesFile(folder, gates);
     progress(isJson, `Gates written to: ${gatesPath}`);
   }
 

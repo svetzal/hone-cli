@@ -1,11 +1,11 @@
 import { resolve, join } from "path";
 import { loadConfig } from "../config.ts";
-import { agentExists } from "../agents.ts";
+import { validateAgentOrExit } from "../agents.ts";
 import { iterate } from "../iterate.ts";
 import { githubIterate } from "../github-iterate.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, HoneConfig, HoneMode } from "../types.ts";
-import { writeJson } from "../output.ts";
+import { writeJson, createProgressCallback } from "../output.ts";
 
 export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   const result = { ...config, models: { ...config.models } };
@@ -55,11 +55,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const resolvedFolder = resolve(folder);
   const localAgentsDir = join(resolvedFolder, ".claude", "agents");
 
-  if (!(await agentExists(agent)) && !(await agentExists(agent, localAgentsDir))) {
-    console.error(`Agent '${agent}' not found in ~/.claude/agents/ or ${localAgentsDir}/`);
-    console.error("Run 'hone list-agents' to see available agents.");
-    process.exit(1);
-  }
+  await validateAgentOrExit(agent, localAgentsDir);
 
   const baseConfig = await loadConfig();
   const config = applyIterateFlags(baseConfig, parsed.flags);
@@ -70,13 +66,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const isJson = parsed.flags.json === true;
   const mode = config.mode;
 
-  const onProgress = (stage: string, message: string) => {
-    if (isJson) {
-      console.error(`==> [${stage}] ${message}`);
-    } else {
-      console.log(`==> [${stage}] ${message}`);
-    }
-  };
+  const onProgress = createProgressCallback(isJson);
 
   if (mode === "github") {
     const proposalsFlag = parsed.flags["proposals"];

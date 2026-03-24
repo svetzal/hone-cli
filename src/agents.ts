@@ -46,6 +46,14 @@ export async function agentExists(name: string, agentsDir?: string): Promise<boo
   return agents.some((a) => a.name === name);
 }
 
+export async function validateAgentOrExit(agent: string, localAgentsDir: string): Promise<void> {
+  if (!(await agentExists(agent)) && !(await agentExists(agent, localAgentsDir))) {
+    console.error(`Agent '${agent}' not found in ~/.claude/agents/ or ${localAgentsDir}/`);
+    console.error("Run 'hone list-agents' to see available agents.");
+    process.exit(1);
+  }
+}
+
 export async function readAgentContent(name: string, agentsDir?: string): Promise<string | null> {
   const dir = agentsDir ?? AGENTS_DIR;
   const agents = await listAgents(agentsDir);

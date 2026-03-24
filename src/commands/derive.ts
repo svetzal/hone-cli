@@ -11,7 +11,8 @@ import { promptChoice } from "../prompt.ts";
 import type { ParsedArgs, GateResult, ClaudeInvoker } from "../types.ts";
 import type { PromptFn } from "../prompt.ts";
 import type { ProjectContext } from "../derive.ts";
-import { writeJson, progress } from "../output.ts";
+import { writeJson, progress, reportGateValidation } from "../output.ts";
+import { writeGatesFile } from "../gates-file.ts";
 
 export async function deriveCommand(
   parsed: ParsedArgs,
@@ -115,8 +116,7 @@ export async function deriveCommand(
   // Write .hone-gates.json
   let gatesPath: string | null = null;
   if (result.gates.length > 0) {
-    gatesPath = join(resolvedFolder, ".hone-gates.json");
-    await Bun.write(gatesPath, JSON.stringify({ gates: result.gates }, null, 2) + "\n");
+    gatesPath = await writeGatesFile(resolvedFolder, result.gates);
     progress(isJson, `Gates written to: ${gatesPath}`);
   } else {
     progress(isJson, "No quality gates extracted from agent.");
@@ -129,14 +129,7 @@ export async function deriveCommand(
     const validationResult = await runAllGates(result.gates, resolvedFolder, config.gateTimeout);
     gateValidation = validationResult.results;
 
-    for (const r of validationResult.results) {
-      const status = r.passed ? "pass" : "FAIL";
-      progress(isJson, `  ${status}: ${r.name} (${r.command})`);
-    }
-
-    if (!validationResult.allPassed) {
-      progress(isJson, "Some gates failed. Review and fix before running hone iterate.");
-    }
+    reportGateValidation(validationResult.results, validationResult.allPassed, isJson);
   }
 
   if (isJson) {

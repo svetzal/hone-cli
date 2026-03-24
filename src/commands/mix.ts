@@ -6,6 +6,7 @@ import { readAgentContent } from "../agents.ts";
 import { mix } from "../mix.ts";
 import type { ParsedArgs } from "../types.ts";
 import { writeJson, progress } from "../output.ts";
+import { writeGatesFile } from "../gates-file.ts";
 
 export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const agentName = parsed.positional[0];
@@ -76,8 +77,7 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   // When extraction failed (gates is null), leave existing gate file untouched.
   let gatesPath: string | null = null;
   if (result.gatesMixed && result.gates !== null) {
-    gatesPath = join(resolvedFolder, ".hone-gates.json");
-    await Bun.write(gatesPath, JSON.stringify({ gates: result.gates }, null, 2) + "\n");
+    gatesPath = await writeGatesFile(resolvedFolder, result.gates);
     progress(isJson, `Gates written to: ${gatesPath} (${result.gates.length} gate${result.gates.length === 1 ? "" : "s"})`);
   } else if (result.gatesMixed && result.gates === null) {
     progress(isJson, "Warning: Gate extraction failed. Existing .hone-gates.json left unchanged.");
