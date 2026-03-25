@@ -1,1 +1,3 @@
-export const VERSION = "1.2.2";
+import pkg from "../package.json";
+
+export const VERSION: string = pkg.version;

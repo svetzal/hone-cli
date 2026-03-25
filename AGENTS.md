@@ -167,7 +167,7 @@ Releases follow semver. To cut a release:
 
 1. All quality gates must pass (`bun test`, `bunx tsc --noEmit`)
 2. Working tree must be clean — all changes committed to `main`
-3. Update the version in `package.json` and `src/constants.ts` (`VERSION` constant)
+3. Update the version in `package.json` (the `VERSION` constant in `src/constants.ts` is derived automatically)
 4. Move the `[Unreleased]` section in `CHANGELOG.md` under a dated version heading
 5. Commit the version bump (e.g. `Bump version to 0.3.0`)
 6. Create a git tag: `git tag v0.3.0`

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-25
+
+### Added
+
+- **Per-gate timeout override in `.hone-gates.json`** — individual gates can
+  now declare a `timeout` field (milliseconds) to override the global
+  `gateTimeout` setting. Useful when one gate (e.g. a security scan) needs a
+  longer window than the rest.
+
+### Changed
+
+- **TypeScript updated to 6.0.2** — dependency bump to latest TypeScript.
+- **Gates file I/O extracted to single module** — `src/gates-file.ts` now owns
+  all reads and writes of `.hone-gates.json`, eliminating duplicated file
+  access logic across command handlers.
+
+### Fixed
+
+- **Single source of truth for version** — `VERSION` constant in
+  `src/constants.ts` is now derived from `package.json` instead of being
+  hardcoded. Eliminates version drift that caused `--version` to report stale
+  values and `hone init` to stamp skills with an incorrect version.
+- **TypeScript typecheck error for `.md` text imports** — resolved type
+  error introduced by stricter handling in newer TypeScript versions.
+
 ## [1.2.2] - 2026-03-17
 
 ### Added
