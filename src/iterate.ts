@@ -39,9 +39,20 @@ export interface IterateOptions {
 }
 
 export function sanitizeName(raw: string): string {
-  const match = raw.match(/[a-z0-9-]+/);
-  if (!match) return "";
-  return match[0]!.slice(0, 50);
+  const lower = raw.toLowerCase();
+  // Prefer multi-segment kebab-case (e.g., "fix-auth-handler")
+  const multiSegment = lower.match(/[a-z][a-z0-9]*(?:-[a-z0-9]+)+/g);
+  if (multiSegment) {
+    const longest = multiSegment.sort((a, b) => b.length - a.length)[0]!;
+    return longest.slice(0, 50);
+  }
+  // Fall back to single lowercase word (minimum 2 chars)
+  const single = lower.match(/[a-z][a-z0-9]+/g);
+  if (single) {
+    const longest = single.sort((a, b) => b.length - a.length)[0]!;
+    return longest.slice(0, 50);
+  }
+  return "";
 }
 
 export function buildRetryPrompt(

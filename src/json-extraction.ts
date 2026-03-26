@@ -1,4 +1,37 @@
 /**
+ * Locates the first complete JSON object in a string using brace-counting,
+ * respecting string literals (including escaped characters).
+ * Returns the raw JSON substring, or null if no complete object is found.
+ */
+export function findBareJsonObject(raw: string): string | null {
+  const start = raw.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    if (depth === 0) return raw.slice(start, i + 1);
+  }
+  return null;
+}
+
+/**
  * Extracts a JSON object from LLM output.
  * Tries two patterns: fenced code block (```json ... ```) and bare JSON.
  * This is the single source of truth for "how to extract JSON from LLM output".
@@ -14,11 +47,11 @@ export function extractJsonFromLlmOutput(raw: string): Record<string, unknown> |
     }
   }
 
-  // Try bare JSON object
-  const bareMatch = raw.match(/(\{[\s\S]*?\})/);
-  if (bareMatch?.[1]) {
+  // Try bare JSON object using brace-counting to handle nested objects
+  const bareJson = findBareJsonObject(raw);
+  if (bareJson) {
     try {
-      return JSON.parse(bareMatch[1]);
+      return JSON.parse(bareJson);
     } catch {
       // Fall through
     }

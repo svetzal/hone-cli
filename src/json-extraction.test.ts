@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractJsonFromLlmOutput } from "./json-extraction.ts";
+import { extractJsonFromLlmOutput, findBareJsonObject } from "./json-extraction.ts";
 
 describe("extractJsonFromLlmOutput", () => {
   describe("fenced code block extraction", () => {
@@ -78,12 +78,28 @@ describe("extractJsonFromLlmOutput", () => {
   });
 
   describe("complex JSON", () => {
-    test("non-greedy regex stops at first closing brace for nested objects", () => {
+    test("handles nested JSON objects via brace-counting", () => {
       const raw = '{ "outer": { "inner": true } }';
-      // Non-greedy .*? stops at first }, producing { "outer": { "inner": true }
-      // which is invalid JSON — returns null
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toBeNull();
+      expect(result).toEqual({ outer: { inner: true } });
+    });
+
+    test("handles deeply nested JSON objects", () => {
+      const raw = '{ "a": { "b": { "c": 1 } } }';
+      const result = extractJsonFromLlmOutput(raw);
+      expect(result).toEqual({ a: { b: { c: 1 } } });
+    });
+
+    test("handles nested JSON with surrounding text", () => {
+      const raw = 'Result: { "config": { "enabled": true }, "count": 5 } done.';
+      const result = extractJsonFromLlmOutput(raw);
+      expect(result).toEqual({ config: { enabled: true }, count: 5 });
+    });
+
+    test("handles braces inside JSON string values", () => {
+      const raw = '{ "message": "use {} for objects", "ok": true }';
+      const result = extractJsonFromLlmOutput(raw);
+      expect(result).toEqual({ message: "use {} for objects", ok: true });
     });
 
     test("extracts object with multiple fields", () => {
@@ -97,5 +113,31 @@ describe("extractJsonFromLlmOutput", () => {
       const result = extractJsonFromLlmOutput(raw);
       expect(result).toEqual({ busyWork: true, reason: null });
     });
+  });
+});
+
+describe("findBareJsonObject", () => {
+  test("finds a simple object", () => {
+    expect(findBareJsonObject('{ "key": "value" }')).toBe('{ "key": "value" }');
+  });
+
+  test("finds object with surrounding text", () => {
+    expect(findBareJsonObject('prefix { "key": 1 } suffix')).toBe('{ "key": 1 }');
+  });
+
+  test("finds nested object correctly", () => {
+    expect(findBareJsonObject('{ "a": { "b": true } }')).toBe('{ "a": { "b": true } }');
+  });
+
+  test("handles braces inside string values", () => {
+    expect(findBareJsonObject('{ "msg": "use {}" }')).toBe('{ "msg": "use {}" }');
+  });
+
+  test("returns null when no opening brace", () => {
+    expect(findBareJsonObject("no json here")).toBeNull();
+  });
+
+  test("returns null when braces are unbalanced", () => {
+    expect(findBareJsonObject('{ "key": "value"')).toBeNull();
   });
 });

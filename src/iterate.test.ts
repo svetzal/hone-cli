@@ -76,7 +76,7 @@ describe("iterate", () => {
 
     const mockClaude = createIterateMock({
       assess: "assessment",
-      name: "!!!INVALID!!!",
+      name: "!!!---!!!",
       plan: "plan",
       execute: "done",
     });
@@ -774,11 +774,11 @@ describe("iterate", () => {
 });
 
 describe("sanitizeName", () => {
-  test("extracts first kebab-case segment from clean LLM output", () => {
+  test("extracts kebab-case name from clean LLM output", () => {
     expect(sanitizeName("fix-broken-auth-handler")).toBe("fix-broken-auth-handler");
   });
 
-  test("extracts from output with surrounding markdown/whitespace", () => {
+  test("extracts from output with surrounding markdown backticks", () => {
     expect(sanitizeName("`improve-error-handling`")).toBe("improve-error-handling");
   });
 
@@ -787,18 +787,30 @@ describe("sanitizeName", () => {
     expect(sanitizeName(longName)).toBe("a".repeat(50));
   });
 
-  test("returns empty string for non-matching input", () => {
-    expect(sanitizeName("!!!INVALID!!!")).toBe("");
-    expect(sanitizeName("ALLCAPS")).toBe("");
+  test("returns empty string when no alphanumeric content", () => {
+    expect(sanitizeName("!!!---!!!")).toBe("");
+    expect(sanitizeName("")).toBe("");
   });
 
-  test("extracts first lowercase run from mixed content", () => {
-    // The regex [a-z0-9-]+ will match the first run of lowercase letters/digits/hyphens
-    expect(sanitizeName("The name is fix-auth")).toBe("he");
+  test("extracts kebab-case name from surrounding prose", () => {
+    expect(sanitizeName("The name is fix-auth")).toBe("fix-auth");
   });
 
-  test("handles output with leading lowercase letters correctly", () => {
+  test("handles trailing newline", () => {
     expect(sanitizeName("fix-auth-bug\n")).toBe("fix-auth-bug");
+  });
+
+  test("lowercases input to handle mixed-case LLM output", () => {
+    expect(sanitizeName("Fix-Broken-Auth")).toBe("fix-broken-auth");
+    expect(sanitizeName("ALLCAPS")).toBe("allcaps");
+  });
+
+  test("prefers longest multi-segment kebab match", () => {
+    expect(sanitizeName("Try fix-auth or fix-broken-auth-handler")).toBe("fix-broken-auth-handler");
+  });
+
+  test("falls back to single word when no kebab segments found", () => {
+    expect(sanitizeName("refactor")).toBe("refactor");
   });
 });
 

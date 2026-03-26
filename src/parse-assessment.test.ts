@@ -180,4 +180,16 @@ describe("parseAssessment", () => {
     const result = parseAssessment(raw);
     expect(result.category).toBe("other");
   });
+
+  test("extracts prose when bare JSON contains nested objects", () => {
+    const raw = [
+      '{ "severity": 3, "principle": "test", "category": "test", "meta": { "source": "auto" } }',
+      '',
+      'The code needs improvement.',
+    ].join("\n");
+
+    const result = parseAssessment(raw);
+    expect(result.prose).toContain("The code needs improvement.");
+    expect(result.prose).not.toContain('"severity"');
+  });
 });

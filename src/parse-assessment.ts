@@ -1,5 +1,5 @@
 import type { StructuredAssessment } from "./types.ts";
-import { extractJsonFromLlmOutput } from "./json-extraction.ts";
+import { extractJsonFromLlmOutput, findBareJsonObject } from "./json-extraction.ts";
 
 function clampSeverity(value: number): number {
   if (!Number.isFinite(value)) return 3;
@@ -7,12 +7,16 @@ function clampSeverity(value: number): number {
 }
 
 function extractProse(raw: string): string {
-  // Remove the JSON block (fenced or bare) and return the rest
+  // Remove fenced JSON block (```json ... ```) and return the rest
   const withoutFenced = raw.replace(/```(?:json)?\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```/, "");
   if (withoutFenced !== raw) return withoutFenced.trim();
 
-  const withoutBare = raw.replace(/^\s*\{[\s\S]*?\}/, "");
-  if (withoutBare !== raw) return withoutBare.trim();
+  // Remove bare JSON object using brace-counting to handle nested objects
+  const bareJson = findBareJsonObject(raw);
+  if (bareJson) {
+    const withoutBare = raw.replace(bareJson, "");
+    if (withoutBare !== raw) return withoutBare.trim();
+  }
 
   return raw.trim();
 }
