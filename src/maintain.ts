@@ -2,7 +2,9 @@ import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
-import { summarize as runSummarize, buildMaintainSummarizePrompt } from "./summarize.ts";
+import { buildMaintainSummarizePrompt } from "./summarize.ts";
+import { appendRetryHistory } from "./retry-formatting.ts";
+import { runSummarizeStage } from "./summarize-stage.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 import type {
   HoneConfig,
@@ -62,28 +64,9 @@ export function buildMaintainRetryPrompt(
     gateList,
   ];
 
-  for (const prior of priorAttempts) {
-    const priorFailures = prior.failedGates
-      .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
-      .join("\n\n");
-
-    sections.push(
-      "",
-      `## Attempt ${prior.attempt}`,
-      "",
-      priorFailures,
-    );
-  }
-
-  const currentFailures = currentFailedGates
-    .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
-    .join("\n\n");
+  appendRetryHistory(sections, priorAttempts, currentFailedGates);
 
   sections.push(
-    "",
-    "## Current Failed Gates",
-    "",
-    currentFailures,
     "",
     "## Task",
     "",
@@ -193,27 +176,14 @@ export async function maintain(
   let summary: string | null = null;
 
   if (success) {
-    try {
-      onProgress("summarize", "Generating headline and summary...");
-      const summarizePrompt = buildMaintainSummarizePrompt({
-        name,
-        execution,
-        retries,
-        gatesResult,
-      });
-      const summarizeResult = await runSummarize(
-        summarizePrompt,
-        config.models.summarize,
-        config.readOnlyTools,
-        claude,
-      );
-      if (summarizeResult) {
-        headline = summarizeResult.headline;
-        summary = summarizeResult.summary;
-      }
-    } catch {
-      // Summarize is cosmetic — never block the pipeline
-    }
+    const summarizeResult = await runSummarizeStage(
+      () => buildMaintainSummarizePrompt({ name, execution, retries, gatesResult }),
+      config,
+      claude,
+      onProgress,
+    );
+    headline = summarizeResult.headline;
+    summary = summarizeResult.summary;
   }
 
   return { name, execution, gatesResult, retries, success, headline, summary };

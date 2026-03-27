@@ -6,7 +6,9 @@ import { checkCharter } from "./charter.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriage } from "./triage.ts";
 import { runPreamble } from "./preamble.ts";
-import { summarize as runSummarize, buildIterateSummarizePrompt } from "./summarize.ts";
+import { buildIterateSummarizePrompt } from "./summarize.ts";
+import { appendRetryHistory } from "./retry-formatting.ts";
+import { runSummarizeStage } from "./summarize-stage.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 import type {
   HoneConfig,
@@ -76,28 +78,9 @@ export function buildRetryPrompt(
     plan,
   ];
 
-  for (const prior of priorAttempts) {
-    const priorFailures = prior.failedGates
-      .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
-      .join("\n\n");
-
-    sections.push(
-      "",
-      `## Attempt ${prior.attempt}`,
-      "",
-      priorFailures,
-    );
-  }
-
-  const currentFailures = currentFailedGates
-    .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
-    .join("\n\n");
+  appendRetryHistory(sections, priorAttempts, currentFailedGates);
 
   sections.push(
-    "",
-    "## Current Failed Gates",
-    "",
-    currentFailures,
     "",
     "## Task",
     "",
@@ -391,29 +374,21 @@ export async function iterate(
   let summary: string | null = null;
 
   if (execResult.success) {
-    try {
-      onProgress("summarize", "Generating headline and summary...");
-      const summarizePrompt = buildIterateSummarizePrompt({
+    const summarizeResult = await runSummarizeStage(
+      () => buildIterateSummarizePrompt({
         name,
         structuredAssessment,
         triageResult,
         execution: execResult.execution,
         retries: execResult.retries,
         gatesResult: execResult.gatesResult,
-      });
-      const summarizeResult = await runSummarize(
-        summarizePrompt,
-        config.models.summarize,
-        config.readOnlyTools,
-        claude,
-      );
-      if (summarizeResult) {
-        headline = summarizeResult.headline;
-        summary = summarizeResult.summary;
-      }
-    } catch {
-      // Summarize is cosmetic — never block the pipeline
-    }
+      }),
+      config,
+      claude,
+      onProgress,
+    );
+    headline = summarizeResult.headline;
+    summary = summarizeResult.summary;
   }
 
   onProgress(
