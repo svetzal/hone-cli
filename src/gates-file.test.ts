@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { mkdtemp, writeFile, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { gatesFilePath, writeGatesFile, readGatesFile } from "./gates-file.ts";
+import { gatesFilePath, writeGatesFile, readGatesFile, validateGateArray } from "./gates-file.ts";
 import type { GateDefinition } from "./types.ts";
 
 describe("gatesFilePath", () => {
@@ -181,5 +181,94 @@ describe("readGatesFile", () => {
     } finally {
       await rm(dir, { recursive: true });
     }
+  });
+
+  it("should return empty array when gates is not an array", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-gates-test-"));
+    try {
+      await writeFile(
+        join(dir, ".hone-gates.json"),
+        JSON.stringify({ gates: "not-an-array" }),
+      );
+
+      const gates = await readGatesFile(dir);
+
+      expect(gates).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+});
+
+describe("validateGateArray", () => {
+  it("returns [] when passed null", () => {
+    expect(validateGateArray(null)).toEqual([]);
+  });
+
+  it("returns [] when passed a primitive", () => {
+    expect(validateGateArray(42)).toEqual([]);
+    expect(validateGateArray("gates")).toEqual([]);
+  });
+
+  it("returns [] when passed an array directly (not wrapped object)", () => {
+    expect(validateGateArray([])).toEqual([]);
+  });
+
+  it("returns [] when the object has no gates key", () => {
+    expect(validateGateArray({ other: [] })).toEqual([]);
+  });
+
+  it("returns [] when gates is not an array", () => {
+    expect(validateGateArray({ gates: "not-an-array" })).toEqual([]);
+  });
+
+  it("filters out gate objects missing name", () => {
+    const result = validateGateArray({
+      gates: [
+        { command: "bun test", required: true },
+        { name: "lint", command: "bun run lint", required: true },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.name).toBe("lint");
+  });
+
+  it("filters out gate objects missing command", () => {
+    const result = validateGateArray({
+      gates: [
+        { name: "test", required: true },
+        { name: "lint", command: "bun run lint", required: true },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.name).toBe("lint");
+  });
+
+  it("returns valid gates alongside filtered-out invalid ones", () => {
+    const result = validateGateArray({
+      gates: [
+        { name: "test", command: "bun test", required: true },
+        { name: 42, command: "bad", required: true },
+        { name: "lint", command: "bun run lint" },
+      ],
+    });
+    expect(result).toHaveLength(2);
+    expect(result[0]!.name).toBe("test");
+    expect(result[1]!.name).toBe("lint");
+    expect(result[1]!.required).toBe(true);
+  });
+
+  it("includes timeout when it is a number", () => {
+    const result = validateGateArray({
+      gates: [{ name: "slow", command: "make test", required: true, timeout: 300000 }],
+    });
+    expect(result[0]!.timeout).toBe(300000);
+  });
+
+  it("omits timeout when it is not a number", () => {
+    const result = validateGateArray({
+      gates: [{ name: "test", command: "bun test", required: true, timeout: "long" }],
+    });
+    expect(result[0]).not.toHaveProperty("timeout");
   });
 });

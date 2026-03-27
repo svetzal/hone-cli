@@ -88,6 +88,31 @@ describe("listHoneIssues", () => {
     const result = await listHoneIssues("/project", run);
     expect(result).toHaveLength(0);
   });
+
+  test("returns empty array when gh outputs a non-array JSON value", async () => {
+    const run = mockRunner(
+      new Map([["issue list", { stdout: "{}", exitCode: 0 }]]),
+    );
+
+    const result = await listHoneIssues("/project", run);
+    expect(result).toHaveLength(0);
+  });
+
+  test("filters out issue objects missing required fields", async () => {
+    const issues = JSON.stringify([
+      { number: 1, title: "Fix SRP", body: "body1", createdAt: "2024-01-01T00:00:00Z" },
+      { number: 2, title: "Missing body", createdAt: "2024-01-02T00:00:00Z" },
+      { title: "No number", body: "body3", createdAt: "2024-01-03T00:00:00Z" },
+    ]);
+
+    const run = mockRunner(
+      new Map([["issue list", { stdout: issues, exitCode: 0 }]]),
+    );
+
+    const result = await listHoneIssues("/project", run);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.number).toBe(1);
+  });
 });
 
 describe("getIssueReactions", () => {
@@ -121,6 +146,40 @@ describe("getIssueReactions", () => {
     const result = await getIssueReactions("/project", 1, run);
     expect(result.thumbsUp).toEqual([]);
     expect(result.thumbsDown).toEqual([]);
+  });
+
+  test("ignores lines with user as a number instead of string", async () => {
+    const reactions = [
+      '{"user":42,"content":"+1"}',
+      '{"user":"bob","content":"+1"}',
+    ].join("\n");
+
+    const run = mockRunner(
+      new Map([
+        ["repo view", { stdout: "org/repo\n", exitCode: 0 }],
+        ["api", { stdout: reactions, exitCode: 0 }],
+      ]),
+    );
+
+    const result = await getIssueReactions("/project", 1, run);
+    expect(result.thumbsUp).toEqual(["bob"]);
+  });
+
+  test("ignores lines missing the user field", async () => {
+    const reactions = [
+      '{"content":"+1"}',
+      '{"user":"alice","content":"+1"}',
+    ].join("\n");
+
+    const run = mockRunner(
+      new Map([
+        ["repo view", { stdout: "org/repo\n", exitCode: 0 }],
+        ["api", { stdout: reactions, exitCode: 0 }],
+      ]),
+    );
+
+    const result = await getIssueReactions("/project", 1, run);
+    expect(result.thumbsUp).toEqual(["alice"]);
   });
 });
 
@@ -189,6 +248,21 @@ describe("formatIssueBody / parseIssueBody", () => {
   test("parseIssueBody returns null for malformed metadata", () => {
     const result = parseIssueBody("<!-- hone-metadata\ninvalid json\n-->");
     expect(result).toBeNull();
+  });
+
+  test("parseIssueBody returns null when agent is a number instead of string", () => {
+    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: 42, severity: 3, principle: "SRP" })}\n-->`;
+    expect(parseIssueBody(body)).toBeNull();
+  });
+
+  test("parseIssueBody returns null when severity is missing", () => {
+    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: "typescript-craftsperson", principle: "SRP" })}\n-->`;
+    expect(parseIssueBody(body)).toBeNull();
+  });
+
+  test("parseIssueBody returns null when severity is a string instead of number", () => {
+    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: "typescript-craftsperson", severity: "high", principle: "SRP" })}\n-->`;
+    expect(parseIssueBody(body)).toBeNull();
   });
 });
 

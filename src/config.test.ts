@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getDefaultConfig, loadConfig } from "./config.ts";
+import { getDefaultConfig, loadConfig, validateUserConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
@@ -231,5 +231,85 @@ describe("loadConfig", () => {
     } finally {
       await rm(dir, { recursive: true });
     }
+  });
+});
+
+describe("validateUserConfig", () => {
+  test("returns {} for null", () => {
+    expect(validateUserConfig(null)).toEqual({});
+  });
+
+  test("returns {} for a string", () => {
+    expect(validateUserConfig("config string")).toEqual({});
+  });
+
+  test("returns {} for a number", () => {
+    expect(validateUserConfig(42)).toEqual({});
+  });
+
+  test("returns {} for an array", () => {
+    expect(validateUserConfig([])).toEqual({});
+  });
+
+  test("omits maxRetries when it is a string", () => {
+    const result = validateUserConfig({ maxRetries: "five" });
+    expect(result).not.toHaveProperty("maxRetries");
+  });
+
+  test("omits mode when it is an invalid string", () => {
+    const result = validateUserConfig({ mode: "fast" });
+    expect(result).not.toHaveProperty("mode");
+  });
+
+  test("omits models when it is not an object", () => {
+    const result = validateUserConfig({ models: "opus" });
+    expect(result).not.toHaveProperty("models");
+  });
+
+  test("includes only string-typed fields within models", () => {
+    const result = validateUserConfig({ models: { assess: "sonnet", plan: 42 } });
+    expect(result.models).toBeDefined();
+    expect(result.models!.assess).toBe("sonnet");
+    expect(result.models).not.toHaveProperty("plan");
+  });
+
+  test("valid config with all fields passes through correctly", () => {
+    const input = {
+      auditDir: "my-audit",
+      readOnlyTools: "Read Glob",
+      maxRetries: 5,
+      gateTimeout: 60000,
+      mode: "github",
+      minCharterLength: 200,
+      severityThreshold: 4,
+      models: {
+        assess: "sonnet",
+        name: "haiku",
+        plan: "sonnet",
+        execute: "haiku",
+        gates: "sonnet",
+        derive: "sonnet",
+        triage: "haiku",
+        mix: "sonnet",
+        summarize: "haiku",
+      },
+    };
+
+    const result = validateUserConfig(input);
+
+    expect(result.auditDir).toBe("my-audit");
+    expect(result.readOnlyTools).toBe("Read Glob");
+    expect(result.maxRetries).toBe(5);
+    expect(result.gateTimeout).toBe(60000);
+    expect(result.mode).toBe("github");
+    expect(result.minCharterLength).toBe(200);
+    expect(result.severityThreshold).toBe(4);
+    expect(result.models?.assess).toBe("sonnet");
+    expect(result.models?.name).toBe("haiku");
+  });
+
+  test("accepts local as a valid mode", () => {
+    const result = validateUserConfig({ mode: "local" });
+    expect(result.mode).toBe("local");
   });
 });

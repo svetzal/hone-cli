@@ -31,6 +31,20 @@ export async function getRepoNameWithOwner(
   return stdout.trim();
 }
 
+function validateIssueArray(raw: unknown): Array<{ number: number; title: string; body: string; createdAt: string }> {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.filter(
+    (item): item is { number: number; title: string; body: string; createdAt: string } =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as Record<string, unknown>).number === "number" &&
+      typeof (item as Record<string, unknown>).title === "string" &&
+      typeof (item as Record<string, unknown>).body === "string" &&
+      typeof (item as Record<string, unknown>).createdAt === "string",
+  );
+}
+
 export async function listHoneIssues(
   projectDir: string,
   run: CommandRunner,
@@ -44,7 +58,8 @@ export async function listHoneIssues(
     throw new Error(`Failed to list issues: ${stdout}`);
   }
 
-  const issues: Array<{ number: number; title: string; body: string; createdAt: string }> = JSON.parse(stdout || "[]");
+  const raw: unknown = JSON.parse(stdout || "[]");
+  const issues = validateIssueArray(raw);
 
   return issues.map((issue) => ({
     number: issue.number,
@@ -78,9 +93,17 @@ export async function getIssueReactions(
   for (const line of stdout.trim().split("\n")) {
     if (!line.trim()) continue;
     try {
-      const reaction = JSON.parse(line) as { user: string; content: string };
-      if (reaction.content === "+1") thumbsUp.push(reaction.user);
-      if (reaction.content === "-1") thumbsDown.push(reaction.user);
+      const parsed: unknown = JSON.parse(line);
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        typeof (parsed as Record<string, unknown>).user === "string" &&
+        typeof (parsed as Record<string, unknown>).content === "string"
+      ) {
+        const reaction = parsed as { user: string; content: string };
+        if (reaction.content === "+1") thumbsUp.push(reaction.user);
+        if (reaction.content === "-1") thumbsDown.push(reaction.user);
+      }
     } catch {
       // Skip malformed lines
     }
@@ -186,24 +209,27 @@ export function parseIssueBody(body: string): HoneProposal | null {
   if (metaEnd === -1) return null;
 
   try {
-    const metadata = JSON.parse(body.slice(metaStart, metaEnd).trim()) as {
-      agent: string;
-      severity: number;
-      principle: string;
-      name?: string;
-    };
+    const raw: unknown = JSON.parse(body.slice(metaStart, metaEnd).trim());
+    if (typeof raw !== "object" || raw === null) return null;
+
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.agent !== "string") return null;
+    if (typeof obj.severity !== "number") return null;
+    if (typeof obj.principle !== "string") return null;
+
+    const name = typeof obj.name === "string" ? obj.name : "";
 
     // Extract assessment and plan from markdown sections
     const assessmentMatch = body.match(/## Assessment\s*\n([\s\S]*?)(?=\n## Plan)/);
     const planMatch = body.match(/## Plan\s*\n([\s\S]*?)$/);
 
     return {
-      name: metadata.name ?? "",
+      name,
       assessment: assessmentMatch?.[1]?.trim() ?? "",
       plan: planMatch?.[1]?.trim() ?? "",
-      agent: metadata.agent,
-      severity: metadata.severity,
-      principle: metadata.principle,
+      agent: obj.agent,
+      severity: obj.severity,
+      principle: obj.principle,
     };
   } catch {
     return null;

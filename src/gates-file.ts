@@ -13,6 +13,28 @@ export async function writeGatesFile(projectDir: string, gates: GateDefinition[]
   return path;
 }
 
+export function validateGateArray(parsed: unknown): GateDefinition[] {
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return [];
+
+  const obj = parsed as Record<string, unknown>;
+  if (!Array.isArray(obj.gates)) return [];
+
+  return obj.gates
+    .filter(
+      (g): g is Record<string, unknown> =>
+        typeof g === "object" &&
+        g !== null &&
+        typeof (g as Record<string, unknown>).name === "string" &&
+        typeof (g as Record<string, unknown>).command === "string",
+    )
+    .map((g) => ({
+      name: g.name as string,
+      command: g.command as string,
+      required: typeof g.required === "boolean" ? g.required : true,
+      ...(typeof g.timeout === "number" && { timeout: g.timeout }),
+    }));
+}
+
 export async function readGatesFile(projectDir: string): Promise<GateDefinition[] | null> {
   const filePath = gatesFilePath(projectDir);
   const file = Bun.file(filePath);
@@ -20,12 +42,7 @@ export async function readGatesFile(projectDir: string): Promise<GateDefinition[
   try {
     if (await file.exists()) {
       const config = await file.json();
-      return (config.gates as GateDefinition[]).map((g) => ({
-        name: g.name,
-        command: g.command,
-        required: g.required ?? true,
-        ...(g.timeout !== undefined && { timeout: g.timeout }),
-      }));
+      return validateGateArray(config);
     }
   } catch {
     // Invalid JSON or read error — fall through
