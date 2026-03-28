@@ -3,6 +3,7 @@ import { readdir } from "fs/promises";
 import { buildClaudeArgs } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
+import { renderProjectContextSections } from "./prompt-context.ts";
 
 export interface LockfileInfo {
   file: string;
@@ -180,55 +181,8 @@ export function buildDerivePrompt(folder: string, context: ProjectContext, exist
     "You have Read, Glob, and Grep tools available. Use them to explore the project",
     "and understand its architecture, conventions, patterns, and tooling before writing the agent.",
     "",
-    `## Project Location`,
-    "",
-    `The project is at: ${folder}`,
-    "",
-    "## Project Structure",
-    "```",
-    context.directoryTree || "(empty)",
-    "```",
+    ...renderProjectContextSections(folder, context),
   ];
-
-  if (context.packageFiles.length > 0) {
-    sections.push(
-      "",
-      "## Package/Build Files Found",
-      ...context.packageFiles.map((f) => `- ${f}`),
-    );
-  }
-
-  if (context.ciConfigs.length > 0) {
-    sections.push(
-      "",
-      "## CI Configuration Files Found",
-      ...context.ciConfigs.map((f) => `- ${f}`),
-    );
-  }
-
-  if (context.toolConfigs.length > 0) {
-    sections.push(
-      "",
-      "## Tool Configuration Files Found",
-      ...context.toolConfigs.map((f) => `- ${f}`),
-    );
-  }
-
-  if (context.shellScripts.length > 0) {
-    sections.push(
-      "",
-      "## Shell Scripts Found (project root)",
-      ...context.shellScripts.map((f) => `- ${f}`),
-    );
-  }
-
-  if (context.lockfiles.length > 0) {
-    sections.push(
-      "",
-      "## Lockfiles Detected",
-      ...context.lockfiles.map((l) => `- ${l.file} (${l.packageManager})`),
-    );
-  }
 
   if (existingAgentNames.length > 0) {
     sections.push(
