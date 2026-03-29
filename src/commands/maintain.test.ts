@@ -30,30 +30,12 @@ describe("applyMaintainFlags", () => {
     expect(result).not.toBe(defaultConfig);
   });
 
-  it("should override maxRetries when max-retries flag provided", () => {
-    const result = applyMaintainFlags(defaultConfig, { "max-retries": "5" });
-    expect(result.maxRetries).toBe(5);
-  });
-
-  it("should override execute model when execute-model flag provided", () => {
-    const result = applyMaintainFlags(defaultConfig, { "execute-model": "opus" });
-    expect(result.models.execute).toBe("opus");
-  });
-
   it("should not mutate the original config", () => {
     const original = { ...defaultConfig, models: { ...defaultConfig.models } };
     applyMaintainFlags(defaultConfig, { "max-retries": "99" });
     expect(defaultConfig).toEqual(original);
   });
 
-  it("should ignore boolean flags", () => {
-    const result = applyMaintainFlags(defaultConfig, {
-      "max-retries": true,
-      "execute-model": true,
-    });
-    expect(result.maxRetries).toBe(3);
-    expect(result.models.execute).toBe("sonnet");
-  });
 });
 
 describe("maintain command integration", () => {

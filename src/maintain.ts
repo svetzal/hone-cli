@@ -1,11 +1,10 @@
-import { buildClaudeArgs } from "./claude.ts";
-import { ensureAuditDir, saveStageOutput } from "./audit.ts";
+import { ensureAuditDir } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
 import { appendRetryHistory } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
-import { verifyWithRetry } from "./verify-loop.ts";
+import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
   HoneConfig,
   MaintainResult,
@@ -134,41 +133,20 @@ export async function maintain(
   const name = `maintain-${formatTimestamp()}`;
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
-  // Execute
-  onProgress("execute", "Updating dependencies...");
   const prompt = buildMaintainPrompt(folder, gates);
-  const executeArgs = buildClaudeArgs({
-    agent,
-    model: config.models.execute,
-    prompt,
-    readOnly: false,
-    readOnlyTools: config.readOnlyTools,
-  });
-  let execution = await claude(executeArgs);
-
-  const actionsPath = await saveStageOutput(auditDir, name, "actions", execution);
-  onProgress("execute", `Saved: ${actionsPath}`);
-
-  // Verify (inner loop)
-  const verifyResult = await verifyWithRetry(execution, {
-    gates,
+  const execResult = await runExecuteWithVerify(agent, prompt, config, claude, {
+    skipGates: false,
     gateRunner,
-    maxRetries: config.maxRetries,
-    gateTimeout: config.gateTimeout,
-    executeModel: config.models.execute,
-    readOnlyTools: config.readOnlyTools,
-    agent,
-    folder,
+    gates,
     auditDir,
     name,
-    claude,
+    folder,
     buildRetryPrompt: (failedGates, priorAttempts) =>
       buildMaintainRetryPrompt(folder, gates, failedGates, priorAttempts),
     onProgress,
   });
 
-  const { gatesResult, retries } = verifyResult;
-  execution = verifyResult.execution;
+  const { execution, gatesResult, retries } = execResult;
   const success = gatesResult?.requiredPassed ?? false;
 
   // Summarize (only on success)

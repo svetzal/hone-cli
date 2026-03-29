@@ -9,8 +9,9 @@ import {
   runAssessStage,
   runNameStage,
   runPlanStage,
-  runExecuteWithVerify,
+  buildRetryPrompt,
 } from "./iterate.ts";
+import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import {
   getRepoOwner,
   ensureHoneLabel,
@@ -135,11 +136,19 @@ export async function executeApprovedIssues(
     };
 
     try {
+      const executePrompt = [
+        `Execute the following plan to improve the project in ${folder}.`,
+        "",
+        "Why:",
+        proposal.assessment,
+        "",
+        "Plan:",
+        proposal.plan,
+      ].join("\n");
+
       const execResult = await runExecuteWithVerify(
         proposal.agent,
-        folder,
-        proposal.assessment,
-        proposal.plan,
+        executePrompt,
         config,
         claude,
         {
@@ -148,6 +157,9 @@ export async function executeApprovedIssues(
           gates,
           auditDir,
           name,
+          folder,
+          buildRetryPrompt: (failedGates, priorAttempts) =>
+            buildRetryPrompt(folder, proposal.plan, proposal.assessment, failedGates, priorAttempts),
           onProgress,
         },
       );

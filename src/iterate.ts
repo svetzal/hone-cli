@@ -9,7 +9,7 @@ import { runPreamble } from "./preamble.ts";
 import { buildIterateSummarizePrompt } from "./summarize.ts";
 import { appendRetryHistory } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
-import { verifyWithRetry } from "./verify-loop.ts";
+import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
   HoneConfig,
   IterationResult,
@@ -174,81 +174,6 @@ export async function runPlanStage(
   return claude(planArgs);
 }
 
-export async function runExecuteWithVerify(
-  agent: string,
-  folder: string,
-  assessment: string,
-  plan: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
-  opts: {
-    skipGates: boolean;
-    gateRunner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
-    gates: GateDefinition[];
-    auditDir: string;
-    name: string;
-    onProgress: (stage: string, message: string) => void;
-  },
-): Promise<{
-  execution: string;
-  gatesResult: GatesRunResult | null;
-  retries: number;
-  success: boolean;
-}> {
-  const { skipGates, gateRunner, gates, auditDir, name, onProgress } = opts;
-
-  // Execute
-  onProgress("execute", "Executing plan...");
-  const executeArgs = buildClaudeArgs({
-    agent,
-    model: config.models.execute,
-    prompt: [
-      `Execute the following plan to improve the project in ${folder}.`,
-      "",
-      "Why:",
-      assessment,
-      "",
-      "Plan:",
-      plan,
-    ].join("\n"),
-    readOnly: false,
-    readOnlyTools: config.readOnlyTools,
-  });
-  let execution = await claude(executeArgs);
-
-  const actionsPath = await saveStageOutput(auditDir, name, "actions", execution);
-  onProgress("execute", `Saved: ${actionsPath}`);
-
-  // Verify (inner loop)
-  let gatesResult: GatesRunResult | null = null;
-  let retries = 0;
-
-  if (!skipGates) {
-    const verifyResult = await verifyWithRetry(execution, {
-      gates,
-      gateRunner,
-      maxRetries: config.maxRetries,
-      gateTimeout: config.gateTimeout,
-      executeModel: config.models.execute,
-      readOnlyTools: config.readOnlyTools,
-      agent,
-      folder,
-      auditDir,
-      name,
-      claude,
-      buildRetryPrompt: (failedGates, priorAttempts) =>
-        buildRetryPrompt(folder, plan, assessment, failedGates, priorAttempts),
-      onProgress,
-    });
-    gatesResult = verifyResult.gatesResult;
-    retries = verifyResult.retries;
-    execution = verifyResult.execution;
-  }
-
-  const success = skipGates || (gatesResult?.requiredPassed ?? true);
-  return { execution, gatesResult, retries, success };
-}
-
 // --- Main iterate function ---
 
 export async function iterate(
@@ -360,12 +285,25 @@ export async function iterate(
   onProgress("plan", `Saved: ${planPath}`);
 
   // --- Stage 5: Execute + Verify ---
-  const execResult = await runExecuteWithVerify(agent, folder, assessment, plan, config, claude, {
+  const executePrompt = [
+    `Execute the following plan to improve the project in ${folder}.`,
+    "",
+    "Why:",
+    assessment,
+    "",
+    "Plan:",
+    plan,
+  ].join("\n");
+
+  const execResult = await runExecuteWithVerify(agent, executePrompt, config, claude, {
     skipGates,
     gateRunner,
     gates: preflightGates,
     auditDir,
     name,
+    folder,
+    buildRetryPrompt: (failedGates, priorAttempts) =>
+      buildRetryPrompt(folder, plan, assessment, failedGates, priorAttempts),
     onProgress,
   });
 

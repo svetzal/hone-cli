@@ -1,45 +1,17 @@
-import { resolve, join } from "path";
 import { loadConfig } from "../config.ts";
-import { validateAgentOrExit } from "../agents.ts";
 import { maintain } from "../maintain.ts";
 import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, HoneConfig } from "../types.ts";
 import { writeJson, createProgressCallback } from "../output.ts";
+import { applySharedFlags } from "./shared-flags.ts";
+import { resolveCommandArgs } from "./resolve-command-args.ts";
 
 export function applyMaintainFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
-  const result = { ...config, models: { ...config.models } };
-
-  if (typeof flags["max-retries"] === "string") {
-    result.maxRetries = parseInt(flags["max-retries"], 10);
-  }
-  if (typeof flags["execute-model"] === "string") {
-    result.models.execute = flags["execute-model"];
-  }
-  if (typeof flags["summarize-model"] === "string") {
-    result.models.summarize = flags["summarize-model"];
-  }
-  if (typeof flags["audit-dir"] === "string") {
-    result.auditDir = flags["audit-dir"];
-  }
-
-  return result;
+  return applySharedFlags(config, flags);
 }
 
 export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
-  const agent = parsed.positional[0];
-  const folder = parsed.positional[1];
-
-  if (!agent || !folder) {
-    console.error("Usage: hone maintain <agent> <folder>");
-    console.error("  agent  - Claude agent name (e.g., typescript-craftsperson)");
-    console.error("  folder - Project folder to maintain");
-    process.exit(1);
-  }
-
-  const resolvedFolder = resolve(folder);
-  const localAgentsDir = join(resolvedFolder, ".claude", "agents");
-
-  await validateAgentOrExit(agent, localAgentsDir);
+  const { agent, resolvedFolder } = await resolveCommandArgs(parsed, "maintain");
 
   const baseConfig = await loadConfig();
   const config = applyMaintainFlags(baseConfig, parsed.flags);

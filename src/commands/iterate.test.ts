@@ -31,13 +31,6 @@ describe("applyIterateFlags", () => {
     expect(result).not.toBe(defaultConfig); // Should be a new object
   });
 
-  it("should override maxRetries when max-retries flag provided", () => {
-    const result = applyIterateFlags(defaultConfig, { "max-retries": "5" });
-
-    expect(result.maxRetries).toBe(5);
-    expect(result.models).toEqual(defaultConfig.models);
-  });
-
   it("should override assess model when assess-model flag provided", () => {
     const result = applyIterateFlags(defaultConfig, { "assess-model": "sonnet" });
 
@@ -52,14 +45,6 @@ describe("applyIterateFlags", () => {
     expect(result.models.plan).toBe("haiku");
     expect(result.models.assess).toBe("opus");
     expect(result.models.execute).toBe("sonnet");
-  });
-
-  it("should override execute model when execute-model flag provided", () => {
-    const result = applyIterateFlags(defaultConfig, { "execute-model": "opus" });
-
-    expect(result.models.execute).toBe("opus");
-    expect(result.models.assess).toBe("opus");
-    expect(result.models.plan).toBe("opus");
   });
 
   it("should apply multiple model overrides at once", () => {
@@ -87,12 +72,6 @@ describe("applyIterateFlags", () => {
     expect(result.models.plan).toBe("opus"); // Unchanged
   });
 
-  it("should handle NaN when max-retries is non-numeric", () => {
-    const result = applyIterateFlags(defaultConfig, { "max-retries": "abc" });
-
-    expect(result.maxRetries).toBeNaN();
-  });
-
   it("should ignore boolean flags for model overrides", () => {
     const result = applyIterateFlags(defaultConfig, {
       "assess-model": true,
@@ -101,12 +80,6 @@ describe("applyIterateFlags", () => {
 
     expect(result.models.assess).toBe("opus"); // Unchanged
     expect(result.models.plan).toBe("opus"); // Unchanged
-  });
-
-  it("should ignore boolean max-retries flag", () => {
-    const result = applyIterateFlags(defaultConfig, { "max-retries": true });
-
-    expect(result.maxRetries).toBe(3); // Unchanged
   });
 
   it("should not mutate the original config", () => {
