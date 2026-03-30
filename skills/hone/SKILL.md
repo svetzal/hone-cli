@@ -1,6 +1,9 @@
 ---
 name: hone
 description: Run iterative codebase improvement with hone CLI; use when user asks to hone, iterate, maintain dependencies, assess, improve code quality, set up or fix quality gates, derive agents, mix agents, or check iteration history
+metadata:
+  version: "1.3.1"
+  author: svetzal
 ---
 
 # Hone CLI

@@ -35,7 +35,13 @@ interface InitResult {
 export function stampVersion(content: string): string {
   const closingIndex = content.indexOf("\n---", 1);
   if (closingIndex === -1) return content;
-  return content.slice(0, closingIndex) + `\nhone-version: ${VERSION}` + content.slice(closingIndex);
+  let stamped = content.slice(0, closingIndex) + `\nhone-version: ${VERSION}` + content.slice(closingIndex);
+  // Also stamp metadata.version to match the running binary
+  stamped = stamped.replace(
+    /(metadata:\n\s+version:\s*)"[^"]*"/,
+    `$1"${VERSION}"`,
+  );
+  return stamped;
 }
 
 export function parseInstalledVersion(content: string): string | null {
@@ -44,7 +50,9 @@ export function parseInstalledVersion(content: string): string | null {
 }
 
 export function stripVersionField(content: string): string {
-  return content.replace(/\nhone-version: .+/g, "");
+  return content
+    .replace(/\nhone-version: .+/g, "")
+    .replace(/(metadata:\n\s+version:\s*)"[^"]*"/, '$1"0.0.0"');
 }
 
 export function compareVersions(a: string, b: string): number {
@@ -93,7 +101,7 @@ export async function initCommand(parsed: { flags: Record<string, string | boole
       }
 
       const existingBody = stripVersionField(existing);
-      const newBody = file.content;
+      const newBody = stripVersionField(file.content);
 
       if (existingBody === newBody) {
         if (existing !== stamped) {

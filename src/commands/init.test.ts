@@ -18,6 +18,13 @@ describe("init helpers", () => {
       expect(result).toBe(`---\nname: hone\nhone-version: ${VERSION}\n---\n# Content`);
     });
 
+    it("stamps metadata.version with the running binary version", () => {
+      const input = '---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content';
+      const result = stampVersion(input);
+      expect(result).toContain(`hone-version: ${VERSION}`);
+      expect(result).toContain(`version: "${VERSION}"`);
+    });
+
     it("returns content unchanged if no closing frontmatter", () => {
       const input = "no frontmatter here";
       expect(stampVersion(input)).toBe(input);
@@ -42,7 +49,17 @@ describe("init helpers", () => {
       expect(stripVersionField(content)).toBe("---\nname: hone\n---\n# Content");
     });
 
-    it("leaves content unchanged when no version field", () => {
+    it("normalizes metadata.version to 0.0.0", () => {
+      const content = '---\nname: hone\nmetadata:\n  version: "1.2.0"\n  author: svetzal\n---\n# Content';
+      expect(stripVersionField(content)).toBe('---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content');
+    });
+
+    it("strips both hone-version and normalizes metadata.version", () => {
+      const content = '---\nname: hone\nmetadata:\n  version: "1.2.0"\n  author: svetzal\nhone-version: 1.2.0\n---\n# Content';
+      expect(stripVersionField(content)).toBe('---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content');
+    });
+
+    it("leaves content unchanged when no version fields", () => {
       const content = "---\nname: hone\n---\n# Content";
       expect(stripVersionField(content)).toBe(content);
     });
@@ -96,9 +113,10 @@ describe("init command integration", () => {
     expect(stdout).toContain("Created");
     expect(stdout).toContain("1 created");
 
-    // Verify file exists and has version stamp
+    // Verify file exists and has version stamps
     const installed = await Bun.file(join(tmpDir, ".claude/skills/hone/SKILL.md")).text();
     expect(installed).toContain(`hone-version: ${VERSION}`);
+    expect(installed).toContain(`version: "${VERSION}"`);
     expect(installed).toContain("# Hone CLI");
   });
 

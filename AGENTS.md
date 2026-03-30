@@ -134,7 +134,7 @@ src/
     config.ts         # config command handler
 skills/
   hone/
-    SKILL.md          # Source of truth for the hone skill (no version field)
+    SKILL.md          # Source of truth for the hone skill (metadata.version synced with tool version)
 package.json
 tsconfig.json
 ```
@@ -147,7 +147,7 @@ when users invoke hone through conversational prompts.
 - **Source of truth:** `skills/hone/SKILL.md` in the repo root
 - **Install:** `hone init` (local, to `.claude/skills/hone/`) or `hone init --global` (to `~/.claude/skills/hone/`)
 - **Build-time embedding:** The skill content is embedded in the binary via Bun text imports — no file reads at runtime
-- **Version stamping:** `hone init` injects `hone-version: <VERSION>` into the SKILL.md frontmatter at install time
+- **Version stamping:** `hone init` injects `hone-version: <VERSION>` into the SKILL.md frontmatter at install time and updates `metadata.version` to match. The skill `metadata.version` must always match the tool version in `package.json`.
 - **Version guard:** If the installed skill has a newer `hone-version` than the running binary, `hone init` refuses to overwrite (warns the user). Use `--force` to bypass.
 - `.claude/skills/hone/` is gitignored — it is a generated artifact, not source
 
