@@ -5,11 +5,14 @@ import { readAgentContent } from "../agents.ts";
 import { deriveGates } from "../derive-gates.ts";
 import { runAllGates } from "../gates.ts";
 import { parseGatesArgs } from "./gates.ts";
-import type { ParsedArgs, GateResult } from "../types.ts";
+import type { ParsedArgs, GateResult, ClaudeInvoker } from "../types.ts";
 import { writeJson, progress, reportGateValidation } from "../output.ts";
 import { writeGatesFile } from "../gates-file.ts";
 
-export async function deriveGatesCommand(parsed: ParsedArgs): Promise<void> {
+export async function deriveGatesCommand(
+  parsed: ParsedArgs,
+  deps?: { claude?: ClaudeInvoker },
+): Promise<void> {
   if (parsed.positional.length === 0) {
     console.error("Usage: hone derive-gates [agent] <folder>");
     console.error("  agent  - Optional agent name for context");
@@ -48,7 +51,7 @@ export async function deriveGatesCommand(parsed: ParsedArgs): Promise<void> {
     resolvedFolder,
     model,
     config.readOnlyTools,
-    createClaudeInvoker(),
+    deps?.claude ?? createClaudeInvoker(),
     agentContent,
   );
 
