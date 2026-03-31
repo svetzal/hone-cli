@@ -2,7 +2,7 @@ import { ensureAuditDir } from "./audit.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
-import { appendRetryHistory } from "./retry-formatting.ts";
+import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
@@ -54,26 +54,20 @@ export function buildMaintainRetryPrompt(
     .map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`)
     .join("\n");
 
-  const sections: string[] = [
-    "## Goal",
-    "",
-    `Update the project dependencies in ${folder} to their latest compatible versions.`,
-    "",
-    "Quality gates:",
-    gateList,
-  ];
-
-  appendRetryHistory(sections, priorAttempts, currentFailedGates);
-
-  sections.push(
-    "",
-    "## Task",
-    "",
-    "The dependency updates introduced quality gate failures that must be fixed.",
-    "Fix the failures below without reverting the dependency updates unless absolutely necessary.",
+  return buildRetryPromptScaffold(
+    [
+      `Update the project dependencies in ${folder} to their latest compatible versions.`,
+      "",
+      "Quality gates:",
+      gateList,
+    ],
+    [
+      "The dependency updates introduced quality gate failures that must be fixed.",
+      "Fix the failures below without reverting the dependency updates unless absolutely necessary.",
+    ],
+    currentFailedGates,
+    priorAttempts,
   );
-
-  return sections.join("\n");
 }
 
 function formatTimestamp(): string {

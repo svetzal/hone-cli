@@ -37,3 +37,22 @@ export function appendRetryHistory(
     formatGateFailures(currentFailedGates),
   );
 }
+
+/**
+ * Shared scaffold for building retry prompts.
+ * Assembles: ## Goal → goalLines → retry history → ## Task → taskLines
+ */
+export function buildRetryPromptScaffold(
+  goalLines: string[],
+  taskLines: string[],
+  currentFailedGates: { name: string; output: string }[],
+  priorAttempts: AttemptRecord[],
+): string {
+  const sections: string[] = ["## Goal", "", ...goalLines];
+
+  appendRetryHistory(sections, priorAttempts, currentFailedGates);
+
+  sections.push("", "## Task", "", ...taskLines);
+
+  return sections.join("\n");
+}

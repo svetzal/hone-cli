@@ -7,7 +7,7 @@ import { parseAssessment } from "./parse-assessment.ts";
 import { triage as runTriage } from "./triage.ts";
 import { runPreamble } from "./preamble.ts";
 import { buildIterateSummarizePrompt } from "./summarize.ts";
-import { appendRetryHistory } from "./retry-formatting.ts";
+import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
@@ -64,31 +64,25 @@ export function buildRetryPrompt(
   currentFailedGates: { name: string; output: string }[],
   priorAttempts: AttemptRecord[],
 ): string {
-  const sections: string[] = [
-    "## Goal",
-    "",
-    `Improve the project in ${folder}.`,
-    "",
-    "## Assessment",
-    "",
-    assessment,
-    "",
-    "## Original Plan",
-    "",
-    plan,
-  ];
-
-  appendRetryHistory(sections, priorAttempts, currentFailedGates);
-
-  sections.push(
-    "",
-    "## Task",
-    "",
-    "The previous execution introduced quality gate failures that must be fixed.",
-    "Fix the failures below WITHOUT regressing on the original improvement.",
+  return buildRetryPromptScaffold(
+    [
+      `Improve the project in ${folder}.`,
+      "",
+      "## Assessment",
+      "",
+      assessment,
+      "",
+      "## Original Plan",
+      "",
+      plan,
+    ],
+    [
+      "The previous execution introduced quality gate failures that must be fixed.",
+      "Fix the failures below WITHOUT regressing on the original improvement.",
+    ],
+    currentFailedGates,
+    priorAttempts,
   );
-
-  return sections.join("\n");
 }
 
 // --- Extracted stage functions ---
