@@ -4,9 +4,9 @@ import { loadOverrideGates } from "./resolve-gates.ts";
 import type {
   GateDefinition,
   GatesRunResult,
-  ClaudeInvoker,
   GateRunner,
   AttemptRecord,
+  PipelineContext,
 } from "./types.ts";
 
 export type RetryPromptBuilder = (
@@ -15,19 +15,14 @@ export type RetryPromptBuilder = (
 ) => string;
 
 export interface VerifyWithRetryOpts {
+  ctx: PipelineContext;
   gates: GateDefinition[];
   gateRunner: GateRunner;
   maxRetries: number;
   gateTimeout: number;
-  executeModel: string;
-  readOnlyTools: string;
-  agent: string;
-  folder: string;
   auditDir: string;
   name: string;
-  claude: ClaudeInvoker;
   buildRetryPrompt: RetryPromptBuilder;
-  onProgress: (stage: string, message: string) => void;
 }
 
 export interface VerifyWithRetryResult {
@@ -40,10 +35,10 @@ export async function verifyWithRetry(
   initialExecution: string,
   opts: VerifyWithRetryOpts,
 ): Promise<VerifyWithRetryResult> {
-  const {
-    gates, gateRunner, maxRetries, gateTimeout, executeModel, readOnlyTools,
-    agent, folder, auditDir, name, claude, buildRetryPrompt, onProgress,
-  } = opts;
+  const { ctx, gates, gateRunner, maxRetries, gateTimeout, auditDir, name, buildRetryPrompt } = opts;
+  const { agent, folder, claude, onProgress, config } = ctx;
+  const executeModel = config.models.execute;
+  const readOnlyTools = config.readOnlyTools;
 
   let execution = initialExecution;
   let gatesResult: GatesRunResult | null = null;

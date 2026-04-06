@@ -1,13 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { runPreamble } from "./preamble.ts";
 import { getDefaultConfig } from "./config.ts";
-import type { GateDefinition, GatesRunResult } from "./types.ts";
+import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 import {
   emptyGateResolver,
   standardGateResolver,
   passingCharterChecker,
   failingCharterChecker,
 } from "./test-helpers.ts";
+
+function makeCtx(
+  onProgress: PipelineContext["onProgress"] = () => {},
+  claude: PipelineContext["claude"] = async () => "",
+): PipelineContext {
+  return {
+    agent: "test-agent",
+    folder: "/test",
+    config: getDefaultConfig(),
+    claude,
+    onProgress,
+  };
+}
 
 describe("runPreamble", () => {
   test("charter check skipped: returns passed with null charter check", async () => {
@@ -20,18 +33,12 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: true, // Skip charter check
       skipGates: true,
       gateResolver: emptyGateResolver,
       gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
       charterChecker: mockCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);
@@ -46,18 +53,12 @@ describe("runPreamble", () => {
     const progress: string[] = [];
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: false,
       skipGates: true,
       gateResolver: emptyGateResolver,
       gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);
@@ -80,18 +81,12 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: false,
       skipGates: false, // Gates NOT skipped, but should not run
       gateResolver: mockGateResolver,
       gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
       charterChecker: failingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(false);
@@ -121,18 +116,12 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: true,
       skipGates: true, // Skip gates
       gateResolver: mockGateResolver,
       gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);
@@ -152,18 +141,12 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: true,
       skipGates: false,
       gateResolver: emptyGateResolver, // Returns empty array
       gateRunner: mockGateRunner,
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);
@@ -199,18 +182,12 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: true,
       skipGates: false,
       gateResolver: standardGateResolver, // Returns one gate
       gateRunner: mockGateRunner,
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);
@@ -243,18 +220,12 @@ describe("runPreamble", () => {
     });
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: true,
       skipGates: false,
       gateResolver: standardGateResolver,
       gateRunner: mockGateRunner,
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(false);
@@ -286,18 +257,12 @@ describe("runPreamble", () => {
     });
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: false, // Charter check runs
       skipGates: false,
       gateResolver: standardGateResolver,
       gateRunner: mockGateRunner,
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(false);
@@ -316,18 +281,12 @@ describe("runPreamble", () => {
     const progress: string[] = [];
 
     const result = await runPreamble({
-      folder: "/test",
-      agent: "test-agent",
-      config: getDefaultConfig(),
+      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
       skipCharter: false,
       skipGates: false,
       gateResolver: standardGateResolver,
       gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
       charterChecker: passingCharterChecker,
-      claude: async () => "",
-      onProgress: (stage, msg) => {
-        progress.push(`${stage}: ${msg}`);
-      },
     });
 
     expect(result.passed).toBe(true);

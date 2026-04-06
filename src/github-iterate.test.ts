@@ -15,8 +15,25 @@ import type {
   GateDefinition,
   GatesRunResult,
   HoneIssue,
+  PipelineContext,
 } from "./types.ts";
 import { createIterateMock, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingTriageRunner, emptyGateResolver } from "./test-helpers.ts";
+
+function makeCtx(
+  dir: string,
+  claude: PipelineContext["claude"],
+  onProgress: PipelineContext["onProgress"] = () => {},
+  configOverride?: Partial<ReturnType<typeof getDefaultConfig>>,
+): PipelineContext {
+  const config = { ...getDefaultConfig(), ...configOverride };
+  return {
+    agent: "test-agent",
+    folder: dir,
+    config,
+    claude,
+    onProgress,
+  };
+}
 
 function createMockGhRunner(opts: {
   owner?: string;
@@ -130,20 +147,14 @@ describe("githubIterate", () => {
 
     try {
       expect(
-        githubIterate(
-          {
-            agent: "test-agent",
-            folder: dir,
-            config: getDefaultConfig(),
-            proposals: 1,
-            skipGates: true,
-            skipTriage: true,
-            charterChecker: failingCharterChecker,
-            ghRunner: runner,
-            onProgress: () => {},
-          },
-          mockClaude,
-        ),
+        githubIterate({
+          ctx: makeCtx(dir, mockClaude),
+          proposals: 1,
+          skipGates: true,
+          skipTriage: true,
+          charterChecker: failingCharterChecker,
+          ghRunner: runner,
+        }),
       ).rejects.toThrow("Charter clarity insufficient");
     } finally {
       await rm(dir, { recursive: true });
@@ -171,21 +182,15 @@ describe("githubIterate", () => {
     });
 
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          proposals: 0,
-          skipGates: true,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 0,
+        skipGates: true,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.housekeeping.closed).toContain(5);
       expect(closedIssues).toContain(5);
@@ -223,21 +228,15 @@ describe("githubIterate", () => {
     });
 
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          proposals: 0,
-          skipGates: true,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 0,
+        skipGates: true,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.executed).toHaveLength(1);
       expect(result.executed[0]!.issueNumber).toBe(10);
@@ -299,26 +298,17 @@ describe("githubIterate", () => {
       };
     };
 
-    const config = getDefaultConfig();
-    config.maxRetries = 0; // Don't retry
-
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config,
-          proposals: 0,
-          skipGates: false,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateRunner,
-          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude, () => {}, { maxRetries: 0 }),
+        proposals: 0,
+        skipGates: false,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateRunner,
+        gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+      });
 
       expect(result.executed).toHaveLength(1);
       expect(result.executed[0]!.success).toBe(false);
@@ -337,22 +327,16 @@ describe("githubIterate", () => {
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
 
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          proposals: 1,
-          skipGates: true,
-          skipTriage: false,
-          skipCharter: true,
-          ghRunner: runner,
-          gateResolver: emptyGateResolver,
-          triageRunner: rejectingTriageRunner,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 1,
+        skipGates: true,
+        skipTriage: false,
+        skipCharter: true,
+        ghRunner: runner,
+        gateResolver: emptyGateResolver,
+        triageRunner: rejectingTriageRunner,
+      });
 
       expect(result.skippedTriage).toBe(1);
       expect(result.proposed).toHaveLength(0);
@@ -377,21 +361,15 @@ describe("githubIterate", () => {
     });
 
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          proposals: 3,
-          skipGates: true,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 3,
+        skipGates: true,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.proposed).toHaveLength(3);
       expect(result.proposed).toEqual([50, 51, 52]);
@@ -426,22 +404,16 @@ describe("githubIterate", () => {
 
     try {
       await expect(
-        githubIterate(
-          {
-            agent: "test-agent",
-            folder: dir,
-            config: getDefaultConfig(),
-            proposals: 1,
-            skipGates: false,
-            skipTriage: true,
-            skipCharter: true,
-            ghRunner: runner,
-            gateRunner: failingGateRunner,
-            gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
-            onProgress: () => {},
-          },
-          mockClaude,
-        ),
+        githubIterate({
+          ctx: makeCtx(dir, mockClaude),
+          proposals: 1,
+          skipGates: false,
+          skipTriage: true,
+          skipCharter: true,
+          ghRunner: runner,
+          gateRunner: failingGateRunner,
+          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+        }),
       ).rejects.toThrow("Preflight failed");
 
       // No Claude calls should have been made
@@ -466,21 +438,15 @@ describe("githubIterate", () => {
     });
 
     try {
-      const result = await githubIterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          proposals: 1,
-          skipGates: true,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 1,
+        skipGates: true,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.executed).toHaveLength(0);
       expect(result.proposed).toHaveLength(1);
@@ -593,15 +559,12 @@ describe("executeApprovedIssues", () => {
         issues,
         "testowner",
         [],
-        dir,
-        getDefaultConfig(),
-        mockClaude,
+        makeCtx(dir, mockClaude),
         {
           skipGates: true,
           gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
           gates: [],
           ghRunner: runner,
-          onProgress: () => {},
         },
       );
 
@@ -654,23 +617,17 @@ describe("executeApprovedIssues", () => {
       }],
     });
 
-    const config = getDefaultConfig();
-    config.maxRetries = 0;
-
     try {
       const executed = await executeApprovedIssues(
         issues,
         "testowner",
         [],
-        dir,
-        config,
-        mockClaude,
+        makeCtx(dir, mockClaude, () => {}, { maxRetries: 0 }),
         {
           skipGates: false,
           gateRunner: failingGateRunner,
           gates: [{ name: "test", command: "npm test", required: true }],
           ghRunner: runner,
-          onProgress: () => {},
         },
       );
 
@@ -705,15 +662,12 @@ describe("executeApprovedIssues", () => {
         issues,
         "testowner",
         [],
-        dir,
-        getDefaultConfig(),
-        mockClaude,
+        makeCtx(dir, mockClaude),
         {
           skipGates: true,
           gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
           gates: [],
           ghRunner: runner,
-          onProgress: () => {},
         },
       );
 
@@ -741,16 +695,12 @@ describe("proposeImprovements", () => {
 
     try {
       const { proposed, skippedTriage } = await proposeImprovements(
-        "test-agent",
-        dir,
-        getDefaultConfig(),
-        mockClaude,
+        makeCtx(dir, mockClaude),
         {
           proposals: 2,
           skipTriage: true,
           ghRunner: runner,
           triageRunner: acceptingTriageRunner,
-          onProgress: () => {},
         },
       );
 
@@ -775,16 +725,12 @@ describe("proposeImprovements", () => {
 
     try {
       const { proposed, skippedTriage } = await proposeImprovements(
-        "test-agent",
-        dir,
-        getDefaultConfig(),
-        mockClaude,
+        makeCtx(dir, mockClaude),
         {
           proposals: 1,
           skipTriage: false,
           ghRunner: runner,
           triageRunner: rejectingTriageRunner,
-          onProgress: () => {},
         },
       );
 
@@ -809,16 +755,12 @@ describe("proposeImprovements", () => {
 
     try {
       const { proposed, skippedTriage } = await proposeImprovements(
-        "test-agent",
-        dir,
-        getDefaultConfig(),
-        mockClaude,
+        makeCtx(dir, mockClaude),
         {
           proposals: 3,
           skipTriage: false,
           ghRunner: runner,
           triageRunner: rejectingTriageRunner,
-          onProgress: () => {},
         },
       );
 

@@ -1,25 +1,20 @@
 import type {
-  HoneConfig,
   GateDefinition,
   CharterCheckResult,
   GatesRunResult,
-  ClaudeInvoker,
   GateRunner,
   GateResolverFn,
   CharterCheckerFn,
+  PipelineContext,
 } from "./types.ts";
 
 export interface PreambleOptions {
-  folder: string;
-  agent: string;
-  config: HoneConfig;
+  ctx: PipelineContext;
   skipCharter: boolean;
   skipGates: boolean;
   gateResolver: GateResolverFn;
   gateRunner: GateRunner;
   charterChecker: CharterCheckerFn;
-  claude: ClaudeInvoker;
-  onProgress: (stage: string, message: string) => void;
 }
 
 export type PreambleResult =
@@ -48,18 +43,8 @@ export type PreambleResult =
 export async function runPreamble(
   opts: PreambleOptions,
 ): Promise<PreambleResult> {
-  const {
-    folder,
-    agent,
-    config,
-    skipCharter,
-    skipGates,
-    gateResolver,
-    gateRunner,
-    charterChecker,
-    claude,
-    onProgress,
-  } = opts;
+  const { ctx, skipCharter, skipGates, gateResolver, gateRunner, charterChecker } = opts;
+  const { folder, agent, config, claude, onProgress } = ctx;
 
   // --- Charter check ---
   let charterCheckResult: CharterCheckResult | null = null;

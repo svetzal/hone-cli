@@ -4,8 +4,22 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { GateDefinition, GatesRunResult } from "./types.ts";
+import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 import { createIterateMock, extractPrompt, emptyGateResolver, standardGateResolver, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingSeverityTriageRunner, rejectingBusyWorkTriageRunner, createPreflightAwareGateRunner } from "./test-helpers.ts";
+
+function makeCtx(
+  dir: string,
+  claude: PipelineContext["claude"],
+  onProgress: PipelineContext["onProgress"] = () => {},
+): PipelineContext {
+  return {
+    agent: "test-agent",
+    folder: dir,
+    config: getDefaultConfig(),
+    claude,
+    onProgress,
+  };
+}
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {
@@ -25,20 +39,12 @@ describe("iterate", () => {
 
     try {
       const progress: string[] = [];
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          skipTriage: true,
-          onProgress: (stage, msg) => {
-            progress.push(`${stage}: ${msg}`);
-          },
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude, (stage, msg) => progress.push(`${stage}: ${msg}`)),
+        skipGates: true,
+        skipCharter: true,
+        skipTriage: true,
+      });
 
       expect(result.name).toBe("fix-srp-violation");
       expect(result.assessment).toContain("single responsibility");
@@ -82,18 +88,12 @@ describe("iterate", () => {
     });
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          skipTriage: true,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        skipCharter: true,
+        skipTriage: true,
+      });
 
       // Should fall back to assessment-<timestamp>
       expect(result.name).toMatch(/^assessment-\d+$/);
@@ -136,20 +136,14 @@ describe("iterate", () => {
     };
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
@@ -216,20 +210,14 @@ describe("iterate", () => {
     ]);
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(1);
@@ -285,20 +273,14 @@ describe("iterate", () => {
       const config = getDefaultConfig();
       config.maxRetries = 2;
 
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config,
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: { ...makeCtx(dir, mockClaude), config },
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(false);
       expect(result.retries).toBe(2);
@@ -349,20 +331,14 @@ describe("iterate", () => {
     };
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
@@ -418,20 +394,14 @@ describe("iterate", () => {
     ]);
 
     try {
-      await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       // Capture the retry prompt (5th call); 6th is summarize
       expect(claudeCalls.length).toBe(6);
@@ -475,20 +445,14 @@ describe("iterate", () => {
     });
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: failingGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: failingGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(false);
       expect(result.skippedReason).toContain("Preflight failed");
@@ -517,20 +481,14 @@ describe("iterate", () => {
     };
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: false,
-          skipCharter: true,
-          skipTriage: true,
-          gateRunner: mockGateRunner,
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: false,
+        skipCharter: true,
+        skipTriage: true,
+        gateRunner: mockGateRunner,
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.success).toBe(true);
       // 5 claude calls: assess, name, plan, execute, summarize
@@ -554,17 +512,11 @@ describe("iterate", () => {
     );
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          charterChecker: failingCharterChecker,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        charterChecker: failingCharterChecker,
+      });
 
       expect(result.success).toBe(false);
       expect(result.skippedReason).toBe("Charter clarity insufficient");
@@ -592,18 +544,12 @@ describe("iterate", () => {
     );
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          triageRunner: rejectingSeverityTriageRunner,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        skipCharter: true,
+        triageRunner: rejectingSeverityTriageRunner,
+      });
 
       expect(result.success).toBe(true); // Triage rejection is a success state
       expect(result.skippedReason).toContain("Triage:");
@@ -635,18 +581,12 @@ describe("iterate", () => {
     );
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          triageRunner: rejectingBusyWorkTriageRunner,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        skipCharter: true,
+        triageRunner: rejectingBusyWorkTriageRunner,
+      });
 
       expect(result.success).toBe(true);
       expect(result.skippedReason).toContain("Busy-work");
@@ -675,18 +615,12 @@ describe("iterate", () => {
     );
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          charterChecker: passingCharterChecker,
-          triageRunner: acceptingTriageRunner,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        charterChecker: passingCharterChecker,
+        triageRunner: acceptingTriageRunner,
+      });
 
       expect(result.success).toBe(true);
       expect(result.skippedReason).toBeNull();
@@ -712,22 +646,16 @@ describe("iterate", () => {
     });
 
     try {
-      await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          skipTriage: true,
-          charterChecker: async () => {
-            charterCalled = true;
-            return passingCharterChecker();
-          },
-          onProgress: () => {},
+      await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        skipCharter: true,
+        skipTriage: true,
+        charterChecker: async () => {
+          charterCalled = true;
+          return passingCharterChecker();
         },
-        mockClaude,
-      );
+      });
 
       expect(charterCalled).toBe(false);
     } finally {
@@ -746,22 +674,16 @@ describe("iterate", () => {
     );
 
     try {
-      const result = await iterate(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          skipGates: true,
-          skipCharter: true,
-          skipTriage: true,
-          triageRunner: async () => {
-            triageCalled = true;
-            return acceptingTriageRunner();
-          },
-          onProgress: () => {},
+      const result = await iterate({
+        ctx: makeCtx(dir, mockClaude),
+        skipGates: true,
+        skipCharter: true,
+        skipTriage: true,
+        triageRunner: async () => {
+          triageCalled = true;
+          return acceptingTriageRunner();
         },
-        mockClaude,
-      );
+      });
 
       expect(triageCalled).toBe(false);
       expect(result.triageResult).toBeNull();

@@ -4,8 +4,24 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
-import type { GateDefinition, GatesRunResult } from "./types.ts";
+import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 import { createMaintainMock, extractPrompt, emptyGateResolver, standardGateResolver } from "./test-helpers.ts";
+
+function makeCtx(
+  dir: string,
+  claude: PipelineContext["claude"],
+  onProgress: PipelineContext["onProgress"] = () => {},
+  configOverride?: Partial<ReturnType<typeof getDefaultConfig>>,
+): PipelineContext {
+  const config = { ...getDefaultConfig(), ...configOverride };
+  return {
+    agent: "test-agent",
+    folder: dir,
+    config,
+    claude,
+    onProgress,
+  };
+}
 
 describe("maintain", () => {
   test("no gates resolved → exits with error, no Claude calls", async () => {
@@ -15,16 +31,10 @@ describe("maintain", () => {
     const mockClaude = createMaintainMock("done", { onCall: (args) => calls.push(args) });
 
     try {
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          gateResolver: emptyGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude),
+        gateResolver: emptyGateResolver,
+      });
 
       expect(result.success).toBe(false);
       expect(result.name).toBe("");
@@ -58,17 +68,11 @@ describe("maintain", () => {
     });
 
     try {
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude),
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
@@ -114,17 +118,11 @@ describe("maintain", () => {
     };
 
     try {
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude),
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(1);
@@ -155,20 +153,11 @@ describe("maintain", () => {
     });
 
     try {
-      const config = getDefaultConfig();
-      config.maxRetries = 2;
-
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config,
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude, () => {}, { maxRetries: 2 }),
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.success).toBe(false);
       expect(result.retries).toBe(2);
@@ -203,17 +192,11 @@ describe("maintain", () => {
     });
 
     try {
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          gateRunner: mockGateRunner,
-          gateResolver: optionalGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude),
+        gateRunner: mockGateRunner,
+        gateResolver: optionalGateResolver,
+      });
 
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
@@ -240,17 +223,11 @@ describe("maintain", () => {
     });
 
     try {
-      const result = await maintain(
-        {
-          agent: "test-agent",
-          folder: dir,
-          config: getDefaultConfig(),
-          gateRunner: mockGateRunner,
-          gateResolver: standardGateResolver,
-          onProgress: () => {},
-        },
-        mockClaude,
-      );
+      const result = await maintain({
+        ctx: makeCtx(dir, mockClaude),
+        gateRunner: mockGateRunner,
+        gateResolver: standardGateResolver,
+      });
 
       expect(result.name).toMatch(/^maintain-/);
 

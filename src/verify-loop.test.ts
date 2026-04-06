@@ -4,7 +4,7 @@ import { getDefaultConfig } from "./config.ts";
 import { join } from "path";
 import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import type { GateDefinition, GatesRunResult, AttemptRecord } from "./types.ts";
+import type { GateDefinition, GatesRunResult, AttemptRecord, PipelineContext } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -43,25 +43,38 @@ async function makeTempDirs(prefix: string) {
   return { folder, auditDir };
 }
 
+/** Builds a PipelineContext for testing. */
+function makeCtx(
+  folder: string,
+  overrides: Partial<PipelineContext> = {},
+): PipelineContext {
+  const config = getDefaultConfig();
+  return {
+    agent: "test-agent",
+    folder,
+    config,
+    claude: simpleClaude("retry output"),
+    onProgress: () => {},
+    ...overrides,
+  };
+}
+
 /** Builds base opts for verifyWithRetry with sensible defaults for testing. */
 function baseOpts(
-  overrides: Partial<Parameters<typeof verifyWithRetry>[1]>,
+  folder: string,
+  auditDir: string,
+  overrides: Partial<Parameters<typeof verifyWithRetry>[1]> = {},
 ): Parameters<typeof verifyWithRetry>[1] {
   const config = getDefaultConfig();
   return {
+    ctx: makeCtx(folder),
     gates: requiredGates,
     gateRunner: async () => passingResult,
     maxRetries: config.maxRetries,
     gateTimeout: config.gateTimeout,
-    executeModel: config.models.execute,
-    readOnlyTools: config.readOnlyTools,
-    agent: "test-agent",
-    folder: "/tmp/fake",
-    auditDir: "/tmp/fake/audit",
+    auditDir,
     name: "test-fix",
-    claude: simpleClaude("retry output"),
     buildRetryPrompt: () => "retry prompt",
-    onProgress: () => {},
     ...overrides,
   };
 }
@@ -75,9 +88,7 @@ describe("verifyWithRetry", () => {
     const { folder, auditDir } = await makeTempDirs("hone-vl-pass-");
 
     try {
-      const result = await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      const result = await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         gateRunner: async () => passingResult,
       }));
 
@@ -99,11 +110,9 @@ describe("verifyWithRetry", () => {
     };
 
     try {
-      const result = await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      const result = await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
+        ctx: makeCtx(folder, { claude: simpleClaude("retry execution") }),
         gateRunner,
-        claude: simpleClaude("retry execution"),
         maxRetries: 3,
       }));
 
@@ -119,9 +128,7 @@ describe("verifyWithRetry", () => {
     const { folder, auditDir } = await makeTempDirs("hone-vl-exhaust-");
 
     try {
-      const result = await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      const result = await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         gateRunner: async () => failingResult,
         maxRetries: 2,
       }));
@@ -139,12 +146,10 @@ describe("verifyWithRetry", () => {
     const messages: string[] = [];
 
     try {
-      const result = await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      const result = await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
+        ctx: makeCtx(folder, { onProgress: (_stage, msg) => messages.push(msg) }),
         gates: [],
         gateRunner: async () => passingResult,
-        onProgress: (_stage, msg) => messages.push(msg),
       }));
 
       expect(messages).toContain("No quality gates found.");
@@ -167,9 +172,7 @@ describe("verifyWithRetry", () => {
     };
 
     try {
-      await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         gateRunner,
         maxRetries: 3,
         buildRetryPrompt: (failedGates, priorAttempts) => {
@@ -208,9 +211,7 @@ describe("verifyWithRetry", () => {
     const capturedGates: GateDefinition[][] = [];
 
     try {
-      await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         gates: requiredGates, // different from overrideGates
         gateRunner: async (gates) => {
           capturedGates.push(gates);
@@ -235,9 +236,7 @@ describe("verifyWithRetry", () => {
     };
 
     try {
-      await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         name: "my-fix",
         gateRunner,
         maxRetries: 3,
@@ -265,9 +264,7 @@ describe("verifyWithRetry", () => {
     let gateRunnerCallCount = 0;
 
     try {
-      const result = await verifyWithRetry("initial execution", baseOpts({
-        folder,
-        auditDir,
+      const result = await verifyWithRetry("initial execution", baseOpts(folder, auditDir, {
         gateRunner: async () => {
           gateRunnerCallCount++;
           return optionalFailResult;

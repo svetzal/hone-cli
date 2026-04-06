@@ -6,23 +6,18 @@ import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
-  HoneConfig,
   MaintainResult,
-  ClaudeInvoker,
   GateDefinition,
-  GatesRunResult,
   GateRunner,
   GateResolverFn,
   AttemptRecord,
+  PipelineContext,
 } from "./types.ts";
 
 export interface MaintainOptions {
-  agent: string;
-  folder: string;
-  config: HoneConfig;
+  ctx: PipelineContext;
   gateRunner?: GateRunner;
   gateResolver?: GateResolverFn;
-  onProgress: (stage: string, message: string) => void;
 }
 
 export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
@@ -86,18 +81,14 @@ function formatTimestamp(): string {
   ].join("");
 }
 
-export async function maintain(
-  opts: MaintainOptions,
-  claude: ClaudeInvoker,
-): Promise<MaintainResult> {
+export async function maintain(opts: MaintainOptions): Promise<MaintainResult> {
   const {
-    agent,
-    folder,
-    config,
+    ctx,
     gateRunner = runAllGates,
     gateResolver = resolveGates,
-    onProgress,
   } = opts;
+
+  const { agent, folder, config, claude, onProgress } = ctx;
 
   // Resolve gates
   onProgress("gates", "Resolving quality gates...");
@@ -128,16 +119,14 @@ export async function maintain(
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
   const prompt = buildMaintainPrompt(folder, gates);
-  const execResult = await runExecuteWithVerify(agent, prompt, config, claude, {
+  const execResult = await runExecuteWithVerify(ctx, prompt, {
     skipGates: false,
     gateRunner,
     gates,
     auditDir,
     name,
-    folder,
     buildRetryPrompt: (failedGates, priorAttempts) =>
       buildMaintainRetryPrompt(folder, gates, failedGates, priorAttempts),
-    onProgress,
   });
 
   const { execution, gatesResult, retries } = execResult;
@@ -150,9 +139,7 @@ export async function maintain(
   if (success) {
     const summarizeResult = await runSummarizeStage(
       () => buildMaintainSummarizePrompt({ name, execution, retries, gatesResult }),
-      config,
-      claude,
-      onProgress,
+      ctx,
     );
     headline = summarizeResult.headline;
     summary = summarizeResult.summary;

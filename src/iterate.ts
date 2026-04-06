@@ -11,25 +11,17 @@ import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
-  HoneConfig,
   IterationResult,
-  ClaudeInvoker,
-  GateDefinition,
-  GatesRunResult,
-  CharterCheckResult,
-  StructuredAssessment,
-  TriageResult,
   GateRunner,
   GateResolverFn,
   CharterCheckerFn,
   TriageRunnerFn,
   AttemptRecord,
+  PipelineContext,
 } from "./types.ts";
 
 export interface IterateOptions {
-  agent: string;
-  folder: string;
-  config: HoneConfig;
+  ctx: PipelineContext;
   skipGates: boolean;
   skipCharter?: boolean;
   skipTriage?: boolean;
@@ -37,7 +29,6 @@ export interface IterateOptions {
   gateResolver?: GateResolverFn;
   charterChecker?: CharterCheckerFn;
   triageRunner?: TriageRunnerFn;
-  onProgress: (stage: string, message: string) => void;
 }
 
 export function sanitizeName(raw: string): string {
@@ -87,12 +78,8 @@ export function buildRetryPrompt(
 
 // --- Extracted stage functions ---
 
-export async function runAssessStage(
-  agent: string,
-  folder: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
-): Promise<string> {
+export async function runAssessStage(ctx: PipelineContext): Promise<string> {
+  const { agent, folder, config, claude } = ctx;
   const assessArgs = buildClaudeArgs({
     agent,
     model: config.models.assess,
@@ -115,12 +102,8 @@ export async function runAssessStage(
   return claude(assessArgs);
 }
 
-export async function runNameStage(
-  agent: string,
-  assessment: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
-): Promise<string> {
+export async function runNameStage(ctx: PipelineContext, assessment: string): Promise<string> {
+  const { agent, config, claude } = ctx;
   const nameArgs = buildClaudeArgs({
     agent,
     model: config.models.name,
@@ -139,12 +122,8 @@ export async function runNameStage(
   return sanitizeName(rawName) || `assessment-${Date.now()}`;
 }
 
-export async function runPlanStage(
-  agent: string,
-  assessment: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
-): Promise<string> {
+export async function runPlanStage(ctx: PipelineContext, assessment: string): Promise<string> {
+  const { agent, config, claude } = ctx;
   const planArgs = buildClaudeArgs({
     agent,
     model: config.models.plan,
@@ -170,14 +149,9 @@ export async function runPlanStage(
 
 // --- Main iterate function ---
 
-export async function iterate(
-  opts: IterateOptions,
-  claude: ClaudeInvoker,
-): Promise<IterationResult> {
+export async function iterate(opts: IterateOptions): Promise<IterationResult> {
   const {
-    agent,
-    folder,
-    config,
+    ctx,
     skipGates,
     skipCharter = false,
     skipTriage = false,
@@ -185,21 +159,18 @@ export async function iterate(
     gateResolver = resolveGates,
     charterChecker = checkCharter,
     triageRunner = runTriage,
-    onProgress,
   } = opts;
+
+  const { agent, folder, config, claude, onProgress } = ctx;
 
   // --- Run preamble (charter check + preflight gate validation) ---
   const preambleResult = await runPreamble({
-    folder,
-    agent,
-    config,
+    ctx,
     skipCharter,
     skipGates,
     gateResolver,
     gateRunner,
     charterChecker,
-    claude,
-    onProgress,
   });
 
   if (!preambleResult.passed) {
@@ -227,19 +198,19 @@ export async function iterate(
 
   // --- Stage 1: Assess ---
   onProgress("assess", `Assessing ${folder} with ${agent}...`);
-  const assessment = await runAssessStage(agent, folder, config, claude);
+  const assessment = await runAssessStage(ctx);
   const structuredAssessment = parseAssessment(assessment);
 
   // --- Stage 2: Name ---
   onProgress("name", "Generating filename...");
-  const name = await runNameStage(agent, assessment, config, claude);
+  const name = await runNameStage(ctx, assessment);
 
   // Save assessment
   const assessPath = await saveStageOutput(auditDir, name, "", assessment);
   onProgress("assess", `Saved: ${assessPath}`);
 
   // --- Stage 3: Triage ---
-  let triageResult: TriageResult | null = null;
+  let triageResult = null;
   if (!skipTriage) {
     onProgress("triage", "Running triage...");
     triageResult = await triageRunner(
@@ -273,7 +244,7 @@ export async function iterate(
 
   // --- Stage 4: Plan ---
   onProgress("plan", "Creating plan...");
-  const plan = await runPlanStage(agent, assessment, config, claude);
+  const plan = await runPlanStage(ctx, assessment);
 
   const planPath = await saveStageOutput(auditDir, name, "plan", plan);
   onProgress("plan", `Saved: ${planPath}`);
@@ -289,16 +260,14 @@ export async function iterate(
     plan,
   ].join("\n");
 
-  const execResult = await runExecuteWithVerify(agent, executePrompt, config, claude, {
+  const execResult = await runExecuteWithVerify(ctx, executePrompt, {
     skipGates,
     gateRunner,
     gates: preflightGates,
     auditDir,
     name,
-    folder,
     buildRetryPrompt: (failedGates, priorAttempts) =>
       buildRetryPrompt(folder, plan, assessment, failedGates, priorAttempts),
-    onProgress,
   });
 
   // --- Stage 6: Summarize (only on success) ---
@@ -315,9 +284,7 @@ export async function iterate(
         retries: execResult.retries,
         gatesResult: execResult.gatesResult,
       }),
-      config,
-      claude,
-      onProgress,
+      ctx,
     );
     headline = summarizeResult.headline;
     summary = summarizeResult.summary;

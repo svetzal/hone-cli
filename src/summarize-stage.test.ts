@@ -1,6 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { runSummarizeStage } from "./summarize-stage.ts";
 import { getDefaultConfig } from "./config.ts";
+import type { PipelineContext } from "./types.ts";
+
+function makeCtx(
+  claude: PipelineContext["claude"],
+  onProgress: PipelineContext["onProgress"] = () => {},
+): PipelineContext {
+  return {
+    agent: "test-agent",
+    folder: "/test",
+    config: getDefaultConfig(),
+    claude,
+    onProgress,
+  };
+}
 
 describe("runSummarizeStage", () => {
   test("returns headline and summary on success", async () => {
@@ -9,9 +23,7 @@ describe("runSummarizeStage", () => {
 
     const result = await runSummarizeStage(
       () => "Generate a headline and summary...",
-      getDefaultConfig(),
-      mockClaude,
-      () => {},
+      makeCtx(mockClaude),
     );
 
     expect(result.headline).toBe("Fix SRP violation");
@@ -23,9 +35,7 @@ describe("runSummarizeStage", () => {
 
     const result = await runSummarizeStage(
       () => "Generate a headline...",
-      getDefaultConfig(),
-      mockClaude,
-      () => {},
+      makeCtx(mockClaude),
     );
 
     expect(result.headline).toBeNull();
@@ -39,9 +49,7 @@ describe("runSummarizeStage", () => {
 
     const result = await runSummarizeStage(
       () => "Generate a headline...",
-      getDefaultConfig(),
-      mockClaude,
-      () => {},
+      makeCtx(mockClaude),
     );
 
     expect(result.headline).toBeNull();
@@ -55,9 +63,7 @@ describe("runSummarizeStage", () => {
     const progressCalls: Array<[string, string]> = [];
     await runSummarizeStage(
       () => "Generate a headline...",
-      getDefaultConfig(),
-      mockClaude,
-      (stage, message) => progressCalls.push([stage, message]),
+      makeCtx(mockClaude, (stage, message) => progressCalls.push([stage, message])),
     );
 
     expect(progressCalls.length).toBe(1);
@@ -74,9 +80,7 @@ describe("runSummarizeStage", () => {
 
     await runSummarizeStage(
       () => "Custom prompt content",
-      getDefaultConfig(),
-      mockClaude,
-      () => {},
+      makeCtx(mockClaude),
     );
 
     expect(capturedArgs).toContain("Custom prompt content");
@@ -87,9 +91,7 @@ describe("runSummarizeStage", () => {
 
     const result = await runSummarizeStage(
       () => { throw new Error("prompt builder failed"); },
-      getDefaultConfig(),
-      mockClaude,
-      () => {},
+      makeCtx(mockClaude),
     );
 
     expect(result.headline).toBeNull();

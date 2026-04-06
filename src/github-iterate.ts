@@ -26,8 +26,6 @@ import {
   createCommandRunner,
 } from "./github.ts";
 import type {
-  HoneConfig,
-  ClaudeInvoker,
   CommandRunner,
   GateDefinition,
   GitHubIterateResult,
@@ -37,17 +35,15 @@ import type {
   CharterCheckerFn,
   TriageRunnerFn,
   HoneIssue,
+  PipelineContext,
 } from "./types.ts";
 
 export interface GitHubIterateOptions {
-  agent: string;
-  folder: string;
-  config: HoneConfig;
+  ctx: PipelineContext;
   proposals: number;
   skipGates: boolean;
   skipTriage: boolean;
   skipCharter?: boolean;
-  onProgress: (stage: string, message: string) => void;
   ghRunner?: CommandRunner;
   gateRunner?: GateRunner;
   gateResolver?: GateResolverFn;
@@ -96,18 +92,16 @@ export async function executeApprovedIssues(
   issues: HoneIssue[],
   owner: string,
   closedIssueNumbers: number[],
-  folder: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
+  ctx: PipelineContext,
   opts: {
     skipGates: boolean;
     gateRunner: GateRunner;
     gates: GateDefinition[];
     ghRunner: CommandRunner;
-    onProgress: (stage: string, message: string) => void;
   },
 ): Promise<ExecutionOutcome[]> {
-  const { skipGates, gateRunner, gates, ghRunner, onProgress } = opts;
+  const { skipGates, gateRunner, gates, ghRunner } = opts;
+  const { folder, onProgress } = ctx;
   const executed: ExecutionOutcome[] = [];
 
   const approvedIssues = issues
@@ -124,7 +118,7 @@ export async function executeApprovedIssues(
       continue;
     }
 
-    const auditDir = await ensureAuditDir(folder, config.auditDir);
+    const auditDir = await ensureAuditDir(folder, ctx.config.auditDir);
     const name = proposal.name || `github-${issue.number}`;
 
     const outcome: ExecutionOutcome = {
@@ -146,23 +140,17 @@ export async function executeApprovedIssues(
         proposal.plan,
       ].join("\n");
 
-      const execResult = await runExecuteWithVerify(
-        proposal.agent,
-        executePrompt,
-        config,
-        claude,
-        {
-          skipGates,
-          gateRunner,
-          gates,
-          auditDir,
-          name,
-          folder,
-          buildRetryPrompt: (failedGates, priorAttempts) =>
-            buildRetryPrompt(folder, proposal.plan, proposal.assessment, failedGates, priorAttempts),
-          onProgress,
-        },
-      );
+      // Each issue may have been proposed by a different agent
+      const proposalCtx: PipelineContext = { ...ctx, agent: proposal.agent };
+      const execResult = await runExecuteWithVerify(proposalCtx, executePrompt, {
+        skipGates,
+        gateRunner,
+        gates,
+        auditDir,
+        name,
+        buildRetryPrompt: (failedGates, priorAttempts) =>
+          buildRetryPrompt(folder, proposal.plan, proposal.assessment, failedGates, priorAttempts),
+      });
 
       outcome.gatesResult = execResult.gatesResult;
       outcome.retries = execResult.retries;
@@ -213,19 +201,16 @@ export async function executeApprovedIssues(
  * Runs assessment, triage, planning, and creates GitHub issues.
  */
 export async function proposeImprovements(
-  agent: string,
-  folder: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
+  ctx: PipelineContext,
   opts: {
     proposals: number;
     skipTriage: boolean;
     ghRunner: CommandRunner;
     triageRunner: TriageRunnerFn;
-    onProgress: (stage: string, message: string) => void;
   },
 ): Promise<{ proposed: number[]; skippedTriage: number }> {
-  const { proposals, skipTriage, ghRunner, triageRunner, onProgress } = opts;
+  const { proposals, skipTriage, ghRunner, triageRunner } = opts;
+  const { folder, config, claude, onProgress } = ctx;
   const proposed: number[] = [];
   let skippedTriage = 0;
 
@@ -235,9 +220,9 @@ export async function proposeImprovements(
   for (let i = 0; i < proposals; i++) {
     onProgress("propose", `Proposal ${i + 1}/${proposals}: assessing...`);
 
-    const assessment = await runAssessStage(agent, folder, config, claude);
+    const assessment = await runAssessStage(ctx);
     const structured = parseAssessment(assessment);
-    const name = await runNameStage(agent, assessment, config, claude);
+    const name = await runNameStage(ctx, assessment);
 
     await saveStageOutput(auditDir, name, "", assessment);
 
@@ -261,7 +246,7 @@ export async function proposeImprovements(
 
     // Plan
     onProgress("propose", `Proposal ${i + 1}/${proposals}: planning...`);
-    const plan = await runPlanStage(agent, assessment, config, claude);
+    const plan = await runPlanStage(ctx, assessment);
     await saveStageOutput(auditDir, name, "plan", plan);
 
     // Create issue
@@ -269,7 +254,7 @@ export async function proposeImprovements(
       name,
       assessment,
       plan,
-      agent,
+      agent: ctx.agent,
       severity: structured.severity,
       principle: structured.principle,
     });
@@ -284,19 +269,13 @@ export async function proposeImprovements(
   return { proposed, skippedTriage };
 }
 
-export async function githubIterate(
-  opts: GitHubIterateOptions,
-  claude: ClaudeInvoker,
-): Promise<GitHubIterateResult> {
+export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubIterateResult> {
   const {
-    agent,
-    folder,
-    config,
+    ctx,
     proposals,
     skipGates,
     skipTriage,
     skipCharter = false,
-    onProgress,
     ghRunner = createCommandRunner(),
     gateRunner = runAllGates,
     gateResolver = resolveGates,
@@ -304,18 +283,16 @@ export async function githubIterate(
     triageRunner = runTriageDefault,
   } = opts;
 
+  const { folder, onProgress } = ctx;
+
   // --- Run preamble (charter check + preflight gate validation) ---
   const preambleResult = await runPreamble({
-    folder,
-    agent,
-    config,
+    ctx,
     skipCharter,
     skipGates,
     gateResolver,
     gateRunner,
     charterChecker,
-    claude,
-    onProgress,
   });
 
   if (!preambleResult.passed) {
@@ -340,19 +317,14 @@ export async function githubIterate(
     issues,
     owner,
     closed,
-    folder,
-    config,
-    claude,
-    { skipGates, gateRunner, gates: preflightGates, ghRunner, onProgress },
+    ctx,
+    { skipGates, gateRunner, gates: preflightGates, ghRunner },
   );
 
   // --- Phase 3: Propose new improvements ---
   const { proposed, skippedTriage } = await proposeImprovements(
-    agent,
-    folder,
-    config,
-    claude,
-    { proposals, skipTriage, ghRunner, triageRunner, onProgress },
+    ctx,
+    { proposals, skipTriage, ghRunner, triageRunner },
   );
 
   return {

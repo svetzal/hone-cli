@@ -74,6 +74,14 @@ export interface ParsedArgs {
 
 export type ClaudeInvoker = (args: string[]) => Promise<string>;
 
+export interface PipelineContext {
+  agent: string;
+  folder: string;
+  config: HoneConfig;
+  claude: ClaudeInvoker;
+  onProgress: (stage: string, message: string) => void;
+}
+
 export type GateRunner = (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
 
 export type GateResolverFn = (

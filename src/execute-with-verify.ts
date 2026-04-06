@@ -2,27 +2,22 @@ import { buildClaudeArgs } from "./claude.ts";
 import { saveStageOutput } from "./audit.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 import type {
-  HoneConfig,
-  ClaudeInvoker,
   GateDefinition,
   GatesRunResult,
   AttemptRecord,
+  PipelineContext,
 } from "./types.ts";
 
 export async function runExecuteWithVerify(
-  agent: string,
+  ctx: PipelineContext,
   prompt: string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
   opts: {
     skipGates: boolean;
     gateRunner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
     gates: GateDefinition[];
     auditDir: string;
     name: string;
-    folder: string;
     buildRetryPrompt: (failedGates: { name: string; output: string }[], priorAttempts: AttemptRecord[]) => string;
-    onProgress: (stage: string, message: string) => void;
   },
 ): Promise<{
   execution: string;
@@ -30,7 +25,8 @@ export async function runExecuteWithVerify(
   retries: number;
   success: boolean;
 }> {
-  const { skipGates, gateRunner, gates, auditDir, name, folder, buildRetryPrompt: buildRetryPromptFn, onProgress } = opts;
+  const { agent, config, claude, onProgress } = ctx;
+  const { skipGates, gateRunner, gates, auditDir, name, buildRetryPrompt: buildRetryPromptFn } = opts;
 
   onProgress("execute", "Executing plan...");
   const executeArgs = buildClaudeArgs({
@@ -50,19 +46,14 @@ export async function runExecuteWithVerify(
 
   if (!skipGates) {
     const verifyResult = await verifyWithRetry(execution, {
+      ctx,
       gates,
       gateRunner,
       maxRetries: config.maxRetries,
       gateTimeout: config.gateTimeout,
-      executeModel: config.models.execute,
-      readOnlyTools: config.readOnlyTools,
-      agent,
-      folder,
       auditDir,
       name,
-      claude,
       buildRetryPrompt: buildRetryPromptFn,
-      onProgress,
     });
     gatesResult = verifyResult.gatesResult;
     retries = verifyResult.retries;

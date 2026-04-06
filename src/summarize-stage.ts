@@ -1,5 +1,5 @@
 import { summarize as runSummarize } from "./summarize.ts";
-import type { ClaudeInvoker, HoneConfig } from "./types.ts";
+import type { PipelineContext } from "./types.ts";
 
 export interface SummarizeStageResult {
   headline: string | null;
@@ -12,10 +12,9 @@ export interface SummarizeStageResult {
  */
 export async function runSummarizeStage(
   buildPrompt: () => string,
-  config: HoneConfig,
-  claude: ClaudeInvoker,
-  onProgress: (stage: string, message: string) => void,
+  ctx: PipelineContext,
 ): Promise<SummarizeStageResult> {
+  const { config, claude, onProgress } = ctx;
   try {
     onProgress("summarize", "Generating headline and summary...");
     const result = await runSummarize(
