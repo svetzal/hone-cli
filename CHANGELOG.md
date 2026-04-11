@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-04-11
+
+### Changed
+
+- **`PipelineContext` consolidation** — introduced a shared `PipelineContext`
+  type to bundle repeated pipeline parameters (`agent`, `folder`, `config`,
+  `claude`, `onProgress`), reducing boilerplate across iterate, maintain,
+  github-iterate, preamble, and verify-loop modules.
+- **Retry prompt scaffold extracted** — `buildRetryPromptScaffold` moved into
+  `retry-formatting.ts` for shared use by iterate and maintain retry prompts.
+- **`validateAgentOrExit` replaced with `validateAgent`** — agent validation now
+  throws `CliError` instead of calling `process.exit`, improving testability and
+  error handling consistency. A new `CliError` class provides clean CLI error
+  reporting without stack traces.
+- **Test coverage for `execute-with-verify`** — added comprehensive tests for
+  the execute-with-verify module.
+
+### Fixed
+
+- **Vite 6.x security upgrade** — added `vite: ^6.4.2` override in
+  `package.json` to resolve vulnerability in vite 5.4.21 (transitive dependency
+  via vitepress).
+- **Dependency updates** — bumped @types/bun, esbuild, and rollup to latest
+  compatible versions.
+
+## [1.3.1] - 2026-03-28
+
+### Fixed
+
+- **Skill metadata version sync** — skill `metadata.version` now matches the
+  tool version in `package.json`, and skill author standardized to Stacey Vetzal.
+- **`sanitizeName` handles mixed-case and ALLCAPS inputs** — the kebab-case
+  filename generator now correctly converts mixed-case and all-uppercase strings.
+- **Version import from package.json** — fixed version mismatch by importing
+  VERSION directly from `package.json` instead of a hardcoded constant.
+- **Dependency updates** — automated maintenance across multiple iterations.
+
 ## [1.3.0] - 2026-03-25
 
 ### Added
