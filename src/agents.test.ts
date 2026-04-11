@@ -1,8 +1,9 @@
-import { describe, it, expect, spyOn } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import { mkdtemp, rm, writeFile, mkdir, chmod } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { agentNameFromFile, listAgents, agentExists, readAgentContent, validateAgentOrExit } from "./agents.ts";
+import { agentNameFromFile, listAgents, agentExists, readAgentContent, validateAgent } from "./agents.ts";
+import { CliError } from "./errors.ts";
 
 describe("agentNameFromFile", () => {
   it("should extract name from .agent.md files", () => {
@@ -243,36 +244,33 @@ More content.`;
   });
 });
 
-describe("validateAgentOrExit", () => {
-  it("should call process.exit(1) when agent does not exist in either directory", async () => {
+describe("validateAgent", () => {
+  it("should throw CliError when agent does not exist in either directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      const exitSpy = spyOn(process, "exit").mockImplementation((() => {}) as (code?: number) => never);
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-
-      await validateAgentOrExit("nonexistent-agent", tempDir);
-
-      expect(exitSpy).toHaveBeenCalledWith(1);
-
-      exitSpy.mockRestore();
-      errorSpy.mockRestore();
+      await expect(validateAgent("nonexistent-agent", tempDir)).rejects.toThrow(CliError);
     } finally {
       await rm(tempDir, { recursive: true });
     }
   });
 
-  it("should not call process.exit when agent exists in the local directory", async () => {
+  it("should throw CliError with informative message when agent does not exist", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
+    try {
+      await expect(validateAgent("nonexistent-agent", tempDir)).rejects.toThrow(
+        "Agent 'nonexistent-agent' not found",
+      );
+    } finally {
+      await rm(tempDir, { recursive: true });
+    }
+  });
+
+  it("should not throw when agent exists in the local directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
       await writeFile(join(tempDir, "my-agent.md"), "# My Agent");
 
-      const exitSpy = spyOn(process, "exit").mockImplementation((() => {}) as (code?: number) => never);
-
-      await validateAgentOrExit("my-agent", tempDir);
-
-      expect(exitSpy).not.toHaveBeenCalled();
-
-      exitSpy.mockRestore();
+      await expect(validateAgent("my-agent", tempDir)).resolves.toBeUndefined();
     } finally {
       await rm(tempDir, { recursive: true });
     }

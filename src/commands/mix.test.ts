@@ -1,91 +1,55 @@
-import { describe, expect, test, spyOn } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { mixCommand } from "./mix.ts";
 import type { ParsedArgs } from "../types.ts";
+import { CliError } from "../errors.ts";
 
 describe("mixCommand", () => {
   describe("argument validation", () => {
-    test("exits with error when agent name is missing", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    test("throws CliError with usage message when agent name is missing", async () => {
       const parsed: ParsedArgs = {
         command: "mix",
         positional: [],
         flags: { from: "foreign-agent", principles: true },
       };
 
-      await expect(mixCommand(parsed)).rejects.toThrow("process.exit called");
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: hone mix"));
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
+      await expect(mixCommand(parsed)).rejects.toThrow(CliError);
+      await expect(mixCommand(parsed)).rejects.toThrow("Usage: hone mix");
     });
 
-    test("exits with error when folder is missing", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    test("throws CliError when folder is missing", async () => {
       const parsed: ParsedArgs = {
         command: "mix",
         positional: ["my-agent"],
         flags: { from: "foreign-agent", principles: true },
       };
 
-      await expect(mixCommand(parsed)).rejects.toThrow("process.exit called");
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
+      await expect(mixCommand(parsed)).rejects.toThrow(CliError);
     });
 
-    test("exits with error when --from is missing", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    test("throws CliError when --from is missing", async () => {
       const parsed: ParsedArgs = {
         command: "mix",
         positional: ["my-agent", "."],
         flags: { principles: true },
       };
 
-      await expect(mixCommand(parsed)).rejects.toThrow("process.exit called");
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
+      await expect(mixCommand(parsed)).rejects.toThrow(CliError);
     });
 
-    test("exits with error when neither --principles nor --gates is set", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    test("throws CliError when neither --principles nor --gates is set", async () => {
       const parsed: ParsedArgs = {
         command: "mix",
         positional: ["my-agent", "."],
         flags: { from: "foreign-agent" },
       };
 
-      await expect(mixCommand(parsed)).rejects.toThrow("process.exit called");
-      expect(errorSpy).toHaveBeenCalledWith(
+      await expect(mixCommand(parsed)).rejects.toThrow(CliError);
+      await expect(mixCommand(parsed)).rejects.toThrow(
         "Error: At least one of --principles or --gates is required.",
       );
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
     });
 
-    test("treats --from as boolean when no value follows", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    test("throws CliError with usage message when --from is boolean (no value)", async () => {
       // When --from is parsed as a boolean flag (no value), foreignName is undefined
       const parsed: ParsedArgs = {
         command: "mix",
@@ -93,11 +57,8 @@ describe("mixCommand", () => {
         flags: { from: true, principles: true },
       };
 
-      await expect(mixCommand(parsed)).rejects.toThrow("process.exit called");
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: hone mix"));
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
+      await expect(mixCommand(parsed)).rejects.toThrow(CliError);
+      await expect(mixCommand(parsed)).rejects.toThrow("Usage: hone mix");
     });
   });
 });

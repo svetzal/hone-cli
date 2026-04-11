@@ -5,6 +5,7 @@ import { tmpdir } from "os";
 import { updateFrontmatterName, deriveCommand } from "./derive.ts";
 import type { ParsedArgs } from "../types.ts";
 import { createDeriveMock, extractPrompt } from "../test-helpers.ts";
+import { CliError } from "../errors.ts";
 
 // ---------------------------------------------------------------------------
 // updateFrontmatterName — pure function, no side effects
@@ -89,18 +90,10 @@ function makeDeriveParsed(folder: string, extra: Record<string, string | boolean
 
 describe("deriveCommand", () => {
   describe("argument validation", () => {
-    it("exits with error when no folder is provided", async () => {
-      const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit called");
-      });
-
+    it("throws CliError with usage message when no folder is provided", async () => {
       const parsed: ParsedArgs = { command: "derive", positional: [], flags: {} };
-      await expect(deriveCommand(parsed)).rejects.toThrow("process.exit called");
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: hone derive"));
-
-      errorSpy.mockRestore();
-      exitSpy.mockRestore();
+      await expect(deriveCommand(parsed)).rejects.toThrow(CliError);
+      await expect(deriveCommand(parsed)).rejects.toThrow("Usage: hone derive");
     });
   });
 

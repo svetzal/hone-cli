@@ -7,6 +7,7 @@ import { mix } from "../mix.ts";
 import type { ParsedArgs } from "../types.ts";
 import { writeJson, progress } from "../output.ts";
 import { writeGatesFile } from "../gates-file.ts";
+import { CliError } from "../errors.ts";
 
 export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const agentName = parsed.positional[0];
@@ -17,19 +18,19 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const isJson = parsed.flags.json === true;
 
   if (!agentName || !folder || !foreignName) {
-    console.error("Usage: hone mix <agent> <folder> --from <foreign-agent> [--principles] [--gates]");
-    console.error("  agent           - Local agent name (from <folder>/.claude/agents/)");
-    console.error("  folder          - Project directory");
-    console.error("  --from <name>   - Foreign agent name (from ~/.claude/agents/)");
-    console.error("  --principles    - Mix engineering principles");
-    console.error("  --gates         - Mix quality gates / QA checkpoints");
-    console.error("  --json          - Output machine-readable JSON");
-    process.exit(1);
+    throw new CliError(
+      "Usage: hone mix <agent> <folder> --from <foreign-agent> [--principles] [--gates]\n" +
+      "  agent           - Local agent name (from <folder>/.claude/agents/)\n" +
+      "  folder          - Project directory\n" +
+      "  --from <name>   - Foreign agent name (from ~/.claude/agents/)\n" +
+      "  --principles    - Mix engineering principles\n" +
+      "  --gates         - Mix quality gates / QA checkpoints\n" +
+      "  --json          - Output machine-readable JSON",
+    );
   }
 
   if (!mixPrinciples && !mixGates) {
-    console.error("Error: At least one of --principles or --gates is required.");
-    process.exit(1);
+    throw new CliError("Error: At least one of --principles or --gates is required.");
   }
 
   const resolvedFolder = resolve(folder);
@@ -40,15 +41,13 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const localAgents = await import("../agents.ts").then((m) => m.listAgents(localAgentsDir));
   const agentInfo = localAgents.find((a) => a.name === agentName);
   if (!agentInfo) {
-    console.error(`Error: Local agent "${agentName}" not found in ${localAgentsDir}`);
-    process.exit(1);
+    throw new CliError(`Error: Local agent "${agentName}" not found in ${localAgentsDir}`);
   }
   const agentPath = join(localAgentsDir, agentInfo.file);
 
   const foreignContent = await readAgentContent(foreignName, globalAgentsDir);
   if (!foreignContent) {
-    console.error(`Error: Foreign agent "${foreignName}" not found in ${globalAgentsDir}`);
-    process.exit(1);
+    throw new CliError(`Error: Foreign agent "${foreignName}" not found in ${globalAgentsDir}`);
   }
 
   const config = await loadConfig();

@@ -6,6 +6,7 @@ import type { ParsedArgs, HoneConfig, HoneMode, PipelineContext } from "../types
 import { writeJson, createProgressCallback } from "../output.ts";
 import { applySharedFlags } from "./shared-flags.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { CliError } from "../errors.ts";
 
 export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   const result = applySharedFlags(config, flags);
@@ -63,8 +64,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   } else {
     // Local mode
     if (parsed.flags["proposals"] !== undefined) {
-      console.error("--proposals is only available in github mode");
-      process.exit(1);
+      throw new CliError("--proposals is only available in github mode");
     }
 
     const result = await iterate({
@@ -83,7 +83,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     }
 
     if (!result.success) {
-      process.exit(1);
+      throw new CliError("");
     }
   }
 }

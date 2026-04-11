@@ -12,6 +12,7 @@ import { deriveGatesCommand } from "./commands/derive-gates.ts";
 import { initCommand } from "./commands/init.ts";
 import type { ParsedArgs } from "./types.ts";
 import { VERSION } from "./constants.ts";
+import { CliError } from "./errors.ts";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -184,6 +185,12 @@ async function main(): Promise<void> {
         process.exit(1);
     }
   } catch (error) {
+    if (error instanceof CliError) {
+      if (error.message) {
+        console.error(error.message);
+      }
+      process.exit(1);
+    }
     if (error instanceof Error) {
       console.error(`Error: ${error.message}`);
     }

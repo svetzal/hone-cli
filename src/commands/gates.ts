@@ -6,6 +6,7 @@ import { createClaudeInvoker } from "../claude.ts";
 import type { ParsedArgs, GateDefinition } from "../types.ts";
 import { writeJson, progress } from "../output.ts";
 import { writeGatesFile } from "../gates-file.ts";
+import { CliError } from "../errors.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;
@@ -111,6 +112,6 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   // Exit code remains the same for both modes
   if (!result.requiredPassed) {
-    process.exit(1);
+    throw new CliError("");
   }
 }

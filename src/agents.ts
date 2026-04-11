@@ -1,6 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { readdir } from "fs/promises";
+import { CliError } from "./errors.ts";
 
 const AGENTS_DIR = join(homedir(), ".claude", "agents");
 
@@ -46,11 +47,11 @@ export async function agentExists(name: string, agentsDir?: string): Promise<boo
   return agents.some((a) => a.name === name);
 }
 
-export async function validateAgentOrExit(agent: string, localAgentsDir: string): Promise<void> {
+export async function validateAgent(agent: string, localAgentsDir: string): Promise<void> {
   if (!(await agentExists(agent)) && !(await agentExists(agent, localAgentsDir))) {
-    console.error(`Agent '${agent}' not found in ~/.claude/agents/ or ${localAgentsDir}/`);
-    console.error("Run 'hone list-agents' to see available agents.");
-    process.exit(1);
+    throw new CliError(
+      `Agent '${agent}' not found in ~/.claude/agents/ or ${localAgentsDir}/\nRun 'hone list-agents' to see available agents.`,
+    );
   }
 }
 

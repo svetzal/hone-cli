@@ -5,6 +5,7 @@ import type { ParsedArgs, HoneConfig, PipelineContext } from "../types.ts";
 import { writeJson, createProgressCallback } from "../output.ts";
 import { applySharedFlags } from "./shared-flags.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { CliError } from "../errors.ts";
 
 export function applyMaintainFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   return applySharedFlags(config, flags);
@@ -29,6 +30,6 @@ export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
   }
 
   if (!result.success) {
-    process.exit(1);
+    throw new CliError("");
   }
 }

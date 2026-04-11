@@ -13,6 +13,7 @@ import type { PromptFn } from "../prompt.ts";
 import type { ProjectContext } from "../derive.ts";
 import { writeJson, progress, reportGateValidation } from "../output.ts";
 import { writeGatesFile } from "../gates-file.ts";
+import { CliError } from "../errors.ts";
 
 export async function deriveCommand(
   parsed: ParsedArgs,
@@ -21,12 +22,13 @@ export async function deriveCommand(
   const folder = parsed.positional[0];
 
   if (!folder) {
-    console.error("Usage: hone derive <folder> [--local | --global] [--name <name>]");
-    console.error("  folder   - Project folder to inspect");
-    console.error("  --local  - Write agent to <folder>/.claude/agents/ (default)");
-    console.error("  --global - Write agent to ~/.claude/agents/");
-    console.error("  --name   - Override agent name (skip Claude's naming)");
-    process.exit(1);
+    throw new CliError(
+      "Usage: hone derive <folder> [--local | --global] [--name <name>]\n" +
+      "  folder   - Project folder to inspect\n" +
+      "  --local  - Write agent to <folder>/.claude/agents/ (default)\n" +
+      "  --global - Write agent to ~/.claude/agents/\n" +
+      "  --name   - Override agent name (skip Claude's naming)",
+    );
   }
 
   const resolvedFolder = resolve(folder);
@@ -173,7 +175,7 @@ async function resolveConflict(ctx: ConflictContext): Promise<ConflictResolution
       targetDir: ctx.agentDir,
       suggestedActions: ["overwrite", "expand", "merge", "abort"],
     });
-    process.exit(1);
+    throw new CliError("");
   }
 
   // Read existing agent description for context
@@ -206,8 +208,7 @@ async function resolveConflict(ctx: ConflictContext): Promise<ConflictResolution
       );
 
       if (await agentExists(expanded, ctx.agentDir)) {
-        console.error(`Expanded name "${expanded}" also conflicts. Use --name to specify a name manually.`);
-        process.exit(1);
+        throw new CliError(`Expanded name "${expanded}" also conflicts. Use --name to specify a name manually.`);
       }
 
       progress(ctx.isJson, `Using expanded name: ${expanded}`);

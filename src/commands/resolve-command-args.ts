@@ -1,5 +1,6 @@
 import { resolve, join } from "path";
-import { validateAgentOrExit } from "../agents.ts";
+import { validateAgent } from "../agents.ts";
+import { CliError } from "../errors.ts";
 import type { ParsedArgs } from "../types.ts";
 
 export interface ResolvedCommandArgs {
@@ -12,16 +13,15 @@ export async function resolveCommandArgs(parsed: ParsedArgs, commandName: string
   const folder = parsed.positional[1];
 
   if (!agent || !folder) {
-    console.error(`Usage: hone ${commandName} <agent> <folder>`);
-    console.error("  agent  - Claude agent name (e.g., typescript-craftsperson)");
-    console.error("  folder - Project folder to assess");
-    process.exit(1);
+    throw new CliError(
+      `Usage: hone ${commandName} <agent> <folder>\n  agent  - Claude agent name (e.g., typescript-craftsperson)\n  folder - Project folder to assess`,
+    );
   }
 
   const resolvedFolder = resolve(folder);
   const localAgentsDir = join(resolvedFolder, ".claude", "agents");
 
-  await validateAgentOrExit(agent, localAgentsDir);
+  await validateAgent(agent, localAgentsDir);
 
   return { agent, resolvedFolder };
 }

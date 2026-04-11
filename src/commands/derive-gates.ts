@@ -8,20 +8,22 @@ import { parseGatesArgs } from "./gates.ts";
 import type { ParsedArgs, GateResult, ClaudeInvoker } from "../types.ts";
 import { writeJson, progress, reportGateValidation } from "../output.ts";
 import { writeGatesFile } from "../gates-file.ts";
+import { CliError } from "../errors.ts";
 
 export async function deriveGatesCommand(
   parsed: ParsedArgs,
   deps?: { claude?: ClaudeInvoker },
 ): Promise<void> {
   if (parsed.positional.length === 0) {
-    console.error("Usage: hone derive-gates [agent] <folder>");
-    console.error("  agent  - Optional agent name for context");
-    console.error("  folder - Project folder to inspect");
-    console.error("");
-    console.error("Options:");
-    console.error("  --run            Run gates after generating");
-    console.error("  --derive-model   Override model (default: from config)");
-    process.exit(1);
+    throw new CliError(
+      "Usage: hone derive-gates [agent] <folder>\n" +
+      "  agent  - Optional agent name for context\n" +
+      "  folder - Project folder to inspect\n" +
+      "\n" +
+      "Options:\n" +
+      "  --run            Run gates after generating\n" +
+      "  --derive-model   Override model (default: from config)",
+    );
   }
 
   const { agentName, folder } = parseGatesArgs(parsed.positional);

@@ -3,6 +3,7 @@ import { homedir } from "os";
 import { join } from "path";
 import { VERSION } from "../constants.ts";
 import { writeJson } from "../output.ts";
+import { CliError } from "../errors.ts";
 
 // Embed skill files at build time via Bun text imports
 // Source of truth lives in skills/ — .claude/skills/ is the installed copy
@@ -160,6 +161,6 @@ export async function initCommand(parsed: { flags: Record<string, string | boole
   }
 
   if (skipped > 0) {
-    process.exit(1);
+    throw new CliError("");
   }
 }
