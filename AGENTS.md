@@ -163,19 +163,22 @@ The tool does not modify or manage agents — it discovers and delegates to them
 
 ## Release Process
 
-Releases follow semver. To cut a release:
+Releases follow semver. To create a new release:
 
 1. All quality gates must pass (`bun test`, `bunx tsc --noEmit`)
 2. Working tree must be clean — all changes committed to `main`
-3. Update the version in `package.json` (the `VERSION` constant in `src/constants.ts` is derived automatically)
-4. Move the `[Unreleased]` section in `CHANGELOG.md` under a dated version heading
-5. Commit the version bump (e.g. `Bump version to 0.3.0`)
-6. Create a git tag: `git tag v0.3.0`
-7. Push the commit and tag: `git push && git push --tags`
-8. Create a GitHub release on the tag: `gh release create v0.3.0 --title "v0.3.0" --notes-from-tag`
+3. Update the version in `package.json` and `skills/hone/SKILL.md` (`metadata.version`). The `VERSION` constant in `src/constants.ts` is derived automatically from `package.json`.
+4. Verify `skills/hone/SKILL.md` content is current — review commands, flags, and workflows against the actual CLI
+5. Move the `[Unreleased]` section in `CHANGELOG.md` under a dated version heading (e.g. `## [0.3.0] - 2026-02-01`)
+6. Commit: `Release v0.3.0`
+7. Tag: `git tag v0.3.0`
+8. Push: `git push origin main --tags`
+9. Build and install locally: `bun run build && cp build/hone /usr/local/bin/hone` — don't wait for Homebrew
 
-The `--notes-from-tag` flag pulls release notes from the tag. Alternatively,
-pass the changelog section content via `--notes`.
+CI handles the rest automatically when a `v*` tag is pushed:
+- Builds cross-platform binaries (macOS arm64/x64, Linux x64, Windows x64)
+- Creates a GitHub Release with the binaries attached
+- Updates the Homebrew tap (`svetzal/homebrew-tap`) with new checksums
 
 ## Event Tracking
 
