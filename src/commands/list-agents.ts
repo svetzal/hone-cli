@@ -1,6 +1,6 @@
 import { listAgents } from "../agents.ts";
-import type { ParsedArgs } from "../types.ts";
 import { writeJson } from "../output.ts";
+import type { ParsedArgs } from "../types.ts";
 
 export async function listAgentsCommand(parsed: ParsedArgs): Promise<void> {
   const agents = await listAgents();

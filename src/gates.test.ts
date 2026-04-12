@@ -1,19 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { runGate, runAllGates, truncateOutput } from "./gates.ts";
-import { join } from "path";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runAllGates, runGate, truncateOutput } from "./gates.ts";
 import type { GateDefinition } from "./types.ts";
 
 describe("runGate", () => {
   test("returns passed result for successful command", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
-      const result = await runGate(
-        { name: "test", command: "echo 'hello'", required: true },
-        dir,
-        10000,
-      );
+      const result = await runGate({ name: "test", command: "echo 'hello'", required: true }, dir, 10000);
 
       expect(result.passed).toBe(true);
       expect(result.exitCode).toBe(0);
@@ -26,11 +22,7 @@ describe("runGate", () => {
   test("returns failed result for failing command", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
-      const result = await runGate(
-        { name: "test", command: "exit 1", required: true },
-        dir,
-        10000,
-      );
+      const result = await runGate({ name: "test", command: "exit 1", required: true }, dir, 10000);
 
       expect(result.passed).toBe(false);
       expect(result.exitCode).toBe(1);
@@ -42,11 +34,7 @@ describe("runGate", () => {
   test("captures stderr in output", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
-      const result = await runGate(
-        { name: "lint", command: "echo 'error' >&2", required: true },
-        dir,
-        10000,
-      );
+      const result = await runGate({ name: "lint", command: "echo 'error' >&2", required: true }, dir, 10000);
 
       expect(result.output).toContain("error");
     } finally {
@@ -57,11 +45,7 @@ describe("runGate", () => {
   test("preserves gate metadata in result", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
-      const result = await runGate(
-        { name: "security", command: "echo 'ok'", required: false },
-        dir,
-        10000,
-      );
+      const result = await runGate({ name: "security", command: "echo 'ok'", required: false }, dir, 10000);
 
       expect(result.required).toBe(false);
       expect(result.name).toBe("security");
@@ -157,9 +141,7 @@ describe("runAllGates", () => {
   test("returns requiredPassed false when a required gate fails", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
-      const gates: GateDefinition[] = [
-        { name: "test", command: "exit 1", required: true },
-      ];
+      const gates: GateDefinition[] = [{ name: "test", command: "exit 1", required: true }];
 
       const result = await runAllGates(gates, dir, 10000);
 

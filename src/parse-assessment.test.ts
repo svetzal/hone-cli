@@ -4,11 +4,11 @@ import { parseAssessment } from "./parse-assessment.ts";
 describe("parseAssessment", () => {
   test("parses well-formed JSON + prose", () => {
     const raw = [
-      '```json',
+      "```json",
       '{ "severity": 4, "principle": "Single Responsibility", "category": "architecture" }',
-      '```',
-      '',
-      'The project has several classes that handle too many concerns.',
+      "```",
+      "",
+      "The project has several classes that handle too many concerns.",
     ].join("\n");
 
     const result = parseAssessment(raw);
@@ -22,11 +22,11 @@ describe("parseAssessment", () => {
 
   test("parses JSON in fenced code block without json tag", () => {
     const raw = [
-      '```',
+      "```",
       '{ "severity": 2, "principle": "DRY", "category": "duplication" }',
-      '```',
-      '',
-      'There is some code duplication.',
+      "```",
+      "",
+      "There is some code duplication.",
     ].join("\n");
 
     const result = parseAssessment(raw);
@@ -39,8 +39,8 @@ describe("parseAssessment", () => {
   test("parses bare JSON at start of text", () => {
     const raw = [
       '{ "severity": 5, "principle": "Security", "category": "security" }',
-      '',
-      'Critical security vulnerability found.',
+      "",
+      "Critical security vulnerability found.",
     ].join("\n");
 
     const result = parseAssessment(raw);
@@ -52,13 +52,7 @@ describe("parseAssessment", () => {
   });
 
   test("falls back on missing fields", () => {
-    const raw = [
-      '```json',
-      '{ "severity": 4 }',
-      '```',
-      '',
-      'Assessment text here.',
-    ].join("\n");
+    const raw = ["```json", '{ "severity": 4 }', "```", "", "Assessment text here."].join("\n");
 
     const result = parseAssessment(raw);
 
@@ -101,7 +95,7 @@ describe("parseAssessment", () => {
   });
 
   test("handles invalid JSON gracefully", () => {
-    const raw = '```json\n{invalid json}\n```\nSome assessment.';
+    const raw = "```json\n{invalid json}\n```\nSome assessment.";
 
     const result = parseAssessment(raw);
     expect(result.severity).toBe(3);
@@ -133,12 +127,12 @@ describe("parseAssessment", () => {
 
   test("extracts prose after removing fenced JSON block", () => {
     const raw = [
-      '```json',
+      "```json",
       '{ "severity": 4, "principle": "DRY", "category": "duplication" }',
-      '```',
-      '',
-      'This is the prose assessment.',
-      'It spans multiple lines.',
+      "```",
+      "",
+      "This is the prose assessment.",
+      "It spans multiple lines.",
     ].join("\n");
 
     const result = parseAssessment(raw);
@@ -150,8 +144,8 @@ describe("parseAssessment", () => {
   test("extracts prose after removing bare JSON block", () => {
     const raw = [
       '{ "severity": 3, "principle": "KISS", "category": "complexity" }',
-      '',
-      'The code is overly complex.',
+      "",
+      "The code is overly complex.",
     ].join("\n");
 
     const result = parseAssessment(raw);
@@ -184,8 +178,8 @@ describe("parseAssessment", () => {
   test("extracts prose when bare JSON contains nested objects", () => {
     const raw = [
       '{ "severity": 3, "principle": "test", "category": "test", "meta": { "source": "auto" } }',
-      '',
-      'The code needs improvement.',
+      "",
+      "The code needs improvement.",
     ].join("\n");
 
     const result = parseAssessment(raw);

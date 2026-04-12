@@ -1,11 +1,11 @@
-import { describe, it, expect, spyOn } from "bun:test";
-import { join } from "path";
-import { mkdtemp, rm, mkdir, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { updateFrontmatterName, deriveCommand } from "./derive.ts";
-import type { ParsedArgs } from "../types.ts";
-import { createDeriveMock, extractPrompt } from "../test-helpers.ts";
+import { describe, expect, it, spyOn } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CliError } from "../errors.ts";
+import { createDeriveMock, extractPrompt } from "../test-helpers.ts";
+import type { ParsedArgs } from "../types.ts";
+import { deriveCommand, updateFrontmatterName } from "./derive.ts";
 
 // ---------------------------------------------------------------------------
 // updateFrontmatterName — pure function, no side effects
@@ -274,9 +274,9 @@ describe("deriveCommand", () => {
         await seedExistingAgent(agentDir, "bun-typescript-craftsperson");
 
         // The mock must handle both the derive call AND the suggestExpandedName call
-        let callCount = 0;
+        let _callCount = 0;
         const claude = async (args: string[]): Promise<string> => {
-          callCount++;
+          _callCount++;
           const prompt = extractPrompt(args);
           if (prompt.includes("creating a custom craftsperson agent")) {
             return CANNED_AGENT_CONTENT;

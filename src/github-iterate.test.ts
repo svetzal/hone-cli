@@ -1,23 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import {
-  githubIterate,
-  closeRejectedIssues,
-  executeApprovedIssues,
-  proposeImprovements,
-} from "./github-iterate.ts";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
 import { formatIssueBody } from "./github.ts";
-import { join } from "path";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
-import type {
-  CommandRunner,
-  GateDefinition,
-  GatesRunResult,
-  HoneIssue,
-  PipelineContext,
-} from "./types.ts";
-import { createIterateMock, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingTriageRunner, emptyGateResolver } from "./test-helpers.ts";
+import { closeRejectedIssues, executeApprovedIssues, githubIterate, proposeImprovements } from "./github-iterate.ts";
+import {
+  acceptingTriageRunner,
+  createIterateMock,
+  emptyGateResolver,
+  failingCharterChecker,
+  rejectingTriageRunner,
+} from "./test-helpers.ts";
+import type { CommandRunner, GatesRunResult, HoneIssue, PipelineContext } from "./types.ts";
 
 function makeCtx(
   dir: string,
@@ -73,12 +68,14 @@ function createMockGhRunner(opts: {
     // gh issue list
     if (key.includes("issue list")) {
       return {
-        stdout: JSON.stringify(issues.map((i) => ({
-          number: i.number,
-          title: i.title,
-          body: i.body,
-          createdAt: i.createdAt,
-        }))),
+        stdout: JSON.stringify(
+          issues.map((i) => ({
+            number: i.number,
+            title: i.title,
+            body: i.body,
+            createdAt: i.createdAt,
+          })),
+        ),
         exitCode: 0,
       };
     }
@@ -86,7 +83,8 @@ function createMockGhRunner(opts: {
     // gh api reactions
     if (key.includes("api") && key.includes("reactions")) {
       const issueMatch = key.match(/issues\/(\d+)\/reactions/);
-      const issueNum = issueMatch ? parseInt(issueMatch[1]!) : -1;
+      // biome-ignore lint/style/noNonNullAssertion: capture group [1] is guaranteed when issueMatch is truthy
+      const issueNum = issueMatch ? parseInt(issueMatch[1]!, 10) : -1;
       const issue = issues.find((i) => i.number === issueNum);
 
       if (!issue) return { stdout: "", exitCode: 0 };
@@ -104,7 +102,8 @@ function createMockGhRunner(opts: {
     // gh issue close
     if (key.includes("issue close")) {
       const numMatch = key.match(/close (\d+)/);
-      if (numMatch) closedIssues.push(parseInt(numMatch[1]!));
+      // biome-ignore lint/style/noNonNullAssertion: capture group [1] is guaranteed when numMatch is truthy (guarded by if)
+      if (numMatch) closedIssues.push(parseInt(numMatch[1]!, 10));
       return { stdout: "", exitCode: 0 };
     }
 
@@ -113,7 +112,9 @@ function createMockGhRunner(opts: {
       const titleIdx = args.indexOf("--title");
       const bodyIdx = args.indexOf("--body");
       createdIssues.push({
+        // biome-ignore lint/style/noNonNullAssertion: index arithmetic is bounds-safe; if titleIdx >= 0, titleIdx+1 is the adjacent arg
         title: titleIdx >= 0 ? args[titleIdx + 1]! : "",
+        // biome-ignore lint/style/noNonNullAssertion: index arithmetic is bounds-safe; if bodyIdx >= 0, bodyIdx+1 is the adjacent arg
         body: bodyIdx >= 0 ? args[bodyIdx + 1]! : "",
       });
       createCount++;
@@ -141,7 +142,10 @@ describe("githubIterate", () => {
   test("charter fails → throws error", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
-      assess: "x", name: "x", plan: "x", execute: "x",
+      assess: "x",
+      name: "x",
+      plan: "x",
+      execute: "x",
     });
     const { runner } = createMockGhRunner({});
 
@@ -164,7 +168,10 @@ describe("githubIterate", () => {
   test("thumbs-down issues → closed", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
-      assess: "assessment", name: "test-name", plan: "plan", execute: "done",
+      assess: "assessment",
+      name: "test-name",
+      plan: "plan",
+      execute: "done",
       triage: '{ "changeType": "architecture", "busyWork": false, "reason": "ok" }',
     });
 
@@ -174,7 +181,14 @@ describe("githubIterate", () => {
         {
           number: 5,
           title: "Bad proposal",
-          body: formatIssueBody({ name: "bad-proposal", assessment: "a", plan: "p", agent: "test", severity: 2, principle: "x" }),
+          body: formatIssueBody({
+            name: "bad-proposal",
+            assessment: "a",
+            plan: "p",
+            agent: "test",
+            severity: 2,
+            principle: "x",
+          }),
           createdAt: "2024-01-01T00:00:00Z",
           thumbsDown: ["testowner"],
         },
@@ -202,7 +216,10 @@ describe("githubIterate", () => {
   test("approved issue → executed, committed, closed", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
-      assess: "assessment", name: "test-name", plan: "plan", execute: "done",
+      assess: "assessment",
+      name: "test-name",
+      plan: "plan",
+      execute: "done",
     });
 
     const proposal = {
@@ -239,9 +256,9 @@ describe("githubIterate", () => {
       });
 
       expect(result.executed).toHaveLength(1);
-      expect(result.executed[0]!.issueNumber).toBe(10);
-      expect(result.executed[0]!.success).toBe(true);
-      expect(result.executed[0]!.commitHash).toBe("abc123");
+      expect(result.executed[0]?.issueNumber).toBe(10);
+      expect(result.executed[0]?.success).toBe(true);
+      expect(result.executed[0]?.commitHash).toBe("abc123");
       expect(closedIssues).toContain(10);
     } finally {
       await rm(dir, { recursive: true });
@@ -251,7 +268,10 @@ describe("githubIterate", () => {
   test("approved issue fails gates → closed with failure comment", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
-      assess: "assessment", name: "test-name", plan: "plan", execute: "done",
+      assess: "assessment",
+      name: "test-name",
+      plan: "plan",
+      execute: "done",
     });
 
     const proposal = {
@@ -287,14 +307,16 @@ describe("githubIterate", () => {
       return {
         allPassed: false,
         requiredPassed: false,
-        results: [{
-          name: "test",
-          command: "npm test",
-          passed: false,
-          required: true,
-          output: "FAIL: test error",
-          exitCode: 1,
-        }],
+        results: [
+          {
+            name: "test",
+            command: "npm test",
+            passed: false,
+            required: true,
+            output: "FAIL: test error",
+            exitCode: 1,
+          },
+        ],
       };
     };
 
@@ -311,7 +333,7 @@ describe("githubIterate", () => {
       });
 
       expect(result.executed).toHaveLength(1);
-      expect(result.executed[0]!.success).toBe(false);
+      expect(result.executed[0]?.success).toBe(false);
       expect(closedIssues).toContain(11);
     } finally {
       await rm(dir, { recursive: true });
@@ -321,7 +343,10 @@ describe("githubIterate", () => {
   test("triage rejects proposal → skipped, counter incremented", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
-      assess: "assessment", name: "test-name", plan: "plan", execute: "done",
+      assess: "assessment",
+      name: "test-name",
+      plan: "plan",
+      execute: "done",
     });
 
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
@@ -392,14 +417,16 @@ describe("githubIterate", () => {
     const failingGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: false,
       requiredPassed: false,
-      results: [{
-        name: "test",
-        command: "npm test",
-        passed: false,
-        required: true,
-        output: "FAIL: compilation error",
-        exitCode: 1,
-      }],
+      results: [
+        {
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output: "FAIL: compilation error",
+          exitCode: 1,
+        },
+      ],
     });
 
     try {
@@ -481,8 +508,20 @@ describe("closeRejectedIssues", () => {
     });
 
     const issues: HoneIssue[] = [
-      { number: 1, title: "Bad", body: "x", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
-      { number: 2, title: "Good", body: "y", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
+      {
+        number: 1,
+        title: "Bad",
+        body: "x",
+        reactions: { thumbsUp: [], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+      {
+        number: 2,
+        title: "Good",
+        body: "y",
+        reactions: { thumbsUp: [], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
     ];
 
     try {
@@ -490,7 +529,7 @@ describe("closeRejectedIssues", () => {
 
       expect(closed).toEqual([1]);
       expect(closedIssues).toEqual([1]);
-      expect(issues[1]!.reactions.thumbsUp).toContain("testowner");
+      expect(issues[1]?.reactions.thumbsUp).toContain("testowner");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -512,14 +551,20 @@ describe("closeRejectedIssues", () => {
     });
 
     const issues: HoneIssue[] = [
-      { number: 3, title: "Neutral", body: "z", reactions: { thumbsUp: [], thumbsDown: [] }, createdAt: "2024-01-01T00:00:00Z" },
+      {
+        number: 3,
+        title: "Neutral",
+        body: "z",
+        reactions: { thumbsUp: [], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
     ];
 
     try {
       const closed = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
 
       expect(closed).toEqual([]);
-      expect(issues[0]!.reactions.thumbsUp).toEqual(["otheruser"]);
+      expect(issues[0]?.reactions.thumbsUp).toEqual(["otheruser"]);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -530,7 +575,10 @@ describe("executeApprovedIssues", () => {
   test("successfully executes, commits, and closes an approved issue", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
     const mockClaude = createIterateMock({
-      assess: "a", name: "n", plan: "p", execute: "done",
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "done",
     });
 
     const proposal = {
@@ -555,22 +603,16 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(
-        issues,
-        "testowner",
-        [],
-        makeCtx(dir, mockClaude),
-        {
-          skipGates: true,
-          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-          gates: [],
-          ghRunner: runner,
-        },
-      );
+      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
 
       expect(executed).toHaveLength(1);
-      expect(executed[0]!.success).toBe(true);
-      expect(executed[0]!.commitHash).toBe("abc123");
+      expect(executed[0]?.success).toBe(true);
+      expect(executed[0]?.commitHash).toBe("abc123");
       expect(closedIssues).toContain(10);
     } finally {
       await rm(dir, { recursive: true });
@@ -580,7 +622,10 @@ describe("executeApprovedIssues", () => {
   test("handles gate failure (closes with failure comment)", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
     const mockClaude = createIterateMock({
-      assess: "a", name: "n", plan: "p", execute: "done",
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "done",
     });
 
     const proposal = {
@@ -607,14 +652,16 @@ describe("executeApprovedIssues", () => {
     const failingGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: false,
       requiredPassed: false,
-      results: [{
-        name: "test",
-        command: "npm test",
-        passed: false,
-        required: true,
-        output: "FAIL: test error",
-        exitCode: 1,
-      }],
+      results: [
+        {
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output: "FAIL: test error",
+          exitCode: 1,
+        },
+      ],
     });
 
     try {
@@ -632,7 +679,7 @@ describe("executeApprovedIssues", () => {
       );
 
       expect(executed).toHaveLength(1);
-      expect(executed[0]!.success).toBe(false);
+      expect(executed[0]?.success).toBe(false);
       expect(closedIssues).toContain(11);
     } finally {
       await rm(dir, { recursive: true });
@@ -642,7 +689,10 @@ describe("executeApprovedIssues", () => {
   test("skips issues that can't be parsed", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
     const mockClaude = createIterateMock({
-      assess: "a", name: "n", plan: "p", execute: "done",
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "done",
     });
 
     const { runner } = createMockGhRunner({ owner: "testowner" });
@@ -658,18 +708,12 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(
-        issues,
-        "testowner",
-        [],
-        makeCtx(dir, mockClaude),
-        {
-          skipGates: true,
-          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-          gates: [],
-          ghRunner: runner,
-        },
-      );
+      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
 
       expect(executed).toHaveLength(0);
     } finally {
@@ -694,15 +738,12 @@ describe("proposeImprovements", () => {
     });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(
-        makeCtx(dir, mockClaude),
-        {
-          proposals: 2,
-          skipTriage: true,
-          ghRunner: runner,
-          triageRunner: acceptingTriageRunner,
-        },
-      );
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+        proposals: 2,
+        skipTriage: true,
+        ghRunner: runner,
+        triageRunner: acceptingTriageRunner,
+      });
 
       expect(proposed).toEqual([100, 101]);
       expect(skippedTriage).toBe(0);
@@ -724,15 +765,12 @@ describe("proposeImprovements", () => {
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(
-        makeCtx(dir, mockClaude),
-        {
-          proposals: 1,
-          skipTriage: false,
-          ghRunner: runner,
-          triageRunner: rejectingTriageRunner,
-        },
-      );
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+        proposals: 1,
+        skipTriage: false,
+        ghRunner: runner,
+        triageRunner: rejectingTriageRunner,
+      });
 
       expect(proposed).toEqual([]);
       expect(skippedTriage).toBe(1);
@@ -754,15 +792,12 @@ describe("proposeImprovements", () => {
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(
-        makeCtx(dir, mockClaude),
-        {
-          proposals: 3,
-          skipTriage: false,
-          ghRunner: runner,
-          triageRunner: rejectingTriageRunner,
-        },
-      );
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+        proposals: 3,
+        skipTriage: false,
+        ghRunner: runner,
+        triageRunner: rejectingTriageRunner,
+      });
 
       expect(proposed).toEqual([]);
       expect(skippedTriage).toBe(3);

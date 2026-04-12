@@ -12,11 +12,15 @@ describe("buildClaudeArgs", () => {
     });
 
     expect(args).toEqual([
-      "--agent", "typescript-craftsperson",
-      "--model", "opus",
+      "--agent",
+      "typescript-craftsperson",
+      "--model",
+      "opus",
       "--print",
-      "-p", "Assess the project",
-      "--allowedTools", "Read Glob Grep WebFetch WebSearch",
+      "-p",
+      "Assess the project",
+      "--allowedTools",
+      "Read Glob Grep WebFetch WebSearch",
       "--dangerously-skip-permissions",
     ]);
   });
@@ -31,10 +35,13 @@ describe("buildClaudeArgs", () => {
     });
 
     expect(args).toEqual([
-      "--agent", "elixir-craftsperson",
-      "--model", "sonnet",
+      "--agent",
+      "elixir-craftsperson",
+      "--model",
+      "sonnet",
       "--print",
-      "-p", "Execute the plan",
+      "-p",
+      "Execute the plan",
       "--dangerously-skip-permissions",
     ]);
   });
@@ -49,10 +56,13 @@ describe("buildClaudeArgs", () => {
 
     expect(args).not.toContain("--agent");
     expect(args).toEqual([
-      "--model", "haiku",
+      "--model",
+      "haiku",
       "--print",
-      "-p", "Extract gates",
-      "--allowedTools", "Read Glob Grep WebFetch WebSearch",
+      "-p",
+      "Extract gates",
+      "--allowedTools",
+      "Read Glob Grep WebFetch WebSearch",
       "--dangerously-skip-permissions",
     ]);
   });

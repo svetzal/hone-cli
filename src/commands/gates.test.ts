@@ -1,8 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { resolve } from "path";
-import { mkdtemp, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { describe, expect, it } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { parseGatesArgs } from "./gates.ts";
 
 describe("parseGatesArgs", () => {
@@ -92,7 +91,7 @@ describe("parseGatesArgs", () => {
 });
 
 describe("gates command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should show no gates message for empty directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "gates-test-"));
@@ -146,9 +145,7 @@ describe("gates command integration", () => {
     const tempDir = await mkdtemp(join(tmpdir(), "gates-test-"));
     try {
       const gatesConfig = {
-        gates: [
-          { name: "pass", command: "true", required: true },
-        ],
+        gates: [{ name: "pass", command: "true", required: true }],
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
@@ -174,9 +171,7 @@ describe("gates command integration", () => {
     try {
       // Create a gates file to be saved
       const gatesConfig = {
-        gates: [
-          { name: "test", command: "echo test", required: true },
-        ],
+        gates: [{ name: "test", command: "echo test", required: true }],
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 
@@ -253,9 +248,7 @@ describe("gates command integration", () => {
     const tempDir = await mkdtemp(join(tmpdir(), "gates-json-test-"));
     try {
       const gatesConfig = {
-        gates: [
-          { name: "pass", command: "true", required: true },
-        ],
+        gates: [{ name: "pass", command: "true", required: true }],
       };
       await writeFile(join(tempDir, ".hone-gates.json"), JSON.stringify(gatesConfig, null, 2));
 

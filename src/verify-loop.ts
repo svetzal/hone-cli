@@ -1,13 +1,7 @@
-import { buildClaudeArgs } from "./claude.ts";
 import { saveStageOutput } from "./audit.ts";
+import { buildClaudeArgs } from "./claude.ts";
 import { loadOverrideGates } from "./resolve-gates.ts";
-import type {
-  GateDefinition,
-  GatesRunResult,
-  GateRunner,
-  AttemptRecord,
-  PipelineContext,
-} from "./types.ts";
+import type { AttemptRecord, GateDefinition, GateRunner, GatesRunResult, PipelineContext } from "./types.ts";
 
 export type RetryPromptBuilder = (
   failedGates: { name: string; output: string }[],

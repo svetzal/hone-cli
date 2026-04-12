@@ -1,27 +1,20 @@
-import type { GateDefinition, GateResult, GatesRunResult } from "./types.ts";
 import { runProcess } from "./process.ts";
+import type { GateDefinition, GateResult, GatesRunResult } from "./types.ts";
 
 export function truncateOutput(output: string, maxLines: number = 200): string {
   const lines = output.split("\n");
   if (lines.length <= maxLines) return output;
-  return (
-    `... (${lines.length - maxLines} lines truncated)\n` +
-    lines.slice(-maxLines).join("\n")
-  );
+  return `... (${lines.length - maxLines} lines truncated)\n${lines.slice(-maxLines).join("\n")}`;
 }
 
-export async function runGate(
-  gate: GateDefinition,
-  projectDir: string,
-  timeout: number,
-): Promise<GateResult> {
+export async function runGate(gate: GateDefinition, projectDir: string, timeout: number): Promise<GateResult> {
   try {
-    const { stdout, stderr, exitCode } = await runProcess(
-      ["sh", "-c", gate.command],
-      { cwd: projectDir, timeout: gate.timeout ?? timeout },
-    );
+    const { stdout, stderr, exitCode } = await runProcess(["sh", "-c", gate.command], {
+      cwd: projectDir,
+      timeout: gate.timeout ?? timeout,
+    });
 
-    const output = truncateOutput((stdout + "\n" + stderr).trim());
+    const output = truncateOutput(`${stdout}\n${stderr}`.trim());
 
     return {
       name: gate.name,

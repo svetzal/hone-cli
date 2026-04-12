@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 describe("CLI", () => {
   test("--help prints usage", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "--help"], {
-      cwd: import.meta.dir + "/..",
+      cwd: `${import.meta.dir}/..`,
       stdout: "pipe",
     });
     const output = await new Response(proc.stdout).text();
@@ -20,7 +20,7 @@ describe("CLI", () => {
 
   test("--version prints version", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "--version"], {
-      cwd: import.meta.dir + "/..",
+      cwd: `${import.meta.dir}/..`,
       stdout: "pipe",
     });
     const output = await new Response(proc.stdout).text();
@@ -31,7 +31,7 @@ describe("CLI", () => {
 
   test("unknown command exits with error", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "nonexistent"], {
-      cwd: import.meta.dir + "/..",
+      cwd: `${import.meta.dir}/..`,
       stdout: "pipe",
       stderr: "pipe",
     });

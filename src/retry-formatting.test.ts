@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatGateFailures, appendRetryHistory } from "./retry-formatting.ts";
+import { appendRetryHistory, formatGateFailures } from "./retry-formatting.ts";
 
 describe("formatGateFailures", () => {
   test("formats a single gate as a markdown section", () => {
@@ -74,11 +74,7 @@ describe("appendRetryHistory", () => {
 
   test("formats gate failures within prior attempts correctly", () => {
     const sections: string[] = [];
-    appendRetryHistory(
-      sections,
-      [{ attempt: 1, failedGates: [{ name: "test", output: "FAIL: err" }] }],
-      [],
-    );
+    appendRetryHistory(sections, [{ attempt: 1, failedGates: [{ name: "test", output: "FAIL: err" }] }], []);
     expect(sections).toContain("### Gate: test\n\nFAIL: err");
   });
 });

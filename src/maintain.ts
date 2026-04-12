@@ -1,16 +1,16 @@
 import { ensureAuditDir } from "./audit.ts";
+import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
-import { buildMaintainSummarizePrompt } from "./summarize.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
+import { buildMaintainSummarizePrompt } from "./summarize.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
-import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type {
-  MaintainResult,
-  GateDefinition,
-  GateRunner,
-  GateResolverFn,
   AttemptRecord,
+  GateDefinition,
+  GateResolverFn,
+  GateRunner,
+  MaintainResult,
   PipelineContext,
 } from "./types.ts";
 
@@ -21,9 +21,7 @@ export interface MaintainOptions {
 }
 
 export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
-  const gateList = gates
-    .map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`)
-    .join("\n");
+  const gateList = gates.map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`).join("\n");
 
   return [
     `Update the project dependencies in ${folder} to their latest compatible versions.`,
@@ -45,9 +43,7 @@ export function buildMaintainRetryPrompt(
   currentFailedGates: { name: string; output: string }[],
   priorAttempts: AttemptRecord[],
 ): string {
-  const gateList = gates
-    .map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`)
-    .join("\n");
+  const gateList = gates.map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`).join("\n");
 
   return buildRetryPromptScaffold(
     [
@@ -82,23 +78,13 @@ function formatTimestamp(): string {
 }
 
 export async function maintain(opts: MaintainOptions): Promise<MaintainResult> {
-  const {
-    ctx,
-    gateRunner = runAllGates,
-    gateResolver = resolveGates,
-  } = opts;
+  const { ctx, gateRunner = runAllGates, gateResolver = resolveGates } = opts;
 
   const { agent, folder, config, claude, onProgress } = ctx;
 
   // Resolve gates
   onProgress("gates", "Resolving quality gates...");
-  const gates = await gateResolver(
-    folder,
-    agent,
-    config.models.gates,
-    config.readOnlyTools,
-    claude,
-  );
+  const gates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
 
   if (gates.length === 0) {
     onProgress("gates", "No quality gates found. Cannot run maintain without gates.");

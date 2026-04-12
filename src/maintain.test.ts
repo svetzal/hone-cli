@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { maintain, buildMaintainPrompt, buildMaintainRetryPrompt } from "./maintain.ts";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import { join } from "path";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
+import { buildMaintainPrompt, buildMaintainRetryPrompt, maintain } from "./maintain.ts";
+import { createMaintainMock, emptyGateResolver, extractPrompt, standardGateResolver } from "./test-helpers.ts";
 import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
-import { createMaintainMock, extractPrompt, emptyGateResolver, standardGateResolver } from "./test-helpers.ts";
 
 function makeCtx(
   dir: string,
@@ -54,7 +54,8 @@ describe("maintain", () => {
     const mockClaude = createMaintainMock(
       {
         execute: "Updated all dependencies.",
-        summarize: '```json\n{ "headline": "Update project dependencies", "summary": "Bumped all packages to latest." }\n```',
+        summarize:
+          '```json\n{ "headline": "Update project dependencies", "summary": "Bumped all packages to latest." }\n```',
       },
       { onCall: (args) => calls.push(args) },
     );
@@ -62,9 +63,7 @@ describe("maintain", () => {
     const mockGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: true,
       requiredPassed: true,
-      results: [
-        { name: "test", command: "bun test", passed: true, required: true, output: "ok", exitCode: 0 },
-      ],
+      results: [{ name: "test", command: "bun test", passed: true, required: true, output: "ok", exitCode: 0 }],
     });
 
     try {
@@ -104,16 +103,21 @@ describe("maintain", () => {
           allPassed: false,
           requiredPassed: false,
           results: [
-            { name: "test", command: "bun test", passed: false, required: true, output: "FAIL: type error", exitCode: 1 },
+            {
+              name: "test",
+              command: "bun test",
+              passed: false,
+              required: true,
+              output: "FAIL: type error",
+              exitCode: 1,
+            },
           ],
         };
       }
       return {
         allPassed: true,
         requiredPassed: true,
-        results: [
-          { name: "test", command: "bun test", passed: true, required: true, output: "ok", exitCode: 0 },
-        ],
+        results: [{ name: "test", command: "bun test", passed: true, required: true, output: "ok", exitCode: 0 }],
       };
     };
 
@@ -130,6 +134,7 @@ describe("maintain", () => {
       expect(calls.length).toBe(3);
 
       // Verify retry prompt contains failed gate output
+      // biome-ignore lint/style/noNonNullAssertion: length assertion above guarantees index 1 exists
       const retryPrompt = extractPrompt(calls[1]!);
       expect(retryPrompt).toContain("## Current Failed Gates");
       expect(retryPrompt).toContain("FAIL: type error");
@@ -179,9 +184,8 @@ describe("maintain", () => {
       { onCall: (args) => calls.push(args) },
     );
 
-    const optionalGateResolver = async () => [
-      { name: "security", command: "npm audit", required: false },
-    ] as GateDefinition[];
+    const optionalGateResolver = async () =>
+      [{ name: "security", command: "npm audit", required: false }] as GateDefinition[];
 
     const mockGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: false,
@@ -260,9 +264,7 @@ describe("buildMaintainPrompt", () => {
 });
 
 describe("buildMaintainRetryPrompt", () => {
-  const gates: GateDefinition[] = [
-    { name: "test", command: "bun test", required: true },
-  ];
+  const gates: GateDefinition[] = [{ name: "test", command: "bun test", required: true }];
 
   test("includes failed gate output", () => {
     const prompt = buildMaintainRetryPrompt(
@@ -295,22 +297,12 @@ describe("buildMaintainRetryPrompt", () => {
   });
 
   test("includes instruction about not reverting", () => {
-    const prompt = buildMaintainRetryPrompt(
-      "/my/project",
-      gates,
-      [{ name: "test", output: "fail" }],
-      [],
-    );
+    const prompt = buildMaintainRetryPrompt("/my/project", gates, [{ name: "test", output: "fail" }], []);
     expect(prompt).toContain("without reverting the dependency updates");
   });
 
   test("includes goal section with folder and gate list", () => {
-    const prompt = buildMaintainRetryPrompt(
-      "/my/project",
-      gates,
-      [{ name: "test", output: "fail" }],
-      [],
-    );
+    const prompt = buildMaintainRetryPrompt("/my/project", gates, [{ name: "test", output: "fail" }], []);
     expect(prompt).toContain("## Goal");
     expect(prompt).toContain("/my/project");
     expect(prompt).toContain("- test: `bun test`");

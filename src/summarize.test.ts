@@ -5,8 +5,6 @@ import {
   parseSummarizeResponse,
   summarize,
 } from "./summarize.ts";
-import type { StructuredAssessment, TriageResult, GatesRunResult } from "./types.ts";
-import { extractPrompt } from "./test-helpers.ts";
 
 describe("buildIterateSummarizePrompt", () => {
   test("includes principle, severity, and execution excerpt", () => {
@@ -69,7 +67,7 @@ describe("buildIterateSummarizePrompt", () => {
 
     // The excerpt should be 500 chars, not the full 1000
     const excerptLine = prompt.split("\n").find((l) => l.startsWith("xxx"));
-    expect(excerptLine!.length).toBe(500);
+    expect(excerptLine?.length).toBe(500);
   });
 });
 
@@ -118,8 +116,8 @@ describe("parseSummarizeResponse", () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.headline).toBe("Fix auth module SRP violation");
-    expect(result!.summary).toBe("Extracted auth into its own module.");
+    expect(result?.headline).toBe("Fix auth module SRP violation");
+    expect(result?.summary).toBe("Extracted auth into its own module.");
   });
 
   test("returns null for missing fields", () => {
@@ -133,12 +131,10 @@ describe("parseSummarizeResponse", () => {
   });
 
   test("handles bare JSON (no fences)", () => {
-    const result = parseSummarizeResponse(
-      '{ "headline": "Update deps to latest", "summary": "Bumped all packages." }',
-    );
+    const result = parseSummarizeResponse('{ "headline": "Update deps to latest", "summary": "Bumped all packages." }');
 
     expect(result).not.toBeNull();
-    expect(result!.headline).toBe("Update deps to latest");
+    expect(result?.headline).toBe("Update deps to latest");
   });
 });
 
@@ -147,27 +143,17 @@ describe("summarize", () => {
     const mockClaude = async () =>
       '```json\n{ "headline": "Fix SRP violation in auth", "summary": "Split module." }\n```';
 
-    const result = await summarize(
-      "Generate a headline...",
-      "haiku",
-      "Read Glob Grep WebFetch WebSearch",
-      mockClaude,
-    );
+    const result = await summarize("Generate a headline...", "haiku", "Read Glob Grep WebFetch WebSearch", mockClaude);
 
     expect(result).not.toBeNull();
-    expect(result!.headline).toBe("Fix SRP violation in auth");
-    expect(result!.summary).toBe("Split module.");
+    expect(result?.headline).toBe("Fix SRP violation in auth");
+    expect(result?.summary).toBe("Split module.");
   });
 
   test("returns null on unparseable output", async () => {
     const mockClaude = async () => "I cannot generate JSON right now.";
 
-    const result = await summarize(
-      "Generate a headline...",
-      "haiku",
-      "Read Glob Grep WebFetch WebSearch",
-      mockClaude,
-    );
+    const result = await summarize("Generate a headline...", "haiku", "Read Glob Grep WebFetch WebSearch", mockClaude);
 
     expect(result).toBeNull();
   });

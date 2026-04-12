@@ -1,6 +1,6 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { extractJsonFromLlmOutput } from "./json-extraction.ts";
-import type { ClaudeInvoker, StructuredAssessment, TriageResult, GatesRunResult } from "./types.ts";
+import type { ClaudeInvoker, GatesRunResult, StructuredAssessment, TriageResult } from "./types.ts";
 
 export interface SummarizeResult {
   headline: string;
@@ -52,10 +52,10 @@ export function buildIterateSummarizePrompt(ctx: IterateSummarizeContext): strin
     excerpt,
     "",
     "Respond with ONLY a JSON object:",
-    '```json',
+    "```json",
     '{ "headline": "<imperative, single-line, max 72 chars, for git commit subject>",',
     '  "summary": "<2-5 lines for git commit body>" }',
-    '```',
+    "```",
   ].join("\n");
 }
 
@@ -73,10 +73,10 @@ export function buildMaintainSummarizePrompt(ctx: MaintainSummarizeContext): str
     excerpt,
     "",
     "Respond with ONLY a JSON object:",
-    '```json',
+    "```json",
     '{ "headline": "<imperative, single-line, max 72 chars, for git commit subject>",',
     '  "summary": "<2-5 lines for git commit body>" }',
-    '```',
+    "```",
   ].join("\n");
 }
 

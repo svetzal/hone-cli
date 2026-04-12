@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { listIterations, resolveAuditDir } from "./audit.ts";
-import { join } from "path";
-import { mkdtemp, writeFile, rm } from "fs/promises";
-import { tmpdir } from "os";
 
 describe("resolveAuditDir", () => {
   test("joins relative path with project dir", () => {
@@ -52,8 +52,8 @@ describe("listIterations", () => {
       const entries = await listIterations(dir);
 
       expect(entries.length).toBe(1);
-      expect(entries[0]!.name).toBe("fix-auth-bug");
-      expect(entries[0]!.files.length).toBe(5);
+      expect(entries[0]?.name).toBe("fix-auth-bug");
+      expect(entries[0]?.files.length).toBe(5);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -75,8 +75,8 @@ describe("listIterations", () => {
 
       expect(entries.length).toBe(2);
       // Newer should be first
-      expect(entries[0]!.name).toBe("newer-issue");
-      expect(entries[1]!.name).toBe("older-issue");
+      expect(entries[0]?.name).toBe("newer-issue");
+      expect(entries[1]?.name).toBe("older-issue");
     } finally {
       await rm(dir, { recursive: true });
     }

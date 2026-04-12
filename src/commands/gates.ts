@@ -1,12 +1,12 @@
-import { resolve } from "path";
-import { runAllGates } from "../gates.ts";
-import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
-import { loadConfig } from "../config.ts";
+import { resolve } from "node:path";
 import { createClaudeInvoker } from "../claude.ts";
-import type { ParsedArgs, GateDefinition } from "../types.ts";
-import { writeJson, progress } from "../output.ts";
-import { writeGatesFile } from "../gates-file.ts";
+import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
+import { runAllGates } from "../gates.ts";
+import { writeGatesFile } from "../gates-file.ts";
+import { progress, writeJson } from "../output.ts";
+import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
+import type { GateDefinition, ParsedArgs } from "../types.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;
@@ -16,10 +16,12 @@ export interface GatesArgs {
 export function parseGatesArgs(positional: string[]): GatesArgs {
   // Detect whether first positional is an agent name or a folder path
   // Agent names don't contain slashes or dots (except in filenames)
-  const hasAgent = positional.length >= 2 ||
-    (positional.length === 1 && !positional[0]!.includes("/") && !positional[0]!.startsWith("."));
+  const hasAgent =
+    positional.length >= 2 ||
+    (positional.length === 1 && !positional[0]?.includes("/") && !positional[0]?.startsWith("."));
 
   if (positional.length >= 2) {
+    // biome-ignore lint/style/noNonNullAssertion: positional[1] is guaranteed by the length >= 2 check above
     return { agentName: positional[0], folder: resolve(positional[1]!) };
   } else if (hasAgent) {
     return { agentName: positional[0], folder: resolve(".") };
@@ -40,13 +42,7 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   if (agentName) {
     // With agent: use full resolution chain (override > agent extraction)
-    gates = await resolveGates(
-      folder,
-      agentName,
-      config.models.gates,
-      config.readOnlyTools,
-      createClaudeInvoker(),
-    );
+    gates = await resolveGates(folder, agentName, config.models.gates, config.readOnlyTools, createClaudeInvoker());
   } else {
     // Without agent: only use override file
     gates = (await loadOverrideGates(folder)) ?? [];
@@ -97,7 +93,10 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
       const tag = r.required ? "required" : "optional";
       console.log(`  [${icon}] ${r.name} (${tag})`);
       if (!r.passed) {
-        const indented = r.output.split("\n").map((l) => `    ${l}`).join("\n");
+        const indented = r.output
+          .split("\n")
+          .map((l) => `    ${l}`)
+          .join("\n");
         console.log(indented);
       }
     }

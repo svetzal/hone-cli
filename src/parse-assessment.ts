@@ -1,5 +1,5 @@
-import type { StructuredAssessment } from "./types.ts";
 import { extractJsonFromLlmOutput, findBareJsonObject } from "./json-extraction.ts";
+import type { StructuredAssessment } from "./types.ts";
 
 function clampSeverity(value: number): number {
   if (!Number.isFinite(value)) return 3;

@@ -1,4 +1,4 @@
-import { createInterface } from "readline";
+import { createInterface } from "node:readline";
 
 export interface PromptChoice {
   key: string;
@@ -20,7 +20,7 @@ export async function promptChoice(message: string, choices: PromptChoice[]): Pr
       rl.close();
       const key = answer.trim().toLowerCase();
       const match = choices.find((c) => c.key === key);
-      resolve(match ? match.key : choices[0]!.key);
+      resolve(match ? match.key : (choices[0]?.key ?? ""));
     });
   });
 }

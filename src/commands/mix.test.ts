@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mixCommand } from "./mix.ts";
-import type { ParsedArgs } from "../types.ts";
 import { CliError } from "../errors.ts";
+import type { ParsedArgs } from "../types.ts";
+import { mixCommand } from "./mix.ts";
 
 describe("mixCommand", () => {
   describe("argument validation", () => {
@@ -44,9 +44,7 @@ describe("mixCommand", () => {
       };
 
       await expect(mixCommand(parsed)).rejects.toThrow(CliError);
-      await expect(mixCommand(parsed)).rejects.toThrow(
-        "Error: At least one of --principles or --gates is required.",
-      );
+      await expect(mixCommand(parsed)).rejects.toThrow("Error: At least one of --principles or --gates is required.");
     });
 
     test("throws CliError with usage message when --from is boolean (no value)", async () => {

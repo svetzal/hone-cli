@@ -1,23 +1,23 @@
-import { buildClaudeArgs } from "./claude.ts";
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
-import { runAllGates } from "./gates.ts";
-import { resolveGates } from "./resolve-gates.ts";
 import { checkCharter } from "./charter.ts";
-import { parseAssessment } from "./parse-assessment.ts";
-import { triage as runTriage } from "./triage.ts";
-import { runPreamble } from "./preamble.ts";
-import { buildIterateSummarizePrompt } from "./summarize.ts";
-import { buildRetryPromptScaffold } from "./retry-formatting.ts";
-import { runSummarizeStage } from "./summarize-stage.ts";
+import { buildClaudeArgs } from "./claude.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
+import { runAllGates } from "./gates.ts";
+import { parseAssessment } from "./parse-assessment.ts";
+import { runPreamble } from "./preamble.ts";
+import { resolveGates } from "./resolve-gates.ts";
+import { buildRetryPromptScaffold } from "./retry-formatting.ts";
+import { buildIterateSummarizePrompt } from "./summarize.ts";
+import { runSummarizeStage } from "./summarize-stage.ts";
+import { triage as runTriage } from "./triage.ts";
 import type {
-  IterationResult,
-  GateRunner,
-  GateResolverFn,
-  CharterCheckerFn,
-  TriageRunnerFn,
   AttemptRecord,
+  CharterCheckerFn,
+  GateResolverFn,
+  GateRunner,
+  IterationResult,
   PipelineContext,
+  TriageRunnerFn,
 } from "./types.ts";
 
 export interface IterateOptions {
@@ -36,12 +36,14 @@ export function sanitizeName(raw: string): string {
   // Prefer multi-segment kebab-case (e.g., "fix-auth-handler")
   const multiSegment = lower.match(/[a-z][a-z0-9]*(?:-[a-z0-9]+)+/g);
   if (multiSegment) {
+    // biome-ignore lint/style/noNonNullAssertion: array is non-empty, guarded by the `if (multiSegment)` check above
     const longest = multiSegment.sort((a, b) => b.length - a.length)[0]!;
     return longest.slice(0, 50);
   }
   // Fall back to single lowercase word (minimum 2 chars)
   const single = lower.match(/[a-z][a-z0-9]+/g);
   if (single) {
+    // biome-ignore lint/style/noNonNullAssertion: array is non-empty, guarded by the `if (single)` check above
     const longest = single.sort((a, b) => b.length - a.length)[0]!;
     return longest.slice(0, 50);
   }
@@ -56,17 +58,7 @@ export function buildRetryPrompt(
   priorAttempts: AttemptRecord[],
 ): string {
   return buildRetryPromptScaffold(
-    [
-      `Improve the project in ${folder}.`,
-      "",
-      "## Assessment",
-      "",
-      assessment,
-      "",
-      "## Original Plan",
-      "",
-      plan,
-    ],
+    [`Improve the project in ${folder}.`, "", "## Assessment", "", assessment, "", "## Original Plan", "", plan],
     [
       "The previous execution introduced quality gate failures that must be fixed.",
       "Fix the failures below WITHOUT regressing on the original improvement.",
@@ -276,24 +268,22 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
 
   if (execResult.success) {
     const summarizeResult = await runSummarizeStage(
-      () => buildIterateSummarizePrompt({
-        name,
-        structuredAssessment,
-        triageResult,
-        execution: execResult.execution,
-        retries: execResult.retries,
-        gatesResult: execResult.gatesResult,
-      }),
+      () =>
+        buildIterateSummarizePrompt({
+          name,
+          structuredAssessment,
+          triageResult,
+          execution: execResult.execution,
+          retries: execResult.retries,
+          gatesResult: execResult.gatesResult,
+        }),
       ctx,
     );
     headline = summarizeResult.headline;
     summary = summarizeResult.summary;
   }
 
-  onProgress(
-    "done",
-    execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`,
-  );
+  onProgress("done", execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`);
 
   return {
     name,

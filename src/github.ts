@@ -1,30 +1,20 @@
-import type { CommandRunner, HoneIssue, HoneProposal } from "./types.ts";
 import { runProcess } from "./process.ts";
+import type { CommandRunner, HoneIssue, HoneProposal } from "./types.ts";
 
-export async function getRepoOwner(
-  projectDir: string,
-  run: CommandRunner,
-): Promise<string> {
-  const { stdout, exitCode } = await run(
-    "gh",
-    ["repo", "view", "--json", "owner", "--jq", ".owner.login"],
-    { cwd: projectDir },
-  );
+export async function getRepoOwner(projectDir: string, run: CommandRunner): Promise<string> {
+  const { stdout, exitCode } = await run("gh", ["repo", "view", "--json", "owner", "--jq", ".owner.login"], {
+    cwd: projectDir,
+  });
   if (exitCode !== 0) {
     throw new Error(`Failed to get repo owner: ${stdout}`);
   }
   return stdout.trim();
 }
 
-export async function getRepoNameWithOwner(
-  projectDir: string,
-  run: CommandRunner,
-): Promise<string> {
-  const { stdout, exitCode } = await run(
-    "gh",
-    ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
-    { cwd: projectDir },
-  );
+export async function getRepoNameWithOwner(projectDir: string, run: CommandRunner): Promise<string> {
+  const { stdout, exitCode } = await run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], {
+    cwd: projectDir,
+  });
   if (exitCode !== 0) {
     throw new Error(`Failed to get repo name: ${stdout}`);
   }
@@ -45,10 +35,7 @@ function validateIssueArray(raw: unknown): Array<{ number: number; title: string
   );
 }
 
-export async function listHoneIssues(
-  projectDir: string,
-  run: CommandRunner,
-): Promise<HoneIssue[]> {
+export async function listHoneIssues(projectDir: string, run: CommandRunner): Promise<HoneIssue[]> {
   const { stdout, exitCode } = await run(
     "gh",
     ["issue", "list", "--label", "hone", "--state", "open", "--json", "number,title,body,createdAt", "--limit", "100"],
@@ -78,7 +65,12 @@ export async function getIssueReactions(
   const repoName = await getRepoNameWithOwner(projectDir, run);
   const { stdout, exitCode } = await run(
     "gh",
-    ["api", `repos/${repoName}/issues/${issueNumber}/reactions`, "--jq", ".[] | {user: .user.login, content: .content}"],
+    [
+      "api",
+      `repos/${repoName}/issues/${issueNumber}/reactions`,
+      "--jq",
+      ".[] | {user: .user.login, content: .content}",
+    ],
     { cwd: projectDir },
   );
   if (exitCode !== 0) {
@@ -112,16 +104,11 @@ export async function getIssueReactions(
   return { thumbsUp, thumbsDown };
 }
 
-export async function ensureHoneLabel(
-  projectDir: string,
-  run: CommandRunner,
-): Promise<void> {
+export async function ensureHoneLabel(projectDir: string, run: CommandRunner): Promise<void> {
   // Try to create the label; ignore errors if it already exists
-  await run(
-    "gh",
-    ["label", "create", "hone", "--description", "Hone improvement proposal", "--color", "0e8a16"],
-    { cwd: projectDir },
-  );
+  await run("gh", ["label", "create", "hone", "--description", "Hone improvement proposal", "--color", "0e8a16"], {
+    cwd: projectDir,
+  });
 }
 
 export async function createHoneIssue(
@@ -153,11 +140,9 @@ export async function closeIssueWithComment(
   comment: string,
   run: CommandRunner,
 ): Promise<void> {
-  const { exitCode, stdout } = await run(
-    "gh",
-    ["issue", "close", String(issueNumber), "--comment", comment],
-    { cwd: projectDir },
-  );
+  const { exitCode, stdout } = await run("gh", ["issue", "close", String(issueNumber), "--comment", comment], {
+    cwd: projectDir,
+  });
   if (exitCode !== 0) {
     throw new Error(`Failed to close issue #${issueNumber}: ${stdout}`);
   }
@@ -236,10 +221,7 @@ export function parseIssueBody(body: string): HoneProposal | null {
   }
 }
 
-export async function getLatestCommitHash(
-  projectDir: string,
-  run: CommandRunner,
-): Promise<string> {
+export async function getLatestCommitHash(projectDir: string, run: CommandRunner): Promise<string> {
   const { stdout, exitCode } = await run("git", ["rev-parse", "HEAD"], { cwd: projectDir });
   if (exitCode !== 0) {
     throw new Error(`Failed to get latest commit hash: ${stdout}`);
@@ -247,11 +229,7 @@ export async function getLatestCommitHash(
   return stdout.trim();
 }
 
-export async function gitCommit(
-  projectDir: string,
-  message: string,
-  run: CommandRunner,
-): Promise<string> {
+export async function gitCommit(projectDir: string, message: string, run: CommandRunner): Promise<string> {
   // Stage all changes
   const addResult = await run("git", ["add", "-A"], { cwd: projectDir });
   if (addResult.exitCode !== 0) {
@@ -270,10 +248,7 @@ export async function gitCommit(
 
 export function createCommandRunner(): CommandRunner {
   return async (command, args, opts) => {
-    const { stdout, stderr, exitCode } = await runProcess(
-      [command, ...args],
-      { cwd: opts?.cwd },
-    );
+    const { stdout, stderr, exitCode } = await runProcess([command, ...args], { cwd: opts?.cwd });
 
     return { stdout: (stdout + stderr).trim(), exitCode };
   };

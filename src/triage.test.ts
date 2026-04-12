@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  checkSeverityThreshold,
-  buildTriagePrompt,
-  parseTriageResponse,
-  triage,
-} from "./triage.ts";
+import { buildTriagePrompt, checkSeverityThreshold, parseTriageResponse, triage } from "./triage.ts";
 import type { StructuredAssessment } from "./types.ts";
 
 describe("checkSeverityThreshold", () => {
@@ -59,7 +54,7 @@ describe("parseTriageResponse", () => {
   });
 
   test("fail-open on invalid JSON", () => {
-    const raw = '```json\n{invalid}\n```';
+    const raw = "```json\n{invalid}\n```";
     const result = parseTriageResponse(raw);
     expect(result.busyWork).toBe(false); // fail-open
   });
@@ -111,8 +106,7 @@ describe("triage", () => {
   });
 
   test("at threshold + substantive — accepted", async () => {
-    const mockClaude = async () =>
-      '```json\n{ "changeType": "bugfix", "busyWork": false, "reason": "Real bug" }\n```';
+    const mockClaude = async () => '```json\n{ "changeType": "bugfix", "busyWork": false, "reason": "Real bug" }\n```';
 
     const result = await triage(makeAssessment(3), 3, "haiku", "Read Glob Grep", mockClaude);
 

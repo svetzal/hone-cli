@@ -1,5 +1,5 @@
-import { describe, it, expect, mock, spyOn } from "bun:test";
-import { writeJson, progress, createProgressCallback, reportGateValidation } from "./output";
+import { describe, expect, it, spyOn } from "bun:test";
+import { createProgressCallback, progress, reportGateValidation, writeJson } from "./output";
 import type { GateResult } from "./types.ts";
 
 describe("output utilities", () => {
@@ -118,9 +118,7 @@ describe("output utilities", () => {
 
       expect(logSpy).toHaveBeenCalledWith("  pass: test (bun test)");
       expect(logSpy).toHaveBeenCalledWith("  pass: typecheck (bunx tsc --noEmit)");
-      expect(logSpy).not.toHaveBeenCalledWith(
-        "Some gates failed. Review and fix before running hone iterate.",
-      );
+      expect(logSpy).not.toHaveBeenCalledWith("Some gates failed. Review and fix before running hone iterate.");
       expect(errorSpy).not.toHaveBeenCalled();
 
       logSpy.mockRestore();
@@ -131,18 +129,13 @@ describe("output utilities", () => {
       const logSpy = spyOn(console, "log").mockImplementation(() => {});
       const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 
-      const results: GateResult[] = [
-        makeResult("test", "bun test", true),
-        makeResult("lint", "bun run lint", false),
-      ];
+      const results: GateResult[] = [makeResult("test", "bun test", true), makeResult("lint", "bun run lint", false)];
 
       reportGateValidation(results, false, false);
 
       expect(logSpy).toHaveBeenCalledWith("  pass: test (bun test)");
       expect(logSpy).toHaveBeenCalledWith("  FAIL: lint (bun run lint)");
-      expect(logSpy).toHaveBeenCalledWith(
-        "Some gates failed. Review and fix before running hone iterate.",
-      );
+      expect(logSpy).toHaveBeenCalledWith("Some gates failed. Review and fix before running hone iterate.");
 
       logSpy.mockRestore();
       errorSpy.mockRestore();
@@ -157,9 +150,7 @@ describe("output utilities", () => {
       reportGateValidation(results, false, true);
 
       expect(errorSpy).toHaveBeenCalledWith("  FAIL: test (bun test)");
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Some gates failed. Review and fix before running hone iterate.",
-      );
+      expect(errorSpy).toHaveBeenCalledWith("Some gates failed. Review and fix before running hone iterate.");
       expect(logSpy).not.toHaveBeenCalled();
 
       logSpy.mockRestore();

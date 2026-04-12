@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
-  getRepoOwner,
-  ensureHoneLabel,
-  listHoneIssues,
-  getIssueReactions,
-  createHoneIssue,
   closeIssueWithComment,
+  createHoneIssue,
+  ensureHoneLabel,
   formatIssueBody,
-  parseIssueBody,
+  getIssueReactions,
   getLatestCommitHash,
+  getRepoOwner,
   gitCommit,
+  listHoneIssues,
+  parseIssueBody,
 } from "./github.ts";
 import type { CommandRunner } from "./types.ts";
 
@@ -25,18 +25,14 @@ function mockRunner(responses: Map<string, { stdout: string; exitCode: number }>
 
 describe("getRepoOwner", () => {
   test("parses owner from gh output", async () => {
-    const run = mockRunner(
-      new Map([["repo view", { stdout: "mojility\n", exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["repo view", { stdout: "mojility\n", exitCode: 0 }]]));
 
     const owner = await getRepoOwner("/project", run);
     expect(owner).toBe("mojility");
   });
 
   test("throws on failure", async () => {
-    const run = mockRunner(
-      new Map([["repo view", { stdout: "error", exitCode: 1 }]]),
-    );
+    const run = mockRunner(new Map([["repo view", { stdout: "error", exitCode: 1 }]]));
 
     expect(getRepoOwner("/project", run)).rejects.toThrow("Failed to get repo owner");
   });
@@ -44,18 +40,14 @@ describe("getRepoOwner", () => {
 
 describe("ensureHoneLabel", () => {
   test("succeeds when label is created", async () => {
-    const run = mockRunner(
-      new Map([["label create", { stdout: "", exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["label create", { stdout: "", exitCode: 0 }]]));
 
     // Should not throw
     await ensureHoneLabel("/project", run);
   });
 
   test("succeeds silently when label already exists", async () => {
-    const run = mockRunner(
-      new Map([["label create", { stdout: "already exists", exitCode: 1 }]]),
-    );
+    const run = mockRunner(new Map([["label create", { stdout: "already exists", exitCode: 1 }]]));
 
     // Should not throw even on failure (label already exists)
     await ensureHoneLabel("/project", run);
@@ -69,30 +61,24 @@ describe("listHoneIssues", () => {
       { number: 2, title: "Add tests", body: "body2", createdAt: "2024-01-02T00:00:00Z" },
     ]);
 
-    const run = mockRunner(
-      new Map([["issue list", { stdout: issues, exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["issue list", { stdout: issues, exitCode: 0 }]]));
 
     const result = await listHoneIssues("/project", run);
     expect(result).toHaveLength(2);
-    expect(result[0]!.number).toBe(1);
-    expect(result[0]!.title).toBe("Fix SRP");
-    expect(result[1]!.number).toBe(2);
+    expect(result[0]?.number).toBe(1);
+    expect(result[0]?.title).toBe("Fix SRP");
+    expect(result[1]?.number).toBe(2);
   });
 
   test("returns empty array on empty output", async () => {
-    const run = mockRunner(
-      new Map([["issue list", { stdout: "[]", exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["issue list", { stdout: "[]", exitCode: 0 }]]));
 
     const result = await listHoneIssues("/project", run);
     expect(result).toHaveLength(0);
   });
 
   test("returns empty array when gh outputs a non-array JSON value", async () => {
-    const run = mockRunner(
-      new Map([["issue list", { stdout: "{}", exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["issue list", { stdout: "{}", exitCode: 0 }]]));
 
     const result = await listHoneIssues("/project", run);
     expect(result).toHaveLength(0);
@@ -105,13 +91,11 @@ describe("listHoneIssues", () => {
       { title: "No number", body: "body3", createdAt: "2024-01-03T00:00:00Z" },
     ]);
 
-    const run = mockRunner(
-      new Map([["issue list", { stdout: issues, exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["issue list", { stdout: issues, exitCode: 0 }]]));
 
     const result = await listHoneIssues("/project", run);
     expect(result).toHaveLength(1);
-    expect(result[0]!.number).toBe(1);
+    expect(result[0]?.number).toBe(1);
   });
 });
 
@@ -149,10 +133,7 @@ describe("getIssueReactions", () => {
   });
 
   test("ignores lines with user as a number instead of string", async () => {
-    const reactions = [
-      '{"user":42,"content":"+1"}',
-      '{"user":"bob","content":"+1"}',
-    ].join("\n");
+    const reactions = ['{"user":42,"content":"+1"}', '{"user":"bob","content":"+1"}'].join("\n");
 
     const run = mockRunner(
       new Map([
@@ -166,10 +147,7 @@ describe("getIssueReactions", () => {
   });
 
   test("ignores lines missing the user field", async () => {
-    const reactions = [
-      '{"content":"+1"}',
-      '{"user":"alice","content":"+1"}',
-    ].join("\n");
+    const reactions = ['{"content":"+1"}', '{"user":"alice","content":"+1"}'].join("\n");
 
     const run = mockRunner(
       new Map([
@@ -194,9 +172,7 @@ describe("createHoneIssue", () => {
   });
 
   test("throws on failure", async () => {
-    const run = mockRunner(
-      new Map([["issue create", { stdout: "error", exitCode: 1 }]]),
-    );
+    const run = mockRunner(new Map([["issue create", { stdout: "error", exitCode: 1 }]]));
 
     expect(createHoneIssue("/project", "title", "body", run)).rejects.toThrow("Failed to create issue");
   });
@@ -232,12 +208,12 @@ describe("formatIssueBody / parseIssueBody", () => {
     const parsed = parseIssueBody(body);
 
     expect(parsed).not.toBeNull();
-    expect(parsed!.name).toBe("fix-srp-violation");
-    expect(parsed!.agent).toBe("typescript-craftsperson");
-    expect(parsed!.severity).toBe(4);
-    expect(parsed!.principle).toBe("Single Responsibility");
-    expect(parsed!.assessment).toBe("The code violates SRP.");
-    expect(parsed!.plan).toBe("Step 1: Extract class\nStep 2: Move methods");
+    expect(parsed?.name).toBe("fix-srp-violation");
+    expect(parsed?.agent).toBe("typescript-craftsperson");
+    expect(parsed?.severity).toBe(4);
+    expect(parsed?.principle).toBe("Single Responsibility");
+    expect(parsed?.assessment).toBe("The code violates SRP.");
+    expect(parsed?.plan).toBe("Step 1: Extract class\nStep 2: Move methods");
   });
 
   test("parseIssueBody returns null for non-hone body", () => {
@@ -268,9 +244,7 @@ describe("formatIssueBody / parseIssueBody", () => {
 
 describe("getLatestCommitHash", () => {
   test("returns trimmed hash", async () => {
-    const run = mockRunner(
-      new Map([["rev-parse", { stdout: "abc123def456\n", exitCode: 0 }]]),
-    );
+    const run = mockRunner(new Map([["rev-parse", { stdout: "abc123def456\n", exitCode: 0 }]]));
 
     const hash = await getLatestCommitHash("/project", run);
     expect(hash).toBe("abc123def456");

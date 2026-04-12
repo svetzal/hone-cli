@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 describe("config command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should display current configuration", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "config"], {

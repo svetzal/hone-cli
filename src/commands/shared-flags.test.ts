@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { applySharedFlags } from "./shared-flags.ts";
+import { describe, expect, it } from "bun:test";
 import type { HoneConfig } from "../types.ts";
+import { applySharedFlags } from "./shared-flags.ts";
 
 describe("applySharedFlags", () => {
   const defaultConfig: HoneConfig = {

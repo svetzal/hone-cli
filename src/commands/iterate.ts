@@ -1,12 +1,12 @@
-import { loadConfig } from "../config.ts";
-import { iterate } from "../iterate.ts";
-import { githubIterate } from "../github-iterate.ts";
 import { createClaudeInvoker } from "../claude.ts";
-import type { ParsedArgs, HoneConfig, HoneMode, PipelineContext } from "../types.ts";
-import { writeJson, createProgressCallback } from "../output.ts";
-import { applySharedFlags } from "./shared-flags.ts";
-import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
+import { githubIterate } from "../github-iterate.ts";
+import { iterate } from "../iterate.ts";
+import { createProgressCallback, writeJson } from "../output.ts";
+import type { HoneConfig, HoneMode, ParsedArgs, PipelineContext } from "../types.ts";
+import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { applySharedFlags } from "./shared-flags.ts";
 
 export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   const result = applySharedFlags(config, flags);
@@ -17,8 +17,8 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
   if (typeof flags["plan-model"] === "string") {
     result.models.plan = flags["plan-model"];
   }
-  if (typeof flags["mode"] === "string") {
-    result.mode = flags["mode"] as HoneMode;
+  if (typeof flags.mode === "string") {
+    result.mode = flags.mode as HoneMode;
   }
   if (typeof flags["severity-threshold"] === "string") {
     result.severityThreshold = parseInt(flags["severity-threshold"], 10);
@@ -47,7 +47,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const ctx: PipelineContext = { agent, folder: resolvedFolder, config, claude, onProgress };
 
   if (mode === "github") {
-    const proposalsFlag = parsed.flags["proposals"];
+    const proposalsFlag = parsed.flags.proposals;
     const proposals = typeof proposalsFlag === "string" ? parseInt(proposalsFlag, 10) : 1;
 
     const result = await githubIterate({
@@ -63,7 +63,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     }
   } else {
     // Local mode
-    if (parsed.flags["proposals"] !== undefined) {
+    if (parsed.flags.proposals !== undefined) {
       throw new CliError("--proposals is only available in github mode");
     }
 

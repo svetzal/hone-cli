@@ -1,6 +1,6 @@
 import { loadConfig } from "../config.ts";
-import type { ParsedArgs } from "../types.ts";
 import { writeJson } from "../output.ts";
+import type { ParsedArgs } from "../types.ts";
 
 export async function configCommand(parsed: ParsedArgs): Promise<void> {
   const config = await loadConfig();

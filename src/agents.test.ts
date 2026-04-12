@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test";
-import { mkdtemp, rm, writeFile, mkdir, chmod } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
-import { agentNameFromFile, listAgents, agentExists, readAgentContent, validateAgent } from "./agents.ts";
+import { describe, expect, it } from "bun:test";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { agentExists, agentNameFromFile, listAgents, readAgentContent, validateAgent } from "./agents.ts";
 import { CliError } from "./errors.ts";
 
 describe("agentNameFromFile", () => {
@@ -257,9 +257,7 @@ describe("validateAgent", () => {
   it("should throw CliError with informative message when agent does not exist", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "agents-test-"));
     try {
-      await expect(validateAgent("nonexistent-agent", tempDir)).rejects.toThrow(
-        "Agent 'nonexistent-agent' not found",
-      );
+      await expect(validateAgent("nonexistent-agent", tempDir)).rejects.toThrow("Agent 'nonexistent-agent' not found");
     } finally {
       await rm(tempDir, { recursive: true });
     }

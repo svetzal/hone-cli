@@ -9,10 +9,7 @@ export interface RunProcessOptions {
   timeout?: number;
 }
 
-export async function runProcess(
-  command: string[],
-  opts?: RunProcessOptions,
-): Promise<ProcessResult> {
+export async function runProcess(command: string[], opts?: RunProcessOptions): Promise<ProcessResult> {
   const proc = Bun.spawn(command, {
     cwd: opts?.cwd,
     stdout: "pipe",

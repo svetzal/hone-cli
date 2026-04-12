@@ -1,19 +1,19 @@
-import { resolve, join } from "path";
-import { homedir } from "os";
-import { mkdir } from "fs/promises";
-import { loadConfig } from "../config.ts";
+import { mkdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
+import { agentExists, listAgents, readAgentContent } from "../agents.ts";
 import { createClaudeInvoker } from "../claude.ts";
-import { derive, suggestExpandedName } from "../derive.ts";
-import { listAgents, agentExists, readAgentContent } from "../agents.ts";
-import { mix } from "../mix.ts";
-import { runAllGates } from "../gates.ts";
-import { promptChoice } from "../prompt.ts";
-import type { ParsedArgs, GateResult, ClaudeInvoker } from "../types.ts";
-import type { PromptFn } from "../prompt.ts";
+import { loadConfig } from "../config.ts";
 import type { ProjectContext } from "../derive.ts";
-import { writeJson, progress, reportGateValidation } from "../output.ts";
-import { writeGatesFile } from "../gates-file.ts";
+import { derive, suggestExpandedName } from "../derive.ts";
 import { CliError } from "../errors.ts";
+import { runAllGates } from "../gates.ts";
+import { writeGatesFile } from "../gates-file.ts";
+import { mix } from "../mix.ts";
+import { progress, reportGateValidation, writeJson } from "../output.ts";
+import type { PromptFn } from "../prompt.ts";
+import { promptChoice } from "../prompt.ts";
+import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
 
 export async function deriveCommand(
   parsed: ParsedArgs,
@@ -24,10 +24,10 @@ export async function deriveCommand(
   if (!folder) {
     throw new CliError(
       "Usage: hone derive <folder> [--local | --global] [--name <name>]\n" +
-      "  folder   - Project folder to inspect\n" +
-      "  --local  - Write agent to <folder>/.claude/agents/ (default)\n" +
-      "  --global - Write agent to ~/.claude/agents/\n" +
-      "  --name   - Override agent name (skip Claude's naming)",
+        "  folder   - Project folder to inspect\n" +
+        "  --local  - Write agent to <folder>/.claude/agents/ (default)\n" +
+        "  --global - Write agent to ~/.claude/agents/\n" +
+        "  --name   - Override agent name (skip Claude's naming)",
     );
   }
 
@@ -40,9 +40,7 @@ export async function deriveCommand(
   const prompt = deps?.prompt ?? promptChoice;
 
   // Determine target directory
-  const agentDir = isGlobal
-    ? join(homedir(), ".claude", "agents")
-    : join(resolvedFolder, ".claude", "agents");
+  const agentDir = isGlobal ? join(homedir(), ".claude", "agents") : join(resolvedFolder, ".claude", "agents");
 
   // Gather existing agent names from both global and target directories
   const globalAgentsDir = join(homedir(), ".claude", "agents");
@@ -235,8 +233,6 @@ async function resolveConflict(ctx: ConflictContext): Promise<ConflictResolution
       );
       return { agentName: ctx.agentName, agentContent: ctx.agentContent, skipWrite: true };
     }
-
-    case "a":
     default:
       return null;
   }
@@ -245,7 +241,7 @@ async function resolveConflict(ctx: ConflictContext): Promise<ConflictResolution
 export function updateFrontmatterName(content: string, name: string): string {
   const frontmatterMatch = content.match(/^(---\s*\n)([\s\S]*?)(\n---)/);
   if (frontmatterMatch) {
-    const updated = frontmatterMatch[2]!.replace(/^name:\s*.+$/m, `name: ${name}`);
+    const updated = frontmatterMatch[2]?.replace(/^name:\s*.+$/m, `name: ${name}`);
     return `${frontmatterMatch[1]}${updated}${frontmatterMatch[3]}${content.slice(frontmatterMatch[0].length)}`;
   }
   return content;

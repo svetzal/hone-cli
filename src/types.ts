@@ -92,10 +92,7 @@ export type GateResolverFn = (
   claude: ClaudeInvoker,
 ) => Promise<GateDefinition[]>;
 
-export type CharterCheckerFn = (
-  projectDir: string,
-  minLength: number,
-) => Promise<CharterCheckResult>;
+export type CharterCheckerFn = (projectDir: string, minLength: number) => Promise<CharterCheckResult>;
 
 export type TriageRunnerFn = (
   assessment: StructuredAssessment,

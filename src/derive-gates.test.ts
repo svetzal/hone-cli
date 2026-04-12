@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { buildDeriveGatesPrompt, deriveGates } from "./derive-gates.ts";
-import { join } from "path";
-import { mkdtemp, writeFile, rm } from "fs/promises";
-import { tmpdir } from "os";
 import { createDeriveGatesMock, extractPrompt } from "./test-helpers.ts";
 
 describe("buildDeriveGatesPrompt", () => {
@@ -93,16 +93,20 @@ describe("deriveGates", () => {
           { name: "test", command: "bun test", required: true },
           { name: "typecheck", command: "bunx tsc --noEmit", required: true },
         ]),
-        { onCall: () => { callCount++; } },
+        {
+          onCall: () => {
+            callCount++;
+          },
+        },
       );
 
       const gates = await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude);
 
       expect(callCount).toBe(1);
       expect(gates.length).toBe(2);
-      expect(gates[0]!.name).toBe("test");
-      expect(gates[0]!.command).toBe("bun test");
-      expect(gates[1]!.name).toBe("typecheck");
+      expect(gates[0]?.name).toBe("test");
+      expect(gates[0]?.command).toBe("bun test");
+      expect(gates[1]?.name).toBe("typecheck");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -115,7 +119,9 @@ describe("deriveGates", () => {
 
       let capturedPrompt = "";
       const mockClaude = createDeriveGatesMock("[]", {
-        onCall: (args) => { capturedPrompt = extractPrompt(args); },
+        onCall: (args) => {
+          capturedPrompt = extractPrompt(args);
+        },
       });
 
       await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude, "# My Agent Content");
@@ -143,7 +149,9 @@ describe("deriveGates", () => {
   test("returns empty gates on Claude error", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-derive-gates-"));
     try {
-      const mockClaude = async () => { throw new Error("Claude failed"); };
+      const mockClaude = async () => {
+        throw new Error("Claude failed");
+      };
 
       const gates = await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude);
 

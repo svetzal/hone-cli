@@ -1,6 +1,6 @@
-import { join } from "path";
-import { homedir } from "os";
-import { readdir } from "fs/promises";
+import { readdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { CliError } from "./errors.ts";
 
 const AGENTS_DIR = join(homedir(), ".claude", "agents");

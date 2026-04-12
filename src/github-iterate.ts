@@ -1,41 +1,35 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
-import { parseAssessment } from "./parse-assessment.ts";
-import { triage as runTriageDefault } from "./triage.ts";
-import { runAllGates } from "./gates.ts";
-import { resolveGates } from "./resolve-gates.ts";
-import { runPreamble } from "./preamble.ts";
-import {
-  runAssessStage,
-  runNameStage,
-  runPlanStage,
-  buildRetryPrompt,
-} from "./iterate.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
+import { runAllGates } from "./gates.ts";
 import {
-  getRepoOwner,
-  ensureHoneLabel,
-  listHoneIssues,
-  getIssueReactions,
-  createHoneIssue,
   closeIssueWithComment,
-  formatIssueBody,
-  parseIssueBody,
-  getLatestCommitHash,
-  gitCommit,
   createCommandRunner,
+  createHoneIssue,
+  ensureHoneLabel,
+  formatIssueBody,
+  getIssueReactions,
+  getRepoOwner,
+  gitCommit,
+  listHoneIssues,
+  parseIssueBody,
 } from "./github.ts";
+import { buildRetryPrompt, runAssessStage, runNameStage, runPlanStage } from "./iterate.ts";
+import { parseAssessment } from "./parse-assessment.ts";
+import { runPreamble } from "./preamble.ts";
+import { resolveGates } from "./resolve-gates.ts";
+import { triage as runTriageDefault } from "./triage.ts";
 import type {
-  CommandRunner,
-  GateDefinition,
-  GitHubIterateResult,
-  ExecutionOutcome,
-  GateRunner,
-  GateResolverFn,
   CharterCheckerFn,
-  TriageRunnerFn,
+  CommandRunner,
+  ExecutionOutcome,
+  GateDefinition,
+  GateResolverFn,
+  GateRunner,
+  GitHubIterateResult,
   HoneIssue,
   PipelineContext,
+  TriageRunnerFn,
 } from "./types.ts";
 
 export interface GitHubIterateOptions {
@@ -157,25 +151,17 @@ export async function executeApprovedIssues(
       outcome.success = execResult.success;
 
       if (execResult.success) {
-        const commitHash = await gitCommit(
-          folder,
-          `[Hone] ${issue.title} (#${issue.number})`,
-          ghRunner,
-        );
+        const commitHash = await gitCommit(folder, `[Hone] ${issue.title} (#${issue.number})`, ghRunner);
         outcome.commitHash = commitHash;
 
-        await closeIssueWithComment(
-          folder,
-          issue.number,
-          `Completed successfully.\n\nCommit: ${commitHash}`,
-          ghRunner,
-        );
+        await closeIssueWithComment(folder, issue.number, `Completed successfully.\n\nCommit: ${commitHash}`, ghRunner);
         onProgress("execute", `Issue #${issue.number} completed: ${commitHash}`);
       } else {
-        const gateOutput = execResult.gatesResult?.results
-          .filter((r) => !r.passed && r.required)
-          .map((r) => `**${r.name}:** ${r.output.slice(0, 500)}`)
-          .join("\n\n") ?? "Unknown failure";
+        const gateOutput =
+          execResult.gatesResult?.results
+            .filter((r) => !r.passed && r.required)
+            .map((r) => `**${r.name}:** ${r.output.slice(0, 500)}`)
+            .join("\n\n") ?? "Unknown failure";
 
         await closeIssueWithComment(
           folder,
@@ -313,19 +299,15 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
   const closed = await closeRejectedIssues(issues, owner, folder, ghRunner, onProgress);
 
   // --- Phase 2: Execute approved backlog ---
-  const executed = await executeApprovedIssues(
-    issues,
-    owner,
-    closed,
-    ctx,
-    { skipGates, gateRunner, gates: preflightGates, ghRunner },
-  );
+  const executed = await executeApprovedIssues(issues, owner, closed, ctx, {
+    skipGates,
+    gateRunner,
+    gates: preflightGates,
+    ghRunner,
+  });
 
   // --- Phase 3: Propose new improvements ---
-  const { proposed, skippedTriage } = await proposeImprovements(
-    ctx,
-    { proposals, skipTriage, ghRunner, triageRunner },
-  );
+  const { proposed, skippedTriage } = await proposeImprovements(ctx, { proposals, skipTriage, ghRunner, triageRunner });
 
   return {
     mode: "github",

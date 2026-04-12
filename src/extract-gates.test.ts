@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseGatesJson, extractGatesFromAgentContent } from "./extract-gates.ts";
+import { extractGatesFromAgentContent, parseGatesJson } from "./extract-gates.ts";
 import type { ClaudeInvoker } from "./types.ts";
 
 describe("parseGatesJson", () => {
@@ -30,14 +30,12 @@ That's all.`;
   });
 
   test("defaults required to true when missing", () => {
-    const raw = JSON.stringify([
-      { name: "test", command: "bun test" },
-    ]);
+    const raw = JSON.stringify([{ name: "test", command: "bun test" }]);
 
     const gates = parseGatesJson(raw);
 
     expect(gates.length).toBe(1);
-    expect(gates[0]!.required).toBe(true);
+    expect(gates[0]?.required).toBe(true);
   });
 
   test("returns empty array for invalid JSON", () => {
@@ -57,7 +55,7 @@ That's all.`;
     const gates = parseGatesJson(raw);
 
     expect(gates.length).toBe(1);
-    expect(gates[0]!.name).toBe("test");
+    expect(gates[0]?.name).toBe("test");
   });
 
   test("handles JSON with markdown code fences", () => {
@@ -68,7 +66,7 @@ That's all.`;
     const gates = parseGatesJson(raw);
 
     expect(gates.length).toBe(1);
-    expect(gates[0]!.command).toBe("mix test");
+    expect(gates[0]?.command).toBe("mix test");
   });
 });
 
@@ -89,8 +87,8 @@ describe("extractGatesFromAgentContent", () => {
     );
 
     expect(gates.length).toBe(2);
-    expect(gates[0]!.name).toBe("test");
-    expect(gates[1]!.name).toBe("lint");
+    expect(gates[0]?.name).toBe("test");
+    expect(gates[1]?.name).toBe("lint");
   });
 
   test("returns empty array when Claude returns invalid JSON", async () => {
@@ -111,12 +109,7 @@ describe("extractGatesFromAgentContent", () => {
       throw new Error("Claude process crashed");
     };
 
-    const gates = await extractGatesFromAgentContent(
-      "# Agent content",
-      "haiku",
-      "Read Glob Grep",
-      mockClaude,
-    );
+    const gates = await extractGatesFromAgentContent("# Agent content", "haiku", "Read Glob Grep", mockClaude);
 
     expect(gates).toEqual([]);
   });

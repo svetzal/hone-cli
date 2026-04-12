@@ -4,12 +4,8 @@ import type { AttemptRecord } from "./types.ts";
  * Format an array of gate failures into markdown sections.
  * Single source of truth for how gate failures appear in retry prompts.
  */
-export function formatGateFailures(
-  gates: { name: string; output: string }[],
-): string {
-  return gates
-    .map((r) => `### Gate: ${r.name}\n\n${r.output}`)
-    .join("\n\n");
+export function formatGateFailures(gates: { name: string; output: string }[]): string {
+  return gates.map((r) => `### Gate: ${r.name}\n\n${r.output}`).join("\n\n");
 }
 
 /**
@@ -22,20 +18,10 @@ export function appendRetryHistory(
   currentFailedGates: { name: string; output: string }[],
 ): void {
   for (const prior of priorAttempts) {
-    sections.push(
-      "",
-      `## Attempt ${prior.attempt}`,
-      "",
-      formatGateFailures(prior.failedGates),
-    );
+    sections.push("", `## Attempt ${prior.attempt}`, "", formatGateFailures(prior.failedGates));
   }
 
-  sections.push(
-    "",
-    "## Current Failed Gates",
-    "",
-    formatGateFailures(currentFailedGates),
-  );
+  sections.push("", "## Current Failed Gates", "", formatGateFailures(currentFailedGates));
 }
 
 /**

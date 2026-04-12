@@ -46,11 +46,7 @@ export function createProgressCallback(isJson: boolean): ProgressCallback {
  * Report gate validation results to the appropriate stream.
  * Prints pass/fail status for each gate and a warning when any gate fails.
  */
-export function reportGateValidation(
-  results: GateResult[],
-  allPassed: boolean,
-  isJson: boolean,
-): void {
+export function reportGateValidation(results: GateResult[], allPassed: boolean, isJson: boolean): void {
   for (const r of results) {
     const status = r.passed ? "pass" : "FAIL";
     progress(isJson, `  ${status}: ${r.name} (${r.command})`);

@@ -1,5 +1,5 @@
-import type { ClaudeInvoker } from "./types.ts";
 import { runProcess } from "./process.ts";
+import type { ClaudeInvoker } from "./types.ts";
 
 export interface ClaudeStageArgs {
   agent?: string;
@@ -16,11 +16,7 @@ export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
     args.push("--agent", opts.agent);
   }
 
-  args.push(
-    "--model", opts.model,
-    "--print",
-    "-p", opts.prompt,
-  );
+  args.push("--model", opts.model, "--print", "-p", opts.prompt);
 
   if (opts.readOnly) {
     args.push("--allowedTools", opts.readOnlyTools);
@@ -32,10 +28,7 @@ export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
 }
 
 export async function invokeClaude(args: string[], cwd?: string): Promise<string> {
-  const { stdout, stderr, exitCode } = await runProcess(
-    ["claude", ...args],
-    cwd ? { cwd } : undefined,
-  );
+  const { stdout, stderr, exitCode } = await runProcess(["claude", ...args], cwd ? { cwd } : undefined);
 
   if (exitCode !== 0) {
     throw new Error(`claude exited with code ${exitCode}: ${stderr || stdout}`);

@@ -1,5 +1,5 @@
-import { join } from "path";
-import { homedir } from "os";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { HoneConfig, HoneMode } from "./types.ts";
 
 export function getDefaultConfig(): HoneConfig {
@@ -47,7 +47,7 @@ export function validateUserConfig(raw: unknown): Partial<HoneConfig> {
 
   if (typeof obj.models === "object" && obj.models !== null && !Array.isArray(obj.models)) {
     const modelsObj = obj.models as Record<string, unknown>;
-    const validatedModels: Partial<Record<typeof MODEL_FIELDS[number], string>> = {};
+    const validatedModels: Partial<Record<(typeof MODEL_FIELDS)[number], string>> = {};
     for (const field of MODEL_FIELDS) {
       if (typeof modelsObj[field] === "string") {
         validatedModels[field] = modelsObj[field] as string;

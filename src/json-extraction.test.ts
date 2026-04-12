@@ -54,7 +54,7 @@ describe("extractJsonFromLlmOutput", () => {
     });
 
     test("returns null for invalid JSON in fenced block", () => {
-      const raw = '```json\n{invalid json}\n```';
+      const raw = "```json\n{invalid json}\n```";
       const result = extractJsonFromLlmOutput(raw);
       // Falls through fenced, tries bare — bare also fails to parse
       expect(result).toBeNull();

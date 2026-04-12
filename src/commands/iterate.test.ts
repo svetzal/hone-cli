@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { applyIterateFlags } from "./iterate.ts";
+import { describe, expect, it } from "bun:test";
 import type { HoneConfig } from "../types.ts";
+import { applyIterateFlags } from "./iterate.ts";
 
 describe("applyIterateFlags", () => {
   const defaultConfig: HoneConfig = {
@@ -132,7 +132,7 @@ describe("applyIterateFlags", () => {
 });
 
 describe("iterate command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should reject --proposals in local mode", async () => {
     const proc = Bun.spawn(

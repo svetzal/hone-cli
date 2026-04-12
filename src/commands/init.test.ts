@@ -1,14 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, mkdir } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import {
-  stampVersion,
-  parseInstalledVersion,
-  stripVersionField,
-  compareVersions,
-} from "./init.ts";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { VERSION } from "../constants.ts";
+import { compareVersions, parseInstalledVersion, stampVersion, stripVersionField } from "./init.ts";
 
 describe("init helpers", () => {
   describe("stampVersion", () => {
@@ -51,12 +46,17 @@ describe("init helpers", () => {
 
     it("normalizes metadata.version to 0.0.0", () => {
       const content = '---\nname: hone\nmetadata:\n  version: "1.2.0"\n  author: svetzal\n---\n# Content';
-      expect(stripVersionField(content)).toBe('---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content');
+      expect(stripVersionField(content)).toBe(
+        '---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content',
+      );
     });
 
     it("strips both hone-version and normalizes metadata.version", () => {
-      const content = '---\nname: hone\nmetadata:\n  version: "1.2.0"\n  author: svetzal\nhone-version: 1.2.0\n---\n# Content';
-      expect(stripVersionField(content)).toBe('---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content');
+      const content =
+        '---\nname: hone\nmetadata:\n  version: "1.2.0"\n  author: svetzal\nhone-version: 1.2.0\n---\n# Content';
+      expect(stripVersionField(content)).toBe(
+        '---\nname: hone\nmetadata:\n  version: "0.0.0"\n  author: svetzal\n---\n# Content',
+      );
     });
 
     it("leaves content unchanged when no version fields", () => {
@@ -90,7 +90,7 @@ describe("init helpers", () => {
 });
 
 describe("init command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
   let tmpDir: string;
 
   beforeEach(async () => {
@@ -102,10 +102,11 @@ describe("init command integration", () => {
   });
 
   it("creates skill files on fresh install", async () => {
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 
@@ -122,16 +123,18 @@ describe("init command integration", () => {
 
   it("reports up-to-date when same version already installed", async () => {
     // First install
-    Bun.spawnSync(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    Bun.spawnSync([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
 
     // Second install
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 
@@ -144,15 +147,13 @@ describe("init command integration", () => {
     // Install an older version with different content
     const skillDir = join(tmpDir, ".claude/skills/hone");
     await mkdir(skillDir, { recursive: true });
-    await Bun.write(
-      join(skillDir, "SKILL.md"),
-      "---\nname: hone\nhone-version: 0.1.0\n---\n# Old content",
-    );
+    await Bun.write(join(skillDir, "SKILL.md"), "---\nname: hone\nhone-version: 0.1.0\n---\n# Old content");
 
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 
@@ -169,15 +170,13 @@ describe("init command integration", () => {
     // Install a "newer" version
     const skillDir = join(tmpDir, ".claude/skills/hone");
     await mkdir(skillDir, { recursive: true });
-    await Bun.write(
-      join(skillDir, "SKILL.md"),
-      "---\nname: hone\nhone-version: 99.0.0\n---\n# Future content",
-    );
+    await Bun.write(join(skillDir, "SKILL.md"), "---\nname: hone\nhone-version: 99.0.0\n---\n# Future content");
 
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 
@@ -196,15 +195,13 @@ describe("init command integration", () => {
     // Install a "newer" version
     const skillDir = join(tmpDir, ".claude/skills/hone");
     await mkdir(skillDir, { recursive: true });
-    await Bun.write(
-      join(skillDir, "SKILL.md"),
-      "---\nname: hone\nhone-version: 99.0.0\n---\n# Future content",
-    );
+    await Bun.write(join(skillDir, "SKILL.md"), "---\nname: hone\nhone-version: 99.0.0\n---\n# Future content");
 
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init", "--force"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init", "--force"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 
@@ -217,10 +214,11 @@ describe("init command integration", () => {
   });
 
   it("outputs valid JSON with --json flag", async () => {
-    const proc = Bun.spawn(
-      [process.execPath, "run", join(projectRoot, "src/cli.ts"), "init", "--json"],
-      { stdout: "pipe", stderr: "pipe", cwd: tmpDir },
-    );
+    const proc = Bun.spawn([process.execPath, "run", join(projectRoot, "src/cli.ts"), "init", "--json"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: tmpDir,
+    });
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
 

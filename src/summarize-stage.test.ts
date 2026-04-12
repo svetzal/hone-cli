@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { runSummarizeStage } from "./summarize-stage.ts";
 import { getDefaultConfig } from "./config.ts";
+import { runSummarizeStage } from "./summarize-stage.ts";
 import type { PipelineContext } from "./types.ts";
 
 function makeCtx(
@@ -21,10 +21,7 @@ describe("runSummarizeStage", () => {
     const mockClaude = async () =>
       '```json\n{ "headline": "Fix SRP violation", "summary": "Extracted auth module." }\n```';
 
-    const result = await runSummarizeStage(
-      () => "Generate a headline and summary...",
-      makeCtx(mockClaude),
-    );
+    const result = await runSummarizeStage(() => "Generate a headline and summary...", makeCtx(mockClaude));
 
     expect(result.headline).toBe("Fix SRP violation");
     expect(result.summary).toBe("Extracted auth module.");
@@ -33,10 +30,7 @@ describe("runSummarizeStage", () => {
   test("returns nulls when summarize returns null (unparseable output)", async () => {
     const mockClaude = async () => "I cannot generate JSON right now.";
 
-    const result = await runSummarizeStage(
-      () => "Generate a headline...",
-      makeCtx(mockClaude),
-    );
+    const result = await runSummarizeStage(() => "Generate a headline...", makeCtx(mockClaude));
 
     expect(result.headline).toBeNull();
     expect(result.summary).toBeNull();
@@ -47,18 +41,14 @@ describe("runSummarizeStage", () => {
       throw new Error("Claude API unavailable");
     };
 
-    const result = await runSummarizeStage(
-      () => "Generate a headline...",
-      makeCtx(mockClaude),
-    );
+    const result = await runSummarizeStage(() => "Generate a headline...", makeCtx(mockClaude));
 
     expect(result.headline).toBeNull();
     expect(result.summary).toBeNull();
   });
 
   test("calls onProgress with summarize stage and message", async () => {
-    const mockClaude = async () =>
-      '{ "headline": "Fix something", "summary": "Did it." }';
+    const mockClaude = async () => '{ "headline": "Fix something", "summary": "Did it." }';
 
     const progressCalls: Array<[string, string]> = [];
     await runSummarizeStage(
@@ -67,8 +57,8 @@ describe("runSummarizeStage", () => {
     );
 
     expect(progressCalls.length).toBe(1);
-    expect(progressCalls[0]![0]).toBe("summarize");
-    expect(progressCalls[0]![1]).toBe("Generating headline and summary...");
+    expect(progressCalls[0]?.[0]).toBe("summarize");
+    expect(progressCalls[0]?.[1]).toBe("Generating headline and summary...");
   });
 
   test("calls buildPrompt to construct the prompt", async () => {
@@ -78,10 +68,7 @@ describe("runSummarizeStage", () => {
       return '{ "headline": "h", "summary": "s" }';
     };
 
-    await runSummarizeStage(
-      () => "Custom prompt content",
-      makeCtx(mockClaude),
-    );
+    await runSummarizeStage(() => "Custom prompt content", makeCtx(mockClaude));
 
     expect(capturedArgs).toContain("Custom prompt content");
   });
@@ -89,10 +76,9 @@ describe("runSummarizeStage", () => {
   test("returns nulls and does not throw when buildPrompt throws", async () => {
     const mockClaude = async () => '{ "headline": "h", "summary": "s" }';
 
-    const result = await runSummarizeStage(
-      () => { throw new Error("prompt builder failed"); },
-      makeCtx(mockClaude),
-    );
+    const result = await runSummarizeStage(() => {
+      throw new Error("prompt builder failed");
+    }, makeCtx(mockClaude));
 
     expect(result.headline).toBeNull();
     expect(result.summary).toBeNull();

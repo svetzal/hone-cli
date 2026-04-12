@@ -1,8 +1,8 @@
-import { resolve } from "path";
-import { loadConfig } from "../config.ts";
+import { resolve } from "node:path";
 import { listIterations, resolveAuditDir } from "../audit.ts";
-import type { ParsedArgs } from "../types.ts";
+import { loadConfig } from "../config.ts";
 import { writeJson } from "../output.ts";
+import type { ParsedArgs } from "../types.ts";
 
 export async function historyCommand(parsed: ParsedArgs): Promise<void> {
   const folder = resolve(parsed.positional[0] || ".");

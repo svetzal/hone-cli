@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test";
-import { mkdtemp, writeFile, rm } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
-import { gatesFilePath, writeGatesFile, readGatesFile, validateGateArray } from "./gates-file.ts";
+import { describe, expect, it } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { gatesFilePath, readGatesFile, validateGateArray, writeGatesFile } from "./gates-file.ts";
 import type { GateDefinition } from "./types.ts";
 
 describe("gatesFilePath", () => {
@@ -31,7 +31,7 @@ describe("writeGatesFile", () => {
       expect(result).toBe(join(dir, ".hone-gates.json"));
 
       const content = await Bun.file(join(dir, ".hone-gates.json")).text();
-      expect(content).toBe(JSON.stringify({ gates }, null, 2) + "\n");
+      expect(content).toBe(`${JSON.stringify({ gates }, null, 2)}\n`);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -45,7 +45,7 @@ describe("writeGatesFile", () => {
       expect(result).toBe(join(dir, ".hone-gates.json"));
 
       const content = await Bun.file(join(dir, ".hone-gates.json")).text();
-      expect(content).toBe(JSON.stringify({ gates: [] }, null, 2) + "\n");
+      expect(content).toBe(`${JSON.stringify({ gates: [] }, null, 2)}\n`);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -69,9 +69,9 @@ describe("readGatesFile", () => {
       const gates = await readGatesFile(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates!.length).toBe(2);
-      expect(gates![0]).toEqual({ name: "test", command: "bun test", required: true });
-      expect(gates![1]).toEqual({ name: "lint", command: "bun run lint", required: false });
+      expect(gates?.length).toBe(2);
+      expect(gates?.[0]).toEqual({ name: "test", command: "bun test", required: true });
+      expect(gates?.[1]).toEqual({ name: "lint", command: "bun run lint", required: false });
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -83,16 +83,14 @@ describe("readGatesFile", () => {
       await writeFile(
         join(dir, ".hone-gates.json"),
         JSON.stringify({
-          gates: [
-            { name: "typecheck", command: "bunx tsc --noEmit" },
-          ],
+          gates: [{ name: "typecheck", command: "bunx tsc --noEmit" }],
         }),
       );
 
       const gates = await readGatesFile(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates![0]!.required).toBe(true);
+      expect(gates?.[0]?.required).toBe(true);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -104,16 +102,14 @@ describe("readGatesFile", () => {
       await writeFile(
         join(dir, ".hone-gates.json"),
         JSON.stringify({
-          gates: [
-            { name: "security", command: "osv-scanner .", required: false },
-          ],
+          gates: [{ name: "security", command: "osv-scanner .", required: false }],
         }),
       );
 
       const gates = await readGatesFile(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates![0]!.required).toBe(false);
+      expect(gates?.[0]?.required).toBe(false);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -147,16 +143,14 @@ describe("readGatesFile", () => {
       await writeFile(
         join(dir, ".hone-gates.json"),
         JSON.stringify({
-          gates: [
-            { name: "coverage", command: "make coverage", required: true, timeout: 300000 },
-          ],
+          gates: [{ name: "coverage", command: "make coverage", required: true, timeout: 300000 }],
         }),
       );
 
       const gates = await readGatesFile(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates![0]!.timeout).toBe(300000);
+      expect(gates?.[0]?.timeout).toBe(300000);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -168,16 +162,14 @@ describe("readGatesFile", () => {
       await writeFile(
         join(dir, ".hone-gates.json"),
         JSON.stringify({
-          gates: [
-            { name: "test", command: "bun test", required: true },
-          ],
+          gates: [{ name: "test", command: "bun test", required: true }],
         }),
       );
 
       const gates = await readGatesFile(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates![0]).not.toHaveProperty("timeout");
+      expect(gates?.[0]).not.toHaveProperty("timeout");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -186,10 +178,7 @@ describe("readGatesFile", () => {
   it("should return empty array when gates is not an array", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gates-test-"));
     try {
-      await writeFile(
-        join(dir, ".hone-gates.json"),
-        JSON.stringify({ gates: "not-an-array" }),
-      );
+      await writeFile(join(dir, ".hone-gates.json"), JSON.stringify({ gates: "not-an-array" }));
 
       const gates = await readGatesFile(dir);
 
@@ -230,7 +219,7 @@ describe("validateGateArray", () => {
       ],
     });
     expect(result).toHaveLength(1);
-    expect(result[0]!.name).toBe("lint");
+    expect(result[0]?.name).toBe("lint");
   });
 
   it("filters out gate objects missing command", () => {
@@ -241,7 +230,7 @@ describe("validateGateArray", () => {
       ],
     });
     expect(result).toHaveLength(1);
-    expect(result[0]!.name).toBe("lint");
+    expect(result[0]?.name).toBe("lint");
   });
 
   it("returns valid gates alongside filtered-out invalid ones", () => {
@@ -253,16 +242,16 @@ describe("validateGateArray", () => {
       ],
     });
     expect(result).toHaveLength(2);
-    expect(result[0]!.name).toBe("test");
-    expect(result[1]!.name).toBe("lint");
-    expect(result[1]!.required).toBe(true);
+    expect(result[0]?.name).toBe("test");
+    expect(result[1]?.name).toBe("lint");
+    expect(result[1]?.required).toBe(true);
   });
 
   it("includes timeout when it is a number", () => {
     const result = validateGateArray({
       gates: [{ name: "slow", command: "make test", required: true, timeout: 300000 }],
     });
-    expect(result[0]!.timeout).toBe(300000);
+    expect(result[0]?.timeout).toBe(300000);
   });
 
   it("omits timeout when it is not a number", () => {

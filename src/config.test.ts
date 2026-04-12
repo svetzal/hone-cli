@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getDefaultConfig, loadConfig, validateUserConfig } from "./config.ts";
-import { join } from "path";
-import { mkdtemp, writeFile, rm } from "fs/promises";
-import { tmpdir } from "os";
 
 describe("getDefaultConfig", () => {
   test("returns expected defaults", () => {
@@ -123,10 +123,7 @@ describe("loadConfig", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
       const configPath = join(dir, "config.json");
-      await writeFile(
-        configPath,
-        JSON.stringify({ mode: "github" }),
-      );
+      await writeFile(configPath, JSON.stringify({ mode: "github" }));
 
       const config = await loadConfig(configPath);
 
@@ -161,10 +158,7 @@ describe("loadConfig", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
       const configPath = join(dir, "config.json");
-      await writeFile(
-        configPath,
-        JSON.stringify({ auditDir: "/custom/audit" }),
-      );
+      await writeFile(configPath, JSON.stringify({ auditDir: "/custom/audit" }));
 
       const config = await loadConfig(configPath);
 
@@ -178,10 +172,7 @@ describe("loadConfig", () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {
       const configPath = join(dir, "config.json");
-      await writeFile(
-        configPath,
-        JSON.stringify({ readOnlyTools: "Read Glob" }),
-      );
+      await writeFile(configPath, JSON.stringify({ readOnlyTools: "Read Glob" }));
 
       const config = await loadConfig(configPath);
 
@@ -269,7 +260,7 @@ describe("validateUserConfig", () => {
   test("includes only string-typed fields within models", () => {
     const result = validateUserConfig({ models: { assess: "sonnet", plan: 42 } });
     expect(result.models).toBeDefined();
-    expect(result.models!.assess).toBe("sonnet");
+    expect(result.models?.assess).toBe("sonnet");
     expect(result.models).not.toHaveProperty("plan");
   });
 

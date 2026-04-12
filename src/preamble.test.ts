@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { runPreamble } from "./preamble.ts";
 import { getDefaultConfig } from "./config.ts";
-import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
+import { runPreamble } from "./preamble.ts";
 import {
   emptyGateResolver,
-  standardGateResolver,
-  passingCharterChecker,
   failingCharterChecker,
+  passingCharterChecker,
+  standardGateResolver,
 } from "./test-helpers.ts";
+import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 
 function makeCtx(
   onProgress: PipelineContext["onProgress"] = () => {},
@@ -232,9 +232,7 @@ describe("runPreamble", () => {
     if (result.passed) throw new Error("Expected failure");
 
     expect(result.failureStage).toBe("preflight");
-    expect(result.failureReason).toBe(
-      "Preflight failed: required gates do not pass on unmodified codebase",
-    );
+    expect(result.failureReason).toBe("Preflight failed: required gates do not pass on unmodified codebase");
     expect(result.gates).toHaveLength(1);
     expect(result.gatesResult).not.toBeUndefined();
     expect(result.gatesResult?.requiredPassed).toBe(false);
@@ -242,9 +240,7 @@ describe("runPreamble", () => {
     // Should see preflight failure message
     expect(progress).toContain("preflight: Resolving quality gates...");
     expect(progress).toContain("preflight: Running preflight gate check on unmodified codebase...");
-    expect(progress).toContain(
-      "preflight: Preflight failed: required gates do not pass on unmodified codebase.",
-    );
+    expect(progress).toContain("preflight: Preflight failed: required gates do not pass on unmodified codebase.");
   });
 
   test("charter passes, then preflight fails: includes charter result in failure", async () => {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { gatherContext, extractAgentName, derive, buildDerivePrompt, suggestExpandedName } from "./derive.ts";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { updateFrontmatterName } from "./commands/derive.ts";
-import { join } from "path";
-import { mkdtemp, writeFile, mkdir, rm } from "fs/promises";
-import { tmpdir } from "os";
+import { buildDerivePrompt, derive, extractAgentName, gatherContext, suggestExpandedName } from "./derive.ts";
 import { createDeriveMock, extractPrompt } from "./test-helpers.ts";
 
 describe("gatherContext", () => {
@@ -196,14 +196,18 @@ describe("buildDerivePrompt", () => {
   });
 
   test("omits existing agents section when list is empty", () => {
-    const prompt = buildDerivePrompt("/project", {
-      directoryTree: "",
-      packageFiles: [],
-      ciConfigs: [],
-      toolConfigs: [],
-      shellScripts: [],
-      lockfiles: [],
-    }, []);
+    const prompt = buildDerivePrompt(
+      "/project",
+      {
+        directoryTree: "",
+        packageFiles: [],
+        ciConfigs: [],
+        toolConfigs: [],
+        shellScripts: [],
+        lockfiles: [],
+      },
+      [],
+    );
 
     expect(prompt).not.toContain("Existing Agent Names");
   });
@@ -320,11 +324,13 @@ description: Test agent
 
 ## QA Checkpoints
 - Run \`bun test\``,
-          gateExtraction: JSON.stringify([
-            { name: "test", command: "bun test", required: true },
-          ]),
+          gateExtraction: JSON.stringify([{ name: "test", command: "bun test", required: true }]),
         },
-        { onCall: () => { callCount++; } },
+        {
+          onCall: () => {
+            callCount++;
+          },
+        },
       );
 
       const result = await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
@@ -332,7 +338,7 @@ description: Test agent
       expect(result.agentName).toBe("test-craftsperson");
       expect(result.agentContent).toContain("Test Craftsperson");
       expect(result.gates.length).toBe(1);
-      expect(result.gates[0]!.command).toBe("bun test");
+      expect(result.gates[0]?.command).toBe("bun test");
 
       // Should have made 2 Claude calls (derive + gate extraction)
       expect(callCount).toBe(2);
@@ -347,12 +353,10 @@ description: Test agent
       await writeFile(join(dir, "package.json"), '{"name":"test"}');
       await writeFile(join(dir, "bun.lockb"), "");
 
-      const mockClaude = createDeriveMock(
-        {
-          derive: "---\nname: test\n---\n# Test",
-          gateExtraction: "[]",
-        },
-      );
+      const mockClaude = createDeriveMock({
+        derive: "---\nname: test\n---\n# Test",
+        gateExtraction: "[]",
+      });
 
       const result = await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
 

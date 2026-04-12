@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runProcess } from "./process";
-import { mkdtempSync, writeFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
 
 describe("runProcess", () => {
   it("should capture stdout, stderr, and exit code 0 for successful command", async () => {
@@ -22,11 +22,7 @@ describe("runProcess", () => {
   });
 
   it("should capture stderr from command", async () => {
-    const result = await runProcess([
-      "sh",
-      "-c",
-      "echo error message >&2 && exit 1",
-    ]);
+    const result = await runProcess(["sh", "-c", "echo error message >&2 && exit 1"]);
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toBe("");
@@ -55,11 +51,7 @@ describe("runProcess", () => {
   });
 
   it("should capture both stdout and stderr", async () => {
-    const result = await runProcess([
-      "sh",
-      "-c",
-      "echo stdout && echo stderr >&2",
-    ]);
+    const result = await runProcess(["sh", "-c", "echo stdout && echo stderr >&2"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe("stdout");

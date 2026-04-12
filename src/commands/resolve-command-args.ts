@@ -1,4 +1,4 @@
-import { resolve, join } from "path";
+import { join, resolve } from "node:path";
 import { validateAgent } from "../agents.ts";
 import { CliError } from "../errors.ts";
 import type { ParsedArgs } from "../types.ts";

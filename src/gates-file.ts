@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 import type { GateDefinition } from "./types.ts";
 
 const GATES_FILENAME = ".hone-gates.json";
@@ -9,7 +9,7 @@ export function gatesFilePath(projectDir: string): string {
 
 export async function writeGatesFile(projectDir: string, gates: GateDefinition[]): Promise<string> {
   const path = gatesFilePath(projectDir);
-  await Bun.write(path, JSON.stringify({ gates }, null, 2) + "\n");
+  await Bun.write(path, `${JSON.stringify({ gates }, null, 2)}\n`);
   return path;
 }
 

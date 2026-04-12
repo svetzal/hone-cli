@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { applyMaintainFlags } from "./maintain.ts";
+import { describe, expect, it } from "bun:test";
 import type { HoneConfig } from "../types.ts";
+import { applyMaintainFlags } from "./maintain.ts";
 
 describe("applyMaintainFlags", () => {
   const defaultConfig: HoneConfig = {
@@ -35,11 +35,10 @@ describe("applyMaintainFlags", () => {
     applyMaintainFlags(defaultConfig, { "max-retries": "99" });
     expect(defaultConfig).toEqual(original);
   });
-
 });
 
 describe("maintain command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should exit with error when no args provided", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "maintain"], {

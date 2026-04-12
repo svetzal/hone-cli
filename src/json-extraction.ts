@@ -8,15 +8,15 @@ export function findBareJsonObject(raw: string): string | null {
   if (start === -1) return null;
   let depth = 0;
   let inString = false;
-  let escape = false;
+  let isEscaped = false;
   for (let i = start; i < raw.length; i++) {
     const ch = raw[i];
-    if (escape) {
-      escape = false;
+    if (isEscaped) {
+      isEscaped = false;
       continue;
     }
     if (ch === "\\") {
-      escape = true;
+      isEscaped = true;
       continue;
     }
     if (ch === '"') {

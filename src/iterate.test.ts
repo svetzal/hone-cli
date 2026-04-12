@@ -1,11 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { iterate, sanitizeName, buildRetryPrompt } from "./iterate.ts";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import { join } from "path";
-import { mkdtemp, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
+import { buildRetryPrompt, iterate, sanitizeName } from "./iterate.ts";
+import {
+  acceptingTriageRunner,
+  createIterateMock,
+  createPreflightAwareGateRunner,
+  emptyGateResolver,
+  extractPrompt,
+  failingCharterChecker,
+  passingCharterChecker,
+  rejectingBusyWorkTriageRunner,
+  rejectingSeverityTriageRunner,
+  standardGateResolver,
+} from "./test-helpers.ts";
 import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
-import { createIterateMock, extractPrompt, emptyGateResolver, standardGateResolver, passingCharterChecker, failingCharterChecker, acceptingTriageRunner, rejectingSeverityTriageRunner, rejectingBusyWorkTriageRunner, createPreflightAwareGateRunner } from "./test-helpers.ts";
 
 function makeCtx(
   dir: string,
@@ -32,7 +43,8 @@ describe("iterate", () => {
         name: "fix-srp-violation",
         plan: "Step 1: Extract class\nStep 2: Move methods",
         execute: "Extracted UserAuth class into its own module.",
-        summarize: '```json\n{ "headline": "Fix SRP violation in auth module", "summary": "Extracted UserAuth class." }\n```',
+        summarize:
+          '```json\n{ "headline": "Fix SRP violation in auth module", "summary": "Extracted UserAuth class." }\n```',
       },
       { onCall: (args) => calls.push(args) },
     );
@@ -117,7 +129,11 @@ describe("iterate", () => {
     );
 
     const gateRunnerCalls: Array<[GateDefinition[], string, number]> = [];
-    const mockGateRunner = async (gates: GateDefinition[], projectDir: string, timeout: number): Promise<GatesRunResult> => {
+    const mockGateRunner = async (
+      gates: GateDefinition[],
+      projectDir: string,
+      timeout: number,
+    ): Promise<GatesRunResult> => {
       gateRunnerCalls.push([gates, projectDir, timeout]);
       return {
         allPassed: true,
@@ -156,7 +172,7 @@ describe("iterate", () => {
       expect(gateRunnerCalls.length).toBe(2);
 
       // Gate runner should receive the resolved gates
-      expect(gateRunnerCalls[0]![0]).toEqual([{ name: "test", command: "npm test", required: true }]);
+      expect(gateRunnerCalls[0]?.[0]).toEqual([{ name: "test", command: "npm test", required: true }]);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -265,9 +281,7 @@ describe("iterate", () => {
       ],
     };
 
-    const { runner: mockGateRunner, callCount } = createPreflightAwareGateRunner([
-      alwaysFailResult,
-    ]);
+    const { runner: mockGateRunner, callCount } = createPreflightAwareGateRunner([alwaysFailResult]);
 
     try {
       const config = getDefaultConfig();
@@ -405,6 +419,7 @@ describe("iterate", () => {
 
       // Capture the retry prompt (5th call); 6th is summarize
       expect(claudeCalls.length).toBe(6);
+      // biome-ignore lint/style/noNonNullAssertion: length assertion above guarantees index 4 exists
       const retryPrompt = extractPrompt(claudeCalls[4]!);
 
       // Assert prompt contains original plan
@@ -434,14 +449,16 @@ describe("iterate", () => {
     const failingGateRunner = async (): Promise<GatesRunResult> => ({
       allPassed: false,
       requiredPassed: false,
-      results: [{
-        name: "test",
-        command: "npm test",
-        passed: false,
-        required: true,
-        output: "FAIL: compilation error",
-        exitCode: 1,
-      }],
+      results: [
+        {
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output: "FAIL: compilation error",
+          exitCode: 1,
+        },
+      ],
     });
 
     try {
@@ -772,13 +789,7 @@ describe("buildRetryPrompt", () => {
   });
 
   test("includes instruction to not regress", () => {
-    const prompt = buildRetryPrompt(
-      "/my/project",
-      "Plan",
-      "Assessment",
-      [{ name: "test", output: "fail" }],
-      [],
-    );
+    const prompt = buildRetryPrompt("/my/project", "Plan", "Assessment", [{ name: "test", output: "fail" }], []);
     expect(prompt).toContain("Fix the failures below WITHOUT regressing");
   });
 

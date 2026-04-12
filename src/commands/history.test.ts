@@ -1,10 +1,10 @@
-import { describe, it, expect } from "bun:test";
-import { mkdtemp, rm, mkdir, writeFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 describe("history command integration", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should show no history message for empty directory", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "history-test-"));

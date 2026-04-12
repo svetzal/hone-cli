@@ -6,6 +6,11 @@
       "required": true
     },
     {
+      "name": "lint",
+      "command": "$HOME/.bun/bin/bunx biome check src/",
+      "required": true
+    },
+    {
       "name": "test",
       "command": "$HOME/.bun/bin/bun test",
       "required": true

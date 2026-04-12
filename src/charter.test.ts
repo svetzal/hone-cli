@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { checkCharter } from "./charter.ts";
-import { join } from "path";
-import { mkdtemp, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
 
 describe("checkCharter", () => {
   test("fails with guidance when no files exist", async () => {
@@ -29,8 +29,8 @@ describe("checkCharter", () => {
 
       expect(result.passed).toBe(false);
       expect(result.sources).toHaveLength(1);
-      expect(result.sources[0]!.file).toBe("README.md");
-      expect(result.sources[0]!.sufficient).toBe(false);
+      expect(result.sources[0]?.file).toBe("README.md");
+      expect(result.sources[0]?.sufficient).toBe(false);
       expect(result.guidance.some((g) => g.includes("too short"))).toBe(true);
     } finally {
       await rm(dir, { recursive: true });
@@ -55,7 +55,7 @@ describe("checkCharter", () => {
   test("passes when CHARTER.md has content", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
     try {
-      await writeFile(join(dir, "CHARTER.md"), "This project aims to " + "x".repeat(100));
+      await writeFile(join(dir, "CHARTER.md"), `This project aims to ${"x".repeat(100)}`);
 
       const result = await checkCharter(dir, 100);
 
@@ -74,7 +74,7 @@ describe("checkCharter", () => {
         "",
         "## Project Charter",
         "",
-        "This project is designed to " + "x".repeat(100),
+        `This project is designed to ${"x".repeat(100)}`,
         "",
         "## Other Section",
         "",
@@ -96,7 +96,7 @@ describe("checkCharter", () => {
     try {
       await writeFile(
         join(dir, "package.json"),
-        JSON.stringify({ description: "A comprehensive tool for managing " + "x".repeat(100) }),
+        JSON.stringify({ description: `A comprehensive tool for managing ${"x".repeat(100)}` }),
       );
 
       const result = await checkCharter(dir, 100);
@@ -136,8 +136,8 @@ describe("checkCharter", () => {
       expect(result.passed).toBe(true);
       // CHARTER.md sufficient, README.md not sufficient
       expect(result.sources).toHaveLength(2);
-      expect(result.sources.find((s) => s.file === "CHARTER.md")!.sufficient).toBe(true);
-      expect(result.sources.find((s) => s.file === "README.md")!.sufficient).toBe(false);
+      expect(result.sources.find((s) => s.file === "CHARTER.md")?.sufficient).toBe(true);
+      expect(result.sources.find((s) => s.file === "README.md")?.sufficient).toBe(false);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -335,13 +335,9 @@ description = "${"A comprehensive Python application for data processing and ana
   test("CLAUDE.md Project Charter section at end of file (no next heading)", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-charter-"));
     try {
-      const content = [
-        "# My Project",
-        "",
-        "## Project Charter",
-        "",
-        "This project aims to " + "x".repeat(150),
-      ].join("\n");
+      const content = ["# My Project", "", "## Project Charter", "", `This project aims to ${"x".repeat(150)}`].join(
+        "\n",
+      );
       await writeFile(join(dir, "CLAUDE.md"), content);
 
       const result = await checkCharter(dir, 100);

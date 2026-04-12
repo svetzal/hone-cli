@@ -1,5 +1,5 @@
-import { join, isAbsolute } from "path";
-import { readdir, mkdir } from "fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 
 export function resolveAuditDir(projectDir: string, auditDirName: string): string {
   return isAbsolute(auditDirName) ? auditDirName : join(projectDir, auditDirName);
@@ -52,6 +52,7 @@ export async function listIterations(auditDir: string): Promise<IterationEntry[]
     const entries: IterationEntry[] = [];
     for (const [name, groupFiles] of groups) {
       // Use the first file's mtime as the iteration date
+      // biome-ignore lint/style/noNonNullAssertion: groupFiles always has at least one element — it was just populated via push
       const stat = await Bun.file(join(auditDir, groupFiles[0]!)).stat();
       entries.push({
         name,

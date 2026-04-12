@@ -1,22 +1,19 @@
-import { mkdir } from "fs/promises";
-import { homedir } from "os";
-import { join } from "path";
-import { VERSION } from "../constants.ts";
-import { writeJson } from "../output.ts";
-import { CliError } from "../errors.ts";
-
+import { mkdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 // Embed skill files at build time via Bun text imports
 // Source of truth lives in skills/ — .claude/skills/ is the installed copy
 import HONE_SKILL_MD from "../../skills/hone/SKILL.md" with { type: "text" };
+import { VERSION } from "../constants.ts";
+import { CliError } from "../errors.ts";
+import { writeJson } from "../output.ts";
 
 interface SkillFile {
   relativePath: string;
   content: string;
 }
 
-const SKILL_FILES: SkillFile[] = [
-  { relativePath: ".claude/skills/hone/SKILL.md", content: HONE_SKILL_MD },
-];
+const SKILL_FILES: SkillFile[] = [{ relativePath: ".claude/skills/hone/SKILL.md", content: HONE_SKILL_MD }];
 
 type FileAction = "created" | "updated" | "up-to-date" | "skipped";
 
@@ -36,24 +33,19 @@ interface InitResult {
 export function stampVersion(content: string): string {
   const closingIndex = content.indexOf("\n---", 1);
   if (closingIndex === -1) return content;
-  let stamped = content.slice(0, closingIndex) + `\nhone-version: ${VERSION}` + content.slice(closingIndex);
+  let stamped = `${content.slice(0, closingIndex)}\nhone-version: ${VERSION}${content.slice(closingIndex)}`;
   // Also stamp metadata.version to match the running binary
-  stamped = stamped.replace(
-    /(metadata:\n\s+version:\s*)"[^"]*"/,
-    `$1"${VERSION}"`,
-  );
+  stamped = stamped.replace(/(metadata:\n\s+version:\s*)"[^"]*"/, `$1"${VERSION}"`);
   return stamped;
 }
 
 export function parseInstalledVersion(content: string): string | null {
   const match = content.match(/\nhone-version:\s*(.+)/);
-  return match ? match[1]!.trim() : null;
+  return match ? (match[1]?.trim() ?? null) : null;
 }
 
 export function stripVersionField(content: string): string {
-  return content
-    .replace(/\nhone-version: .+/g, "")
-    .replace(/(metadata:\n\s+version:\s*)"[^"]*"/, '$1"0.0.0"');
+  return content.replace(/\nhone-version: .+/g, "").replace(/(metadata:\n\s+version:\s*)"[^"]*"/, '$1"0.0.0"');
 }
 
 export function compareVersions(a: string, b: string): number {
@@ -118,10 +110,10 @@ export async function initCommand(parsed: { flags: Record<string, string | boole
     results.push({ path: relPath, action, message });
   }
 
-  const created = results.filter(r => r.action === "created").length;
-  const updated = results.filter(r => r.action === "updated").length;
-  const upToDate = results.filter(r => r.action === "up-to-date").length;
-  const skipped = results.filter(r => r.action === "skipped").length;
+  const created = results.filter((r) => r.action === "created").length;
+  const updated = results.filter((r) => r.action === "updated").length;
+  const upToDate = results.filter((r) => r.action === "up-to-date").length;
+  const skipped = results.filter((r) => r.action === "skipped").length;
 
   const parts: string[] = [];
   if (created > 0) parts.push(`${created} created`);
@@ -142,16 +134,15 @@ export async function initCommand(parsed: { flags: Record<string, string | boole
     const scope = isGlobal ? "global (~/.claude)" : "local";
     console.log(`\nHone v${VERSION} — skill files (${scope})\n`);
     for (const r of results) {
-      const icon =
-        r.action === "created" ? "+" :
-        r.action === "updated" ? "~" :
-        r.action === "skipped" ? "!" :
-        "=";
+      const icon = r.action === "created" ? "+" : r.action === "updated" ? "~" : r.action === "skipped" ? "!" : "=";
       const label =
-        r.action === "created" ? "Created" :
-        r.action === "updated" ? "Updated" :
-        r.action === "skipped" ? "Skipped" :
-        "Up to date";
+        r.action === "created"
+          ? "Created"
+          : r.action === "updated"
+            ? "Updated"
+            : r.action === "skipped"
+              ? "Skipped"
+              : "Up to date";
       console.log(`  ${icon} ${r.path} (${label})`);
       if (r.message) {
         console.log(`    ${r.message}`);

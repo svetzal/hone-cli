@@ -85,7 +85,7 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
       readOnly: false,
       readOnlyTools: opts.readOnlyTools,
     });
-    await claude(args);  // Claude edits the file directly; stdout ignored
+    await claude(args); // Claude edits the file directly; stdout ignored
     principlesMixed = true;
   }
 
@@ -97,7 +97,7 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
       readOnly: false,
       readOnlyTools: opts.readOnlyTools,
     });
-    await claude(args);  // Claude edits the file directly; stdout ignored
+    await claude(args); // Claude edits the file directly; stdout ignored
     gatesMixed = true;
   }
 

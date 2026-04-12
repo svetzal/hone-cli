@@ -1,14 +1,10 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { gatherContext, type ProjectContext } from "./derive.ts";
 import { parseGatesJson } from "./extract-gates.ts";
-import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
+import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
-export function buildDeriveGatesPrompt(
-  folder: string,
-  context: ProjectContext,
-  agentContent?: string,
-): string {
+export function buildDeriveGatesPrompt(folder: string, context: ProjectContext, agentContent?: string): string {
   const sections: string[] = [
     "You are discovering quality gates for a software project by inspecting its actual tooling.",
     "You have Read, Glob, and Grep tools available. Use them to explore the project's",

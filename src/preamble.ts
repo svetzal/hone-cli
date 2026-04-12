@@ -1,10 +1,10 @@
 import type {
-  GateDefinition,
-  CharterCheckResult,
-  GatesRunResult,
-  GateRunner,
-  GateResolverFn,
   CharterCheckerFn,
+  CharterCheckResult,
+  GateDefinition,
+  GateResolverFn,
+  GateRunner,
+  GatesRunResult,
   PipelineContext,
 } from "./types.ts";
 
@@ -40,9 +40,7 @@ export type PreambleResult =
  * doing LLM work" logic that was previously duplicated across iterate()
  * and githubIterate().
  */
-export async function runPreamble(
-  opts: PreambleOptions,
-): Promise<PreambleResult> {
+export async function runPreamble(opts: PreambleOptions): Promise<PreambleResult> {
   const { ctx, skipCharter, skipGates, gateResolver, gateRunner, charterChecker } = opts;
   const { folder, agent, config, claude, onProgress } = ctx;
 
@@ -74,34 +72,20 @@ export async function runPreamble(
   let preflightGates: GateDefinition[] = [];
   if (!skipGates) {
     onProgress("preflight", "Resolving quality gates...");
-    preflightGates = await gateResolver(
-      folder,
-      agent,
-      config.models.gates,
-      config.readOnlyTools,
-      claude,
-    );
+    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
 
     if (preflightGates.length > 0) {
       onProgress("preflight", "Running preflight gate check on unmodified codebase...");
-      const preflightResult = await gateRunner(
-        preflightGates,
-        folder,
-        config.gateTimeout,
-      );
+      const preflightResult = await gateRunner(preflightGates, folder, config.gateTimeout);
 
       if (!preflightResult.requiredPassed) {
-        onProgress(
-          "preflight",
-          "Preflight failed: required gates do not pass on unmodified codebase.",
-        );
+        onProgress("preflight", "Preflight failed: required gates do not pass on unmodified codebase.");
         return {
           passed: false,
           charterCheck: charterCheckResult,
           gates: preflightGates,
           failureStage: "preflight",
-          failureReason:
-            "Preflight failed: required gates do not pass on unmodified codebase",
+          failureReason: "Preflight failed: required gates do not pass on unmodified codebase",
           gatesResult: preflightResult,
         };
       }

@@ -2,10 +2,7 @@ import { buildClaudeArgs } from "./claude.ts";
 import { extractJsonFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, StructuredAssessment, TriageResult } from "./types.ts";
 
-export function checkSeverityThreshold(
-  severity: number,
-  threshold: number,
-): { passed: boolean; reason: string } {
+export function checkSeverityThreshold(severity: number, threshold: number): { passed: boolean; reason: string } {
   if (severity < threshold) {
     return {
       passed: false,
@@ -35,9 +32,9 @@ export function buildTriagePrompt(assessment: string, principle: string): string
     assessment,
     "",
     "Respond with ONLY a JSON object:",
-    '```json',
+    "```json",
     '{ "changeType": "<category>", "busyWork": <true|false>, "reason": "<brief explanation>" }',
-    '```',
+    "```",
     "",
     "changeType should be one of: feature, bugfix, security, performance, architecture, testing, documentation, cosmetic, organization",
   ].join("\n");

@@ -1,10 +1,10 @@
-import { describe, it, expect, spyOn } from "bun:test";
-import { join } from "path";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { deriveGatesCommand } from "./derive-gates.ts";
-import type { ParsedArgs } from "../types.ts";
+import { describe, expect, it, spyOn } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createDeriveGatesMock } from "../test-helpers.ts";
+import type { ParsedArgs } from "../types.ts";
+import { deriveGatesCommand } from "./derive-gates.ts";
 
 const CANNED_GATES_JSON = `[{"name":"test","command":"bun test","required":true},{"name":"typecheck","command":"bunx tsc --noEmit","required":true}]`;
 
@@ -19,14 +19,11 @@ function makeParsed(positional: string[], flags: Record<string, string | boolean
 describe("deriveGatesCommand", () => {
   describe("argument validation", () => {
     it("exits with error when no args provided", async () => {
-      const proc = Bun.spawn(
-        [process.execPath, "run", "src/cli.ts", "derive-gates"],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-          cwd: import.meta.dir + "/../..",
-        },
-      );
+      const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "derive-gates"], {
+        stdout: "pipe",
+        stderr: "pipe",
+        cwd: `${import.meta.dir}/../..`,
+      });
       const exitCode = await proc.exited;
       const stderr = await new Response(proc.stderr).text();
 
@@ -111,6 +108,7 @@ describe("deriveGatesCommand", () => {
           }
         });
         expect(jsonLine).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: toBeDefined() assertion above confirms jsonLine is non-null
         const jsonOutput = JSON.parse(jsonLine!);
         expect(jsonOutput).toHaveProperty("gates");
         expect(jsonOutput).toHaveProperty("gatesPath");
@@ -137,10 +135,7 @@ describe("deriveGatesCommand", () => {
         const claude = createDeriveGatesMock("[]");
 
         // Two positionals: agent-name + folder path — parseGatesArgs identifies first as agent
-        await deriveGatesCommand(
-          makeParsed(["nonexistent-agent-xyz", tmpDir]),
-          { claude },
-        );
+        await deriveGatesCommand(makeParsed(["nonexistent-agent-xyz", tmpDir]), { claude });
 
         logSpy.mockRestore();
 

@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 
+import { configCommand } from "./commands/config.ts";
+import { deriveCommand } from "./commands/derive.ts";
+import { deriveGatesCommand } from "./commands/derive-gates.ts";
+import { gatesCommand } from "./commands/gates.ts";
+import { historyCommand } from "./commands/history.ts";
+import { initCommand } from "./commands/init.ts";
 import { iterateCommand } from "./commands/iterate.ts";
 import { listAgentsCommand } from "./commands/list-agents.ts";
-import { gatesCommand } from "./commands/gates.ts";
-import { deriveCommand } from "./commands/derive.ts";
-import { historyCommand } from "./commands/history.ts";
-import { configCommand } from "./commands/config.ts";
-import { mixCommand } from "./commands/mix.ts";
 import { maintainCommand } from "./commands/maintain.ts";
-import { deriveGatesCommand } from "./commands/derive-gates.ts";
-import { initCommand } from "./commands/init.ts";
-import type { ParsedArgs } from "./types.ts";
+import { mixCommand } from "./commands/mix.ts";
 import { VERSION } from "./constants.ts";
 import { CliError } from "./errors.ts";
+import type { ParsedArgs } from "./types.ts";
 
 function parseArgs(args: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
@@ -20,7 +20,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
   let i = 0;
   while (i < args.length) {
-    const arg = args[i]!;
+    const arg = args[i] ?? "";
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
       const nextArg = args[i + 1];

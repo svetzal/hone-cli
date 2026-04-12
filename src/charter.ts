@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 import type { CharterCheckResult, CharterSource } from "./types.ts";
 
 async function readFileContent(path: string): Promise<string | null> {
@@ -60,10 +60,7 @@ async function readPackageDescription(projectDir: string): Promise<string | null
  * Checks whether AGENTS.md or CLAUDE.md contains an @-reference to a charter file.
  * Without this reference, the charter won't be visible to the LLM during assessment.
  */
-async function checkCharterReferences(
-  projectDir: string,
-  charterExists: boolean,
-): Promise<string[]> {
+async function checkCharterReferences(projectDir: string, charterExists: boolean): Promise<string[]> {
   const warnings: string[] = [];
   if (!charterExists) return warnings;
 
@@ -74,10 +71,9 @@ async function checkCharterReferences(
   const claudeRefs = claudeContent !== null && /@CHARTER\.md/.test(claudeContent);
 
   if (!agentsRefs && !claudeRefs) {
-    const files = [
-      agentsContent !== null ? "AGENTS.md" : null,
-      claudeContent !== null ? "CLAUDE.md" : null,
-    ].filter(Boolean);
+    const files = [agentsContent !== null ? "AGENTS.md" : null, claudeContent !== null ? "CLAUDE.md" : null].filter(
+      Boolean,
+    );
 
     if (files.length > 0) {
       warnings.push(
@@ -93,10 +89,7 @@ async function checkCharterReferences(
   return warnings;
 }
 
-export async function checkCharter(
-  projectDir: string,
-  minLength: number,
-): Promise<CharterCheckResult> {
+export async function checkCharter(projectDir: string, minLength: number): Promise<CharterCheckResult> {
   const sources: CharterSource[] = [];
   const guidance: string[] = [];
 

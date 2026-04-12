@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 describe("resolveCommandArgs validation", () => {
-  const projectRoot = import.meta.dir + "/../..";
+  const projectRoot = `${import.meta.dir}/../..`;
 
   it("should exit with error and show usage when agent is missing", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "iterate"], {
@@ -31,10 +31,11 @@ describe("resolveCommandArgs validation", () => {
   });
 
   it("should exit with error when agent not found", async () => {
-    const proc = Bun.spawn(
-      [process.execPath, "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src"],
-      { stdout: "pipe", stderr: "pipe", cwd: projectRoot },
-    );
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "iterate", "nonexistent-agent", "./src"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: projectRoot,
+    });
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
 
@@ -57,10 +58,11 @@ describe("resolveCommandArgs validation", () => {
   });
 
   it("should exit with error when agent not found for maintain", async () => {
-    const proc = Bun.spawn(
-      [process.execPath, "run", "src/cli.ts", "maintain", "nonexistent-agent", "./src"],
-      { stdout: "pipe", stderr: "pipe", cwd: projectRoot },
-    );
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "maintain", "nonexistent-agent", "./src"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: projectRoot,
+    });
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
 

@@ -1,13 +1,13 @@
-import { resolve, join } from "path";
-import { homedir } from "os";
-import { loadConfig } from "../config.ts";
-import { createClaudeInvoker } from "../claude.ts";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import { readAgentContent } from "../agents.ts";
-import { mix } from "../mix.ts";
-import type { ParsedArgs } from "../types.ts";
-import { writeJson, progress } from "../output.ts";
-import { writeGatesFile } from "../gates-file.ts";
+import { createClaudeInvoker } from "../claude.ts";
+import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
+import { writeGatesFile } from "../gates-file.ts";
+import { mix } from "../mix.ts";
+import { progress, writeJson } from "../output.ts";
+import type { ParsedArgs } from "../types.ts";
 
 export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   const agentName = parsed.positional[0];
@@ -20,12 +20,12 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   if (!agentName || !folder || !foreignName) {
     throw new CliError(
       "Usage: hone mix <agent> <folder> --from <foreign-agent> [--principles] [--gates]\n" +
-      "  agent           - Local agent name (from <folder>/.claude/agents/)\n" +
-      "  folder          - Project directory\n" +
-      "  --from <name>   - Foreign agent name (from ~/.claude/agents/)\n" +
-      "  --principles    - Mix engineering principles\n" +
-      "  --gates         - Mix quality gates / QA checkpoints\n" +
-      "  --json          - Output machine-readable JSON",
+        "  agent           - Local agent name (from <folder>/.claude/agents/)\n" +
+        "  folder          - Project directory\n" +
+        "  --from <name>   - Foreign agent name (from ~/.claude/agents/)\n" +
+        "  --principles    - Mix engineering principles\n" +
+        "  --gates         - Mix quality gates / QA checkpoints\n" +
+        "  --json          - Output machine-readable JSON",
     );
   }
 
@@ -77,7 +77,10 @@ export async function mixCommand(parsed: ParsedArgs): Promise<void> {
   let gatesPath: string | null = null;
   if (result.gatesMixed && result.gates !== null) {
     gatesPath = await writeGatesFile(resolvedFolder, result.gates);
-    progress(isJson, `Gates written to: ${gatesPath} (${result.gates.length} gate${result.gates.length === 1 ? "" : "s"})`);
+    progress(
+      isJson,
+      `Gates written to: ${gatesPath} (${result.gates.length} gate${result.gates.length === 1 ? "" : "s"})`,
+    );
   } else if (result.gatesMixed && result.gates === null) {
     progress(isJson, "Warning: Gate extraction failed. Existing .hone-gates.json left unchanged.");
   }

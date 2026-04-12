@@ -1,28 +1,25 @@
-import { resolve } from "path";
-import { loadConfig } from "../config.ts";
-import { createClaudeInvoker } from "../claude.ts";
+import { resolve } from "node:path";
 import { readAgentContent } from "../agents.ts";
+import { createClaudeInvoker } from "../claude.ts";
+import { loadConfig } from "../config.ts";
 import { deriveGates } from "../derive-gates.ts";
-import { runAllGates } from "../gates.ts";
-import { parseGatesArgs } from "./gates.ts";
-import type { ParsedArgs, GateResult, ClaudeInvoker } from "../types.ts";
-import { writeJson, progress, reportGateValidation } from "../output.ts";
-import { writeGatesFile } from "../gates-file.ts";
 import { CliError } from "../errors.ts";
+import { runAllGates } from "../gates.ts";
+import { writeGatesFile } from "../gates-file.ts";
+import { progress, reportGateValidation, writeJson } from "../output.ts";
+import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
+import { parseGatesArgs } from "./gates.ts";
 
-export async function deriveGatesCommand(
-  parsed: ParsedArgs,
-  deps?: { claude?: ClaudeInvoker },
-): Promise<void> {
+export async function deriveGatesCommand(parsed: ParsedArgs, deps?: { claude?: ClaudeInvoker }): Promise<void> {
   if (parsed.positional.length === 0) {
     throw new CliError(
       "Usage: hone derive-gates [agent] <folder>\n" +
-      "  agent  - Optional agent name for context\n" +
-      "  folder - Project folder to inspect\n" +
-      "\n" +
-      "Options:\n" +
-      "  --run            Run gates after generating\n" +
-      "  --derive-model   Override model (default: from config)",
+        "  agent  - Optional agent name for context\n" +
+        "  folder - Project folder to inspect\n" +
+        "\n" +
+        "Options:\n" +
+        "  --run            Run gates after generating\n" +
+        "  --derive-model   Override model (default: from config)",
     );
   }
 
@@ -31,9 +28,7 @@ export async function deriveGatesCommand(
   const isJson = parsed.flags.json === true;
   const shouldRun = parsed.flags.run === true;
   const config = await loadConfig();
-  const model = typeof parsed.flags["derive-model"] === "string"
-    ? parsed.flags["derive-model"]
-    : config.models.derive;
+  const model = typeof parsed.flags["derive-model"] === "string" ? parsed.flags["derive-model"] : config.models.derive;
 
   // Optionally load agent content for context
   let agentContent: string | undefined;

@@ -1,34 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import { runExecuteWithVerify } from "./execute-with-verify.ts";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { buildClaudeArgs } from "./claude.ts";
 import { getDefaultConfig } from "./config.ts";
-import { join } from "path";
-import { mkdtemp, mkdir, rm } from "fs/promises";
-import { tmpdir } from "os";
+import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const requiredGates: GateDefinition[] = [
-  { name: "test", command: "npm test", required: true },
-];
+const requiredGates: GateDefinition[] = [{ name: "test", command: "npm test", required: true }];
 
 const passingResult: GatesRunResult = {
   allPassed: true,
   requiredPassed: true,
-  results: [
-    { name: "test", command: "npm test", passed: true, required: true, output: "ok", exitCode: 0 },
-  ],
+  results: [{ name: "test", command: "npm test", passed: true, required: true, output: "ok", exitCode: 0 }],
 };
 
 const failingResult: GatesRunResult = {
   allPassed: false,
   requiredPassed: false,
-  results: [
-    { name: "test", command: "npm test", passed: false, required: true, output: "FAIL: error", exitCode: 1 },
-  ],
+  results: [{ name: "test", command: "npm test", passed: false, required: true, output: "FAIL: error", exitCode: 1 }],
 };
 
 function simpleClaude(response: string) {
@@ -97,6 +91,7 @@ describe("runExecuteWithVerify", () => {
         readOnlyTools: ctx.config.readOnlyTools,
       });
 
+      // biome-ignore lint/style/noNonNullAssertion: assigned by mockClaude which is guaranteed to be called by runExecuteWithVerify
       expect(capturedArgs!).toEqual(expectedArgs);
       expect(result.execution).toBe("execution output");
       expect(await Bun.file(join(auditDir, "test-fix-actions.md")).exists()).toBe(true);

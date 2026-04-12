@@ -1,4 +1,11 @@
-import type { ClaudeInvoker, CharterCheckResult, StructuredAssessment, TriageResult, GateDefinition, GatesRunResult } from "./types.ts";
+import type {
+  CharterCheckResult,
+  ClaudeInvoker,
+  GateDefinition,
+  GatesRunResult,
+  StructuredAssessment,
+  TriageResult,
+} from "./types.ts";
 
 /**
  * Extract the prompt string from a Claude CLI args array.
@@ -6,7 +13,7 @@ import type { ClaudeInvoker, CharterCheckResult, StructuredAssessment, TriageRes
  */
 export function extractPrompt(args: string[]): string {
   const idx = args.indexOf("-p");
-  return idx >= 0 ? args[idx + 1] ?? "" : "";
+  return idx >= 0 ? (args[idx + 1] ?? "") : "";
 }
 
 /**
@@ -79,9 +86,8 @@ export const emptyGateResolver = async () => [] as GateDefinition[];
  * Mock gate resolver that returns a standard test gate.
  * Used by both iterate and github-iterate tests.
  */
-export const standardGateResolver = async () => [
-  { name: "test", command: "npm test", required: true },
-] as GateDefinition[];
+export const standardGateResolver = async () =>
+  [{ name: "test", command: "npm test", required: true }] as GateDefinition[];
 
 /**
  * Mock charter checker that always passes.
@@ -190,11 +196,11 @@ export function createMixMock(
 
     if (prompt.includes("augmenting a local agent's engineering principles")) {
       opts?.onEdit?.(responses.principles ?? "");
-      return "";  // stdout ignored — Claude edits the file directly
+      return ""; // stdout ignored — Claude edits the file directly
     }
     if (prompt.includes("augmenting a local agent's quality assurance")) {
       opts?.onEdit?.(responses.gates ?? "");
-      return "";  // stdout ignored — Claude edits the file directly
+      return ""; // stdout ignored — Claude edits the file directly
     }
     // Gate extraction call (still read-only, returns output)
     return responses.gateExtraction ?? "[]";
@@ -231,9 +237,10 @@ export function createMaintainMock(
  * @param postPreflightResults - Array of results to return for calls after preflight.
  *   Cycles through the array in order; the last entry repeats for any extra calls.
  */
-export function createPreflightAwareGateRunner(
-  postPreflightResults: GatesRunResult[],
-): { runner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>; callCount: () => number } {
+export function createPreflightAwareGateRunner(postPreflightResults: GatesRunResult[]): {
+  runner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
+  callCount: () => number;
+} {
   let calls = 0;
 
   const runner = async (): Promise<GatesRunResult> => {
@@ -247,6 +254,7 @@ export function createPreflightAwareGateRunner(
 
     // Post-preflight: use provided results, clamping to last entry
     const postIdx = Math.min(idx - 1, postPreflightResults.length - 1);
+    // biome-ignore lint/style/noNonNullAssertion: postIdx is clamped to valid bounds by Math.min above
     return postPreflightResults[postIdx]!;
   };
 
@@ -258,10 +266,7 @@ export function createPreflightAwareGateRunner(
  * Single Claude call — returns the provided response when the prompt
  * contains "discovering quality gates".
  */
-export function createDeriveGatesMock(
-  response: string,
-  opts?: { onCall?: (args: string[]) => void },
-): ClaudeInvoker {
+export function createDeriveGatesMock(response: string, opts?: { onCall?: (args: string[]) => void }): ClaudeInvoker {
   return async (args) => {
     opts?.onCall?.(args);
     return response;

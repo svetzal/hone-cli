@@ -1,9 +1,9 @@
-import { join, basename } from "path";
-import { readdir } from "fs/promises";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { buildClaudeArgs } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
-import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
+import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
 export interface LockfileInfo {
   file: string;
@@ -38,12 +38,7 @@ const PACKAGE_FILES = [
   "pom.xml",
 ];
 
-const CI_PATTERNS = [
-  ".github/workflows",
-  ".gitlab-ci.yml",
-  ".circleci/config.yml",
-  "Jenkinsfile",
-];
+const CI_PATTERNS = [".github/workflows", ".gitlab-ci.yml", ".circleci/config.yml", "Jenkinsfile"];
 
 const LOCKFILE_MAP: Record<string, string> = {
   "bun.lockb": "bun",
@@ -86,14 +81,24 @@ async function listDirectoryTree(dir: string, depth: number = 3, prefix: string 
   try {
     const entries = await readdir(dir, { withFileTypes: true });
     const filtered = entries
-      .filter((e) => !e.name.startsWith(".") && e.name !== "node_modules" && e.name !== "_build" && e.name !== "deps" && e.name !== "__pycache__" && e.name !== "target" && e.name !== "dist" && e.name !== "build")
+      .filter(
+        (e) =>
+          !e.name.startsWith(".") &&
+          e.name !== "node_modules" &&
+          e.name !== "_build" &&
+          e.name !== "deps" &&
+          e.name !== "__pycache__" &&
+          e.name !== "target" &&
+          e.name !== "dist" &&
+          e.name !== "build",
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of filtered) {
       if (entry.isDirectory()) {
         lines.push(`${prefix}${entry.name}/`);
         if (depth > 1) {
-          const subtree = await listDirectoryTree(join(dir, entry.name), depth - 1, prefix + "  ");
+          const subtree = await listDirectoryTree(join(dir, entry.name), depth - 1, `${prefix}  `);
           if (subtree) lines.push(subtree);
         }
       } else {
@@ -271,16 +276,16 @@ export function extractAgentName(agentContent: string): string {
   // Try YAML frontmatter first
   const frontmatterMatch = agentContent.match(/^---\s*\n([\s\S]*?)\n---/);
   if (frontmatterMatch) {
-    const nameMatch = frontmatterMatch[1]!.match(/^name:\s*(.+)$/m);
+    const nameMatch = frontmatterMatch[1]?.match(/^name:\s*(.+)$/m);
     if (nameMatch) {
-      return nameMatch[1]!.trim().replace(/["']/g, "");
+      return (nameMatch[1] ?? "").trim().replace(/["']/g, "");
     }
   }
 
   // Fallback: extract from first heading
   const headingMatch = agentContent.match(/^#\s+(.+)$/m);
   if (headingMatch) {
-    return headingMatch[1]!
+    return (headingMatch[1] ?? "")
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -300,13 +305,13 @@ export async function suggestExpandedName(
 ): Promise<string> {
   const signals: string[] = [];
   if (context.lockfiles.length > 0) {
-    signals.push("Lockfiles: " + context.lockfiles.map((l) => `${l.file} (${l.packageManager})`).join(", "));
+    signals.push(`Lockfiles: ${context.lockfiles.map((l) => `${l.file} (${l.packageManager})`).join(", ")}`);
   }
   if (context.packageFiles.length > 0) {
-    signals.push("Package files: " + context.packageFiles.join(", "));
+    signals.push(`Package files: ${context.packageFiles.join(", ")}`);
   }
   if (context.toolConfigs.length > 0) {
-    signals.push("Tool configs: " + context.toolConfigs.join(", "));
+    signals.push(`Tool configs: ${context.toolConfigs.join(", ")}`);
   }
 
   const prompt = `The agent name "${conflictingName}" already exists. Suggest a single more-specific kebab-case agent name ending in "-craftsperson" that distinguishes this project based on its toolchain.

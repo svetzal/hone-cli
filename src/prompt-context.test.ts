@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { renderProjectContextSections } from "./prompt-context.ts";
 import type { ProjectContext } from "./derive.ts";
+import { renderProjectContextSections } from "./prompt-context.ts";
 
 const emptyContext: ProjectContext = {
   directoryTree: "",

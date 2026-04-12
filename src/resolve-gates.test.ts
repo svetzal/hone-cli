@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadOverrideGates, resolveGates } from "./resolve-gates.ts";
-import { join } from "path";
-import { mkdtemp, writeFile, rm } from "fs/promises";
-import { tmpdir } from "os";
 import type { ClaudeInvoker } from "./types.ts";
 
 describe("loadOverrideGates", () => {
@@ -22,10 +22,10 @@ describe("loadOverrideGates", () => {
       const gates = await loadOverrideGates(dir);
 
       expect(gates).not.toBeNull();
-      expect(gates!.length).toBe(2);
-      expect(gates![0]!.command).toBe("bun test");
-      expect(gates![1]!.name).toBe("typecheck");
-      expect(gates![1]!.required).toBe(true); // defaults to true
+      expect(gates?.length).toBe(2);
+      expect(gates?.[0]?.command).toBe("bun test");
+      expect(gates?.[1]?.name).toBe("typecheck");
+      expect(gates?.[1]?.required).toBe(true); // defaults to true
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -61,9 +61,7 @@ describe("resolveGates", () => {
       await writeFile(
         join(dir, ".hone-gates.json"),
         JSON.stringify({
-          gates: [
-            { name: "test", command: "bun test", required: true },
-          ],
+          gates: [{ name: "test", command: "bun test", required: true }],
         }),
       );
 
@@ -72,16 +70,10 @@ describe("resolveGates", () => {
         throw new Error("Should not be called");
       };
 
-      const gates = await resolveGates(
-        dir,
-        "some-agent",
-        "haiku",
-        "Read Glob Grep",
-        mockClaude,
-      );
+      const gates = await resolveGates(dir, "some-agent", "haiku", "Read Glob Grep", mockClaude);
 
       expect(gates.length).toBe(1);
-      expect(gates[0]!.command).toBe("bun test");
+      expect(gates[0]?.command).toBe("bun test");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -94,18 +86,10 @@ describe("resolveGates", () => {
       // Since the agent won't actually exist, extractGatesFromAgent will return []
       // because readAgentContent returns null for nonexistent agents
       const mockClaude: ClaudeInvoker = async () => {
-        return JSON.stringify([
-          { name: "test", command: "pytest", required: true },
-        ]);
+        return JSON.stringify([{ name: "test", command: "pytest", required: true }]);
       };
 
-      const gates = await resolveGates(
-        dir,
-        "nonexistent-agent",
-        "haiku",
-        "Read Glob Grep",
-        mockClaude,
-      );
+      const gates = await resolveGates(dir, "nonexistent-agent", "haiku", "Read Glob Grep", mockClaude);
 
       // Agent doesn't exist, so extractGatesFromAgent returns []
       expect(gates).toEqual([]);
@@ -119,13 +103,7 @@ describe("resolveGates", () => {
     try {
       const mockClaude: ClaudeInvoker = async () => "no gates found";
 
-      const gates = await resolveGates(
-        dir,
-        "nonexistent-agent",
-        "haiku",
-        "Read Glob Grep",
-        mockClaude,
-      );
+      const gates = await resolveGates(dir, "nonexistent-agent", "haiku", "Read Glob Grep", mockClaude);
 
       expect(gates).toEqual([]);
     } finally {

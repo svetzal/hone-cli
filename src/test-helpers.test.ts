@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractPrompt, createIterateMock, createDeriveMock, createMixMock } from "./test-helpers.ts";
+import { createDeriveMock, createIterateMock, createMixMock, extractPrompt } from "./test-helpers.ts";
 
 describe("extractPrompt", () => {
   test("extracts prompt after -p flag", () => {
@@ -29,7 +29,10 @@ describe("createIterateMock", () => {
 
   test("dispatches name stage", async () => {
     const mock = createIterateMock({
-      assess: "a", name: "name result", plan: "p", execute: "e",
+      assess: "a",
+      name: "name result",
+      plan: "p",
+      execute: "e",
     });
     const result = await mock(["-p", "Output ONLY a short kebab-case..."]);
     expect(result).toBe("name result");
@@ -37,7 +40,10 @@ describe("createIterateMock", () => {
 
   test("dispatches plan stage", async () => {
     const mock = createIterateMock({
-      assess: "a", name: "n", plan: "plan result", execute: "e",
+      assess: "a",
+      name: "n",
+      plan: "plan result",
+      execute: "e",
     });
     const result = await mock(["-p", "Based on the following assessment..."]);
     expect(result).toBe("plan result");
@@ -45,7 +51,10 @@ describe("createIterateMock", () => {
 
   test("dispatches execute stage", async () => {
     const mock = createIterateMock({
-      assess: "a", name: "n", plan: "p", execute: "execute result",
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "execute result",
     });
     const result = await mock(["-p", "Execute the following plan..."]);
     expect(result).toBe("execute result");
@@ -53,7 +62,10 @@ describe("createIterateMock", () => {
 
   test("dispatches retry as execute stage", async () => {
     const mock = createIterateMock({
-      assess: "a", name: "n", plan: "p", execute: "retry result",
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "retry result",
     });
     const result = await mock(["-p", "The previous execution introduced..."]);
     expect(result).toBe("retry result");
@@ -95,10 +107,14 @@ describe("createMixMock", () => {
     let edited = "";
     const mock = createMixMock(
       { principles: "principles result", gates: "gates result" },
-      { onEdit: (content) => { edited = content; } },
+      {
+        onEdit: (content) => {
+          edited = content;
+        },
+      },
     );
     const result = await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
-    expect(result).toBe("");  // stdout ignored for edit stages
+    expect(result).toBe(""); // stdout ignored for edit stages
     expect(edited).toBe("principles result");
   });
 
@@ -106,10 +122,14 @@ describe("createMixMock", () => {
     let edited = "";
     const mock = createMixMock(
       { principles: "principles result", gates: "gates result" },
-      { onEdit: (content) => { edited = content; } },
+      {
+        onEdit: (content) => {
+          edited = content;
+        },
+      },
     );
     const result = await mock(["-p", "You are augmenting a local agent's quality assurance..."]);
-    expect(result).toBe("");  // stdout ignored for edit stages
+    expect(result).toBe(""); // stdout ignored for edit stages
     expect(edited).toBe("gates result");
   });
 
@@ -123,10 +143,7 @@ describe("createMixMock", () => {
 
   test("calls onCall callback with args", async () => {
     const calls: string[][] = [];
-    const mock = createMixMock(
-      { principles: "p" },
-      { onCall: (args) => calls.push(args) },
-    );
+    const mock = createMixMock({ principles: "p" }, { onCall: (args) => calls.push(args) });
     await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
     expect(calls.length).toBe(1);
   });

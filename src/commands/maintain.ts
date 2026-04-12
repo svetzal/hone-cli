@@ -1,11 +1,11 @@
-import { loadConfig } from "../config.ts";
-import { maintain } from "../maintain.ts";
 import { createClaudeInvoker } from "../claude.ts";
-import type { ParsedArgs, HoneConfig, PipelineContext } from "../types.ts";
-import { writeJson, createProgressCallback } from "../output.ts";
-import { applySharedFlags } from "./shared-flags.ts";
-import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
+import { maintain } from "../maintain.ts";
+import { createProgressCallback, writeJson } from "../output.ts";
+import type { HoneConfig, ParsedArgs, PipelineContext } from "../types.ts";
+import { resolveCommandArgs } from "./resolve-command-args.ts";
+import { applySharedFlags } from "./shared-flags.ts";
 
 export function applyMaintainFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   return applySharedFlags(config, flags);
