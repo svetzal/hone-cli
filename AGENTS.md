@@ -220,6 +220,13 @@ structured facts (what happened, severity, outcome), while audit files hold the
 unstructured detail (full assessment prose, execution logs). Events reference audit
 files by relative path in the `auditFile` field.
 
+## Branching Workflow
+
+Trunk-based development. `main` is the only long-lived branch. All work lands on
+`main` via direct commit. Feature branches are not pushed to `origin`. Pull
+requests are not used. Short-lived local working branches (e.g. hopper worktrees)
+are merged to `main` and deleted locally before work is considered complete.
+
 ## Client Code
 
 `mojility` — this is internal Mojility tooling.
