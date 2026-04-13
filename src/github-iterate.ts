@@ -14,7 +14,7 @@ import {
   listHoneIssues,
   parseIssueBody,
 } from "./github.ts";
-import { buildRetryPrompt, runAssessStage, runNameStage, runPlanStage } from "./iterate.ts";
+import { buildExecutePrompt, buildRetryPrompt, runAssessStage, runNameStage, runPlanStage } from "./iterate.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { runPreamble } from "./preamble.ts";
 import { resolveGates } from "./resolve-gates.ts";
@@ -78,6 +78,86 @@ export async function closeRejectedIssues(
   return closed;
 }
 
+async function executeSingleIssue(
+  issue: HoneIssue,
+  ctx: PipelineContext,
+  opts: {
+    skipGates: boolean;
+    gateRunner: GateRunner;
+    gates: GateDefinition[];
+    ghRunner: CommandRunner;
+  },
+): Promise<ExecutionOutcome | null> {
+  const { skipGates, gateRunner, gates, ghRunner } = opts;
+  const { folder, onProgress } = ctx;
+
+  onProgress("execute", `Processing approved issue #${issue.number}: ${issue.title}`);
+
+  const proposal = parseIssueBody(issue.body);
+  if (!proposal) {
+    onProgress("execute", `Could not parse proposal from issue #${issue.number}, skipping.`);
+    return null;
+  }
+
+  const auditDir = await ensureAuditDir(folder, ctx.config.auditDir);
+  const name = proposal.name || `github-${issue.number}`;
+
+  const outcome: ExecutionOutcome = {
+    issueNumber: issue.number,
+    success: false,
+    commitHash: null,
+    gatesResult: null,
+    retries: 0,
+  };
+
+  try {
+    // Each issue may have been proposed by a different agent
+    const proposalCtx: PipelineContext = { ...ctx, agent: proposal.agent };
+    const execResult = await runExecuteWithVerify(
+      proposalCtx,
+      buildExecutePrompt(folder, proposal.assessment, proposal.plan),
+      {
+        skipGates,
+        gateRunner,
+        gates,
+        auditDir,
+        name,
+        buildRetryPrompt: (failedGates, priorAttempts) =>
+          buildRetryPrompt(folder, proposal.plan, proposal.assessment, failedGates, priorAttempts),
+      },
+    );
+
+    outcome.gatesResult = execResult.gatesResult;
+    outcome.retries = execResult.retries;
+    outcome.success = execResult.success;
+
+    if (execResult.success) {
+      const commitHash = await gitCommit(folder, `[Hone] ${issue.title} (#${issue.number})`, ghRunner);
+      outcome.commitHash = commitHash;
+      await closeIssueWithComment(folder, issue.number, `Completed successfully.\n\nCommit: ${commitHash}`, ghRunner);
+      onProgress("execute", `Issue #${issue.number} completed: ${commitHash}`);
+    } else {
+      const gateOutput =
+        execResult.gatesResult?.results
+          .filter((r) => !r.passed && r.required)
+          .map((r) => `**${r.name}:** ${r.output.slice(0, 500)}`)
+          .join("\n\n") ?? "Unknown failure";
+      await closeIssueWithComment(
+        folder,
+        issue.number,
+        `Failed: quality gates did not pass after ${execResult.retries} retries.\n\n${gateOutput}`,
+        ghRunner,
+      );
+      onProgress("execute", `Issue #${issue.number} failed gate verification.`);
+    }
+  } catch (err) {
+    outcome.error = err instanceof Error ? err.message : String(err);
+    onProgress("execute", `Issue #${issue.number} failed: ${outcome.error}`);
+  }
+
+  return outcome;
+}
+
 /**
  * Phase 2: Execute issues that the repo owner has thumbs-upped.
  * Processes oldest first, commits on success, closes with result.
@@ -94,91 +174,18 @@ export async function executeApprovedIssues(
     ghRunner: CommandRunner;
   },
 ): Promise<ExecutionOutcome[]> {
-  const { skipGates, gateRunner, gates, ghRunner } = opts;
-  const { folder, onProgress } = ctx;
-  const executed: ExecutionOutcome[] = [];
-
   const approvedIssues = issues
     .filter((issue) => issue.reactions.thumbsUp.includes(owner))
     .filter((issue) => !closedIssueNumbers.includes(issue.number))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
+  const executed: ExecutionOutcome[] = [];
   for (const issue of approvedIssues) {
-    onProgress("execute", `Processing approved issue #${issue.number}: ${issue.title}`);
-
-    const proposal = parseIssueBody(issue.body);
-    if (!proposal) {
-      onProgress("execute", `Could not parse proposal from issue #${issue.number}, skipping.`);
-      continue;
+    const outcome = await executeSingleIssue(issue, ctx, opts);
+    if (outcome !== null) {
+      executed.push(outcome);
     }
-
-    const auditDir = await ensureAuditDir(folder, ctx.config.auditDir);
-    const name = proposal.name || `github-${issue.number}`;
-
-    const outcome: ExecutionOutcome = {
-      issueNumber: issue.number,
-      success: false,
-      commitHash: null,
-      gatesResult: null,
-      retries: 0,
-    };
-
-    try {
-      const executePrompt = [
-        `Execute the following plan to improve the project in ${folder}.`,
-        "",
-        "Why:",
-        proposal.assessment,
-        "",
-        "Plan:",
-        proposal.plan,
-      ].join("\n");
-
-      // Each issue may have been proposed by a different agent
-      const proposalCtx: PipelineContext = { ...ctx, agent: proposal.agent };
-      const execResult = await runExecuteWithVerify(proposalCtx, executePrompt, {
-        skipGates,
-        gateRunner,
-        gates,
-        auditDir,
-        name,
-        buildRetryPrompt: (failedGates, priorAttempts) =>
-          buildRetryPrompt(folder, proposal.plan, proposal.assessment, failedGates, priorAttempts),
-      });
-
-      outcome.gatesResult = execResult.gatesResult;
-      outcome.retries = execResult.retries;
-      outcome.success = execResult.success;
-
-      if (execResult.success) {
-        const commitHash = await gitCommit(folder, `[Hone] ${issue.title} (#${issue.number})`, ghRunner);
-        outcome.commitHash = commitHash;
-
-        await closeIssueWithComment(folder, issue.number, `Completed successfully.\n\nCommit: ${commitHash}`, ghRunner);
-        onProgress("execute", `Issue #${issue.number} completed: ${commitHash}`);
-      } else {
-        const gateOutput =
-          execResult.gatesResult?.results
-            .filter((r) => !r.passed && r.required)
-            .map((r) => `**${r.name}:** ${r.output.slice(0, 500)}`)
-            .join("\n\n") ?? "Unknown failure";
-
-        await closeIssueWithComment(
-          folder,
-          issue.number,
-          `Failed: quality gates did not pass after ${execResult.retries} retries.\n\n${gateOutput}`,
-          ghRunner,
-        );
-        onProgress("execute", `Issue #${issue.number} failed gate verification.`);
-      }
-    } catch (err) {
-      outcome.error = err instanceof Error ? err.message : String(err);
-      onProgress("execute", `Issue #${issue.number} failed: ${outcome.error}`);
-    }
-
-    executed.push(outcome);
   }
-
   return executed;
 }
 

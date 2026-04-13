@@ -13,10 +13,13 @@ import { triage as runTriage } from "./triage.ts";
 import type {
   AttemptRecord,
   CharterCheckerFn,
+  CharterCheckResult,
   GateResolverFn,
   GateRunner,
   IterationResult,
   PipelineContext,
+  StructuredAssessment,
+  TriageResult,
   TriageRunnerFn,
 } from "./types.ts";
 
@@ -66,6 +69,18 @@ export function buildRetryPrompt(
     currentFailedGates,
     priorAttempts,
   );
+}
+
+export function buildExecutePrompt(folder: string, assessment: string, plan: string): string {
+  return [
+    `Execute the following plan to improve the project in ${folder}.`,
+    "",
+    "Why:",
+    assessment,
+    "",
+    "Plan:",
+    plan,
+  ].join("\n");
 }
 
 // --- Extracted stage functions ---
@@ -139,6 +154,100 @@ export async function runPlanStage(ctx: PipelineContext, assessment: string): Pr
   return claude(planArgs);
 }
 
+// --- Private result builders ---
+
+function buildSkippedResult(overrides: Partial<IterationResult>): IterationResult {
+  return {
+    name: "",
+    assessment: "",
+    plan: "",
+    execution: "",
+    gatesResult: null,
+    retries: 0,
+    success: false,
+    structuredAssessment: null,
+    triageResult: null,
+    charterCheck: null,
+    skippedReason: null,
+    headline: null,
+    summary: null,
+    ...overrides,
+  };
+}
+
+function buildCompletedResult(fields: Omit<IterationResult, "skippedReason">): IterationResult {
+  return { ...fields, skippedReason: null };
+}
+
+// --- Private pipeline stage: assess + name + triage ---
+
+type AssessAndTriageSuccess = {
+  rejected: false;
+  name: string;
+  assessment: string;
+  structuredAssessment: StructuredAssessment | null;
+  triageResult: TriageResult | null;
+};
+
+type AssessAndTriageRejected = {
+  rejected: true;
+  result: IterationResult;
+};
+
+async function runAssessAndTriage(
+  ctx: PipelineContext,
+  auditDir: string,
+  charterCheck: CharterCheckResult | null,
+  skipTriage: boolean,
+  triageRunner: TriageRunnerFn,
+): Promise<AssessAndTriageSuccess | AssessAndTriageRejected> {
+  const { config, claude, onProgress, folder, agent } = ctx;
+
+  // --- Stage 1: Assess ---
+  onProgress("assess", `Assessing ${folder} with ${agent}...`);
+  const assessment = await runAssessStage(ctx);
+  const structuredAssessment = parseAssessment(assessment);
+
+  // --- Stage 2: Name ---
+  onProgress("name", "Generating filename...");
+  const name = await runNameStage(ctx, assessment);
+
+  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
+  onProgress("assess", `Saved: ${assessPath}`);
+
+  // --- Stage 3: Triage ---
+  if (!skipTriage) {
+    onProgress("triage", "Running triage...");
+    const triageResult = await triageRunner(
+      structuredAssessment,
+      config.severityThreshold,
+      config.models.triage,
+      config.readOnlyTools,
+      claude,
+    );
+
+    if (!triageResult.accepted) {
+      onProgress("triage", `Triage rejected: ${triageResult.reason}`);
+      return {
+        rejected: true,
+        result: buildSkippedResult({
+          name,
+          assessment,
+          success: true,
+          structuredAssessment,
+          triageResult,
+          charterCheck,
+          skippedReason: `Triage: ${triageResult.reason}`,
+        }),
+      };
+    }
+    onProgress("triage", "Triage accepted.");
+    return { rejected: false, name, assessment, structuredAssessment, triageResult };
+  }
+
+  return { rejected: false, name, assessment, structuredAssessment, triageResult: null };
+}
+
 // --- Main iterate function ---
 
 export async function iterate(opts: IterateOptions): Promise<IterationResult> {
@@ -153,7 +262,7 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
     triageRunner = runTriage,
   } = opts;
 
-  const { agent, folder, config, claude, onProgress } = ctx;
+  const { folder, config, onProgress } = ctx;
 
   // --- Run preamble (charter check + preflight gate validation) ---
   const preambleResult = await runPreamble({
@@ -166,21 +275,11 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
   });
 
   if (!preambleResult.passed) {
-    return {
-      name: "",
-      assessment: "",
-      plan: "",
-      execution: "",
+    return buildSkippedResult({
       gatesResult: preambleResult.gatesResult ?? null,
-      retries: 0,
-      success: false,
-      structuredAssessment: null,
-      triageResult: null,
       charterCheck: preambleResult.charterCheck,
       skippedReason: preambleResult.failureReason,
-      headline: null,
-      summary: null,
-    };
+    });
   }
 
   const charterCheckResult = preambleResult.charterCheck;
@@ -188,51 +287,13 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
 
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
-  // --- Stage 1: Assess ---
-  onProgress("assess", `Assessing ${folder} with ${agent}...`);
-  const assessment = await runAssessStage(ctx);
-  const structuredAssessment = parseAssessment(assessment);
-
-  // --- Stage 2: Name ---
-  onProgress("name", "Generating filename...");
-  const name = await runNameStage(ctx, assessment);
-
-  // Save assessment
-  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
-  onProgress("assess", `Saved: ${assessPath}`);
-
-  // --- Stage 3: Triage ---
-  let triageResult = null;
-  if (!skipTriage) {
-    onProgress("triage", "Running triage...");
-    triageResult = await triageRunner(
-      structuredAssessment,
-      config.severityThreshold,
-      config.models.triage,
-      config.readOnlyTools,
-      claude,
-    );
-
-    if (!triageResult.accepted) {
-      onProgress("triage", `Triage rejected: ${triageResult.reason}`);
-      return {
-        name,
-        assessment,
-        plan: "",
-        execution: "",
-        gatesResult: null,
-        retries: 0,
-        success: true, // Not a failure — codebase is in good shape
-        structuredAssessment,
-        triageResult,
-        charterCheck: charterCheckResult,
-        skippedReason: `Triage: ${triageResult.reason}`,
-        headline: null,
-        summary: null,
-      };
-    }
-    onProgress("triage", "Triage accepted.");
+  // --- Stages 1–3: Assess, Name, Triage ---
+  const assessResult = await runAssessAndTriage(ctx, auditDir, charterCheckResult, skipTriage, triageRunner);
+  if (assessResult.rejected) {
+    return assessResult.result;
   }
+
+  const { name, assessment, structuredAssessment, triageResult } = assessResult;
 
   // --- Stage 4: Plan ---
   onProgress("plan", "Creating plan...");
@@ -242,17 +303,7 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
   onProgress("plan", `Saved: ${planPath}`);
 
   // --- Stage 5: Execute + Verify ---
-  const executePrompt = [
-    `Execute the following plan to improve the project in ${folder}.`,
-    "",
-    "Why:",
-    assessment,
-    "",
-    "Plan:",
-    plan,
-  ].join("\n");
-
-  const execResult = await runExecuteWithVerify(ctx, executePrompt, {
+  const execResult = await runExecuteWithVerify(ctx, buildExecutePrompt(folder, assessment, plan), {
     skipGates,
     gateRunner,
     gates: preflightGates,
@@ -285,7 +336,7 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
 
   onProgress("done", execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`);
 
-  return {
+  return buildCompletedResult({
     name,
     assessment,
     plan,
@@ -296,8 +347,7 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
     structuredAssessment,
     triageResult,
     charterCheck: charterCheckResult,
-    skippedReason: null,
     headline,
     summary,
-  };
+  });
 }
