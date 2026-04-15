@@ -5,63 +5,7 @@ import { join } from "node:path";
 import { CliError } from "../errors.ts";
 import { createDeriveMock, extractPrompt } from "../test-helpers.ts";
 import type { ParsedArgs } from "../types.ts";
-import { deriveCommand, updateFrontmatterName } from "./derive.ts";
-
-// ---------------------------------------------------------------------------
-// updateFrontmatterName — pure function, no side effects
-// ---------------------------------------------------------------------------
-
-describe("updateFrontmatterName", () => {
-  it("replaces an existing name field in valid frontmatter", () => {
-    const content = `---
-name: old-craftsperson
-description: An old agent
----
-
-# Old Craftsperson`;
-
-    const result = updateFrontmatterName(content, "new-craftsperson");
-
-    expect(result).toContain("name: new-craftsperson");
-    expect(result).not.toContain("name: old-craftsperson");
-    // Rest of content is preserved
-    expect(result).toContain("description: An old agent");
-    expect(result).toContain("# Old Craftsperson");
-  });
-
-  it("returns content unchanged when there is no frontmatter", () => {
-    const content = "# My Agent\n\nSome content without frontmatter.";
-
-    const result = updateFrontmatterName(content, "new-name");
-
-    expect(result).toBe(content);
-  });
-
-  it("returns content unchanged when frontmatter has no name field", () => {
-    const content = `---
-description: No name field here
----
-
-# Agent Body`;
-
-    const result = updateFrontmatterName(content, "new-name");
-
-    // No name field to replace — content stays the same
-    expect(result).toBe(content);
-  });
-
-  it("handles frontmatter-only content", () => {
-    const content = `---
-name: original
-description: desc
----`;
-
-    const result = updateFrontmatterName(content, "replaced");
-
-    expect(result).toContain("name: replaced");
-    expect(result).not.toContain("name: original");
-  });
-});
+import { deriveCommand } from "./derive.ts";
 
 // ---------------------------------------------------------------------------
 // deriveCommand — happy path with injected deps
