@@ -14,8 +14,7 @@ import {
   listHoneIssues,
   parseIssueBody,
 } from "./github.ts";
-import { buildExecutePrompt, buildRetryPrompt, runAssessStage, runNameStage, runPlanStage } from "./iterate.ts";
-import { parseAssessment } from "./parse-assessment.ts";
+import { buildExecutePrompt, buildRetryPrompt, runPlanStage, runProposalPipeline } from "./iterate.ts";
 import { runPreamble } from "./preamble.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { triage as runTriageDefault } from "./triage.ts";
@@ -203,7 +202,7 @@ export async function proposeImprovements(
   },
 ): Promise<{ proposed: number[]; skippedTriage: number }> {
   const { proposals, skipTriage, ghRunner, triageRunner } = opts;
-  const { folder, config, claude, onProgress } = ctx;
+  const { folder, config, onProgress } = ctx;
   const proposed: number[] = [];
   let skippedTriage = 0;
 
@@ -211,31 +210,26 @@ export async function proposeImprovements(
   const auditDir = await ensureAuditDir(folder, config.auditDir);
 
   for (let i = 0; i < proposals; i++) {
-    onProgress("propose", `Proposal ${i + 1}/${proposals}: assessing...`);
+    const outcome = await runProposalPipeline(ctx, auditDir, {
+      skipTriage,
+      triageRunner,
+      progress: {
+        onAssess: () => onProgress("propose", `Proposal ${i + 1}/${proposals}: assessing...`),
+        onAssessSaved: () => {},
+        onName: () => {},
+        onTriageStart: () => onProgress("propose", `Proposal ${i + 1}/${proposals}: triaging...`),
+        onTriageAccepted: () => {},
+        onTriageRejected: (reason) =>
+          onProgress("propose", `Proposal ${i + 1}/${proposals}: triage rejected — ${reason}`),
+      },
+    });
 
-    const assessment = await runAssessStage(ctx);
-    const structured = parseAssessment(assessment);
-    const name = await runNameStage(ctx, assessment);
-
-    await saveStageOutput(auditDir, name, "", assessment);
-
-    // Triage
-    if (!skipTriage) {
-      onProgress("propose", `Proposal ${i + 1}/${proposals}: triaging...`);
-      const triageResult = await triageRunner(
-        structured,
-        config.severityThreshold,
-        config.models.triage,
-        config.readOnlyTools,
-        claude,
-      );
-
-      if (!triageResult.accepted) {
-        onProgress("propose", `Proposal ${i + 1}/${proposals}: triage rejected — ${triageResult.reason}`);
-        skippedTriage++;
-        continue;
-      }
+    if (outcome.rejected) {
+      skippedTriage++;
+      continue;
     }
+
+    const { name, assessment, structuredAssessment: structured } = outcome;
 
     // Plan
     onProgress("propose", `Proposal ${i + 1}/${proposals}: planning...`);
@@ -248,11 +242,11 @@ export async function proposeImprovements(
       assessment,
       plan,
       agent: ctx.agent,
-      severity: structured.severity,
-      principle: structured.principle,
+      severity: structured?.severity ?? 0,
+      principle: structured?.principle ?? "",
     });
 
-    const issueTitle = `[Hone] ${structured.principle}: ${name}`;
+    const issueTitle = `[Hone] ${structured?.principle ?? ""}: ${name}`;
     const issueNumber = await createHoneIssue(folder, issueTitle, issueBody, ghRunner);
 
     onProgress("propose", `Created issue #${issueNumber}: ${issueTitle}`);

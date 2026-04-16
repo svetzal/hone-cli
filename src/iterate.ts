@@ -154,6 +154,78 @@ export async function runPlanStage(ctx: PipelineContext, assessment: string): Pr
   return claude(planArgs);
 }
 
+// --- Shared pipeline types ---
+
+export type ProposalPipelineOutcome =
+  | {
+      rejected: false;
+      name: string;
+      assessment: string;
+      structuredAssessment: StructuredAssessment | null;
+      triageResult: TriageResult | null;
+    }
+  | {
+      rejected: true;
+      reason: string;
+      name: string;
+      assessment: string;
+      structuredAssessment: StructuredAssessment | null;
+      triageResult: TriageResult | null;
+    };
+
+export interface ProposalProgress {
+  onAssess(msg: string): void;
+  onAssessSaved(path: string): void;
+  onName(msg: string): void;
+  onTriageStart(): void;
+  onTriageAccepted(): void;
+  onTriageRejected(reason: string): void;
+}
+
+// --- Shared proposal pipeline orchestrator ---
+
+export async function runProposalPipeline(
+  ctx: PipelineContext,
+  auditDir: string,
+  opts: { skipTriage: boolean; triageRunner: TriageRunnerFn; progress: ProposalProgress },
+): Promise<ProposalPipelineOutcome> {
+  const { config, claude } = ctx;
+  const { skipTriage, triageRunner, progress } = opts;
+
+  // Stage: Assess
+  progress.onAssess(`Assessing ${ctx.folder} with ${ctx.agent}...`);
+  const assessment = await runAssessStage(ctx);
+  const structuredAssessment = parseAssessment(assessment);
+
+  // Stage: Name
+  progress.onName("Generating filename...");
+  const name = await runNameStage(ctx, assessment);
+
+  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
+  progress.onAssessSaved(assessPath);
+
+  // Stage: Triage
+  if (!skipTriage) {
+    progress.onTriageStart();
+    const triageResult = await triageRunner(
+      structuredAssessment,
+      config.severityThreshold,
+      config.models.triage,
+      config.readOnlyTools,
+      claude,
+    );
+
+    if (!triageResult.accepted) {
+      progress.onTriageRejected(triageResult.reason);
+      return { rejected: true, reason: triageResult.reason, name, assessment, structuredAssessment, triageResult };
+    }
+    progress.onTriageAccepted();
+    return { rejected: false, name, assessment, structuredAssessment, triageResult };
+  }
+
+  return { rejected: false, name, assessment, structuredAssessment, triageResult: null };
+}
+
 // --- Private result builders ---
 
 function buildSkippedResult(overrides: Partial<IterationResult>): IterationResult {
@@ -201,51 +273,43 @@ async function runAssessAndTriage(
   skipTriage: boolean,
   triageRunner: TriageRunnerFn,
 ): Promise<AssessAndTriageSuccess | AssessAndTriageRejected> {
-  const { config, claude, onProgress, folder, agent } = ctx;
+  const { onProgress } = ctx;
 
-  // --- Stage 1: Assess ---
-  onProgress("assess", `Assessing ${folder} with ${agent}...`);
-  const assessment = await runAssessStage(ctx);
-  const structuredAssessment = parseAssessment(assessment);
+  const outcome = await runProposalPipeline(ctx, auditDir, {
+    skipTriage,
+    triageRunner,
+    progress: {
+      onAssess: (msg) => onProgress("assess", msg),
+      onAssessSaved: (path) => onProgress("assess", `Saved: ${path}`),
+      onName: (msg) => onProgress("name", msg),
+      onTriageStart: () => onProgress("triage", "Running triage..."),
+      onTriageAccepted: () => onProgress("triage", "Triage accepted."),
+      onTriageRejected: (reason) => onProgress("triage", `Triage rejected: ${reason}`),
+    },
+  });
 
-  // --- Stage 2: Name ---
-  onProgress("name", "Generating filename...");
-  const name = await runNameStage(ctx, assessment);
-
-  const assessPath = await saveStageOutput(auditDir, name, "", assessment);
-  onProgress("assess", `Saved: ${assessPath}`);
-
-  // --- Stage 3: Triage ---
-  if (!skipTriage) {
-    onProgress("triage", "Running triage...");
-    const triageResult = await triageRunner(
-      structuredAssessment,
-      config.severityThreshold,
-      config.models.triage,
-      config.readOnlyTools,
-      claude,
-    );
-
-    if (!triageResult.accepted) {
-      onProgress("triage", `Triage rejected: ${triageResult.reason}`);
-      return {
-        rejected: true,
-        result: buildSkippedResult({
-          name,
-          assessment,
-          success: true,
-          structuredAssessment,
-          triageResult,
-          charterCheck,
-          skippedReason: `Triage: ${triageResult.reason}`,
-        }),
-      };
-    }
-    onProgress("triage", "Triage accepted.");
-    return { rejected: false, name, assessment, structuredAssessment, triageResult };
+  if (outcome.rejected) {
+    return {
+      rejected: true,
+      result: buildSkippedResult({
+        name: outcome.name,
+        assessment: outcome.assessment,
+        success: true,
+        structuredAssessment: outcome.structuredAssessment,
+        triageResult: outcome.triageResult,
+        charterCheck,
+        skippedReason: `Triage: ${outcome.reason}`,
+      }),
+    };
   }
 
-  return { rejected: false, name, assessment, structuredAssessment, triageResult: null };
+  return {
+    rejected: false,
+    name: outcome.name,
+    assessment: outcome.assessment,
+    structuredAssessment: outcome.structuredAssessment,
+    triageResult: outcome.triageResult,
+  };
 }
 
 // --- Main iterate function ---
