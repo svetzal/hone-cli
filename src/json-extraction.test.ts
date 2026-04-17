@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { extractJsonFromLlmOutput, findBareJsonObject } from "./json-extraction.ts";
+import {
+  extractJsonArrayFromLlmOutput,
+  extractJsonFromLlmOutput,
+  findBareJsonArray,
+  findBareJsonObject,
+} from "./json-extraction.ts";
 
 describe("extractJsonFromLlmOutput", () => {
   describe("fenced code block extraction", () => {
@@ -112,6 +117,89 @@ describe("extractJsonFromLlmOutput", () => {
       const raw = '{ "busyWork": true, "reason": null }';
       const result = extractJsonFromLlmOutput(raw);
       expect(result).toEqual({ busyWork: true, reason: null });
+    });
+  });
+});
+
+describe("findBareJsonArray", () => {
+  test("finds a simple array", () => {
+    expect(findBareJsonArray("[1, 2, 3]")).toBe("[1, 2, 3]");
+  });
+
+  test("finds array with surrounding text", () => {
+    expect(findBareJsonArray("prefix [1, 2] suffix")).toBe("[1, 2]");
+  });
+
+  test("finds nested array correctly", () => {
+    expect(findBareJsonArray("[[1, 2], [3, 4]]")).toBe("[[1, 2], [3, 4]]");
+  });
+
+  test("handles brackets inside string values", () => {
+    expect(findBareJsonArray('["use [] for arrays"]')).toBe('["use [] for arrays"]');
+  });
+
+  test("returns null when no opening bracket", () => {
+    expect(findBareJsonArray("no json here")).toBeNull();
+  });
+
+  test("returns null when brackets are unbalanced", () => {
+    expect(findBareJsonArray("[1, 2, 3")).toBeNull();
+  });
+});
+
+describe("extractJsonArrayFromLlmOutput", () => {
+  describe("fenced code block extraction", () => {
+    test("extracts array from ```json fenced block", () => {
+      const raw = "```json\n[1, 2, 3]\n```";
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([1, 2, 3]);
+    });
+
+    test("extracts array from ``` fenced block without json tag", () => {
+      const raw = '```\n["a", "b"]\n```';
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual(["a", "b"]);
+    });
+
+    test("extracts array from fenced block with surrounding text", () => {
+      const raw = 'Here are the gates:\n```json\n[{"name":"test"}]\n```\nDone.';
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([{ name: "test" }]);
+    });
+  });
+
+  describe("bare array extraction", () => {
+    test("extracts bare JSON array", () => {
+      expect(extractJsonArrayFromLlmOutput("[1, 2, 3]")).toEqual([1, 2, 3]);
+    });
+
+    test("extracts bare array with surrounding text", () => {
+      const raw = "Some text before [1, 2] and after.";
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([1, 2]);
+    });
+
+    test("handles nested arrays and objects", () => {
+      const raw = '[{"name":"test","command":"bun test"}]';
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([{ name: "test", command: "bun test" }]);
+    });
+  });
+
+  describe("error handling", () => {
+    test("returns null for no JSON content", () => {
+      expect(extractJsonArrayFromLlmOutput("No JSON here at all.")).toBeNull();
+    });
+
+    test("returns null for empty string", () => {
+      expect(extractJsonArrayFromLlmOutput("")).toBeNull();
+    });
+
+    test("returns null for invalid JSON array", () => {
+      expect(extractJsonArrayFromLlmOutput("[not valid json")).toBeNull();
+    });
+
+    test("returns null when only objects are present (not arrays)", () => {
+      expect(extractJsonArrayFromLlmOutput('{"key": "value"}')).toBeNull();
+    });
+
+    test("returns empty array for valid empty array", () => {
+      expect(extractJsonArrayFromLlmOutput("[]")).toEqual([]);
     });
   });
 });

@@ -1,5 +1,6 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { EXTRACTION_PROMPT, parseGatesJson } from "./extract-gates.ts";
+import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
 export type FileReader = (path: string) => Promise<string>;
@@ -122,11 +123,10 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
     });
     try {
       const output = await claude(extractArgs);
-      // Validate output contains a parseable JSON array before trusting it.
-      // parseGatesJson returns [] for both "valid empty" and "malformed" —
-      // this pre-check distinguishes the two.
-      const match = output.match(/\[[\s\S]*\]/);
-      if (match && Array.isArray(JSON.parse(match[0]))) {
+      // extractJsonArrayFromLlmOutput returns null for "no valid array found",
+      // distinguishing it from the [] that parseGatesJson returns for both
+      // "valid empty" and "malformed output".
+      if (extractJsonArrayFromLlmOutput(output) !== null) {
         gates = parseGatesJson(output);
       }
     } catch {

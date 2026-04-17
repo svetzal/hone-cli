@@ -1,5 +1,6 @@
 import { readAgentContent } from "./agents.ts";
 import { buildClaudeArgs } from "./claude.ts";
+import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
 export const EXTRACTION_PROMPT = `You are analyzing a Claude agent definition file. Extract all quality assurance gate commands that this agent expects to be run against a project.
@@ -68,12 +69,8 @@ export async function extractGatesFromAgent(
 
 export function parseGatesJson(raw: string): GateDefinition[] {
   try {
-    // Try to extract JSON array from the output (may have surrounding text)
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-
-    const parsed = JSON.parse(match[0]);
-    if (!Array.isArray(parsed)) return [];
+    const parsed = extractJsonArrayFromLlmOutput(raw);
+    if (!parsed) return [];
 
     return parsed
       .filter(
