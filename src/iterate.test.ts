@@ -58,6 +58,8 @@ describe("iterate", () => {
         skipTriage: true,
       });
 
+      expect(result.kind).toBe("completed");
+      if (result.kind !== "completed") throw new Error("unreachable");
       expect(result.name).toBe("fix-srp-violation");
       expect(result.assessment).toContain("single responsibility");
       expect(result.plan).toContain("Extract class");
@@ -161,6 +163,8 @@ describe("iterate", () => {
         gateResolver: standardGateResolver,
       });
 
+      expect(result.kind).toBe("completed");
+      if (result.kind !== "completed") throw new Error("unreachable");
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
       expect(result.gatesResult?.requiredPassed).toBe(true);
@@ -235,6 +239,8 @@ describe("iterate", () => {
         gateResolver: standardGateResolver,
       });
 
+      expect(result.kind).toBe("completed");
+      if (result.kind !== "completed") throw new Error("unreachable");
       expect(result.success).toBe(true);
       expect(result.retries).toBe(1);
 
@@ -296,6 +302,8 @@ describe("iterate", () => {
         gateResolver: standardGateResolver,
       });
 
+      expect(result.kind).toBe("completed");
+      if (result.kind !== "completed") throw new Error("unreachable");
       expect(result.success).toBe(false);
       expect(result.retries).toBe(2);
       expect(result.headline).toBeNull();
@@ -354,6 +362,8 @@ describe("iterate", () => {
         gateResolver: standardGateResolver,
       });
 
+      expect(result.kind).toBe("completed");
+      if (result.kind !== "completed") throw new Error("unreachable");
       expect(result.success).toBe(true);
       expect(result.retries).toBe(0);
       expect(result.gatesResult?.allPassed).toBe(false);
@@ -471,11 +481,11 @@ describe("iterate", () => {
         gateResolver: standardGateResolver,
       });
 
+      expect(result.kind).toBe("skipped");
+      if (result.kind !== "skipped") throw new Error("unreachable");
       expect(result.success).toBe(false);
       expect(result.skippedReason).toContain("Preflight failed");
       expect(result.gatesResult?.requiredPassed).toBe(false);
-      expect(result.headline).toBeNull();
-      expect(result.summary).toBeNull();
       expect(calls.length).toBe(0); // No Claude calls made
     } finally {
       await rm(dir, { recursive: true });
@@ -535,11 +545,11 @@ describe("iterate", () => {
         charterChecker: failingCharterChecker,
       });
 
+      expect(result.kind).toBe("skipped");
+      if (result.kind !== "skipped") throw new Error("unreachable");
       expect(result.success).toBe(false);
       expect(result.skippedReason).toBe("Charter clarity insufficient");
       expect(result.charterCheck?.passed).toBe(false);
-      expect(result.headline).toBeNull();
-      expect(result.summary).toBeNull();
       expect(calls.length).toBe(0); // No Claude calls made
     } finally {
       await rm(dir, { recursive: true });
@@ -568,14 +578,12 @@ describe("iterate", () => {
         triageRunner: rejectingSeverityTriageRunner,
       });
 
+      expect(result.kind).toBe("skipped");
+      if (result.kind !== "skipped") throw new Error("unreachable");
       expect(result.success).toBe(true); // Triage rejection is a success state
       expect(result.skippedReason).toContain("Triage:");
       expect(result.triageResult?.accepted).toBe(false);
       expect(result.name).toBe("minor-duplication");
-      expect(result.plan).toBe("");
-      expect(result.execution).toBe("");
-      expect(result.headline).toBeNull();
-      expect(result.summary).toBeNull();
       // Only assess + name calls (2 total)
       expect(calls.length).toBe(2);
     } finally {
@@ -605,11 +613,11 @@ describe("iterate", () => {
         triageRunner: rejectingBusyWorkTriageRunner,
       });
 
+      expect(result.kind).toBe("skipped");
+      if (result.kind !== "skipped") throw new Error("unreachable");
       expect(result.success).toBe(true);
       expect(result.skippedReason).toContain("Busy-work");
       expect(result.triageResult?.busyWork).toBe(true);
-      expect(result.headline).toBeNull();
-      expect(result.summary).toBeNull();
       // Only assess + name calls (2 total)
       expect(calls.length).toBe(2);
     } finally {
@@ -640,7 +648,7 @@ describe("iterate", () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.skippedReason).toBeNull();
+      expect(result.kind).toBe("completed");
       expect(result.structuredAssessment).not.toBeNull();
       expect(result.triageResult?.accepted).toBe(true);
       expect(result.charterCheck?.passed).toBe(true);

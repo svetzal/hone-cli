@@ -16,7 +16,10 @@ import type {
   CharterCheckResult,
   GateResolverFn,
   GateRunner,
+  GatesRunResult,
+  IterationCompleted,
   IterationResult,
+  IterationSkipped,
   PipelineContext,
   StructuredAssessment,
   TriageResult,
@@ -228,27 +231,31 @@ export async function runProposalPipeline(
 
 // --- Private result builders ---
 
-function buildSkippedResult(overrides: Partial<IterationResult>): IterationResult {
+function buildSkippedResult(fields: {
+  skippedReason: string;
+  success?: boolean;
+  name?: string;
+  assessment?: string;
+  gatesResult?: GatesRunResult | null;
+  charterCheck?: CharterCheckResult | null;
+  structuredAssessment?: StructuredAssessment | null;
+  triageResult?: TriageResult | null;
+}): IterationSkipped {
   return {
-    name: "",
-    assessment: "",
-    plan: "",
-    execution: "",
-    gatesResult: null,
-    retries: 0,
-    success: false,
-    structuredAssessment: null,
-    triageResult: null,
-    charterCheck: null,
-    skippedReason: null,
-    headline: null,
-    summary: null,
-    ...overrides,
+    kind: "skipped",
+    skippedReason: fields.skippedReason,
+    success: fields.success ?? false,
+    name: fields.name ?? "",
+    assessment: fields.assessment ?? "",
+    gatesResult: fields.gatesResult ?? null,
+    charterCheck: fields.charterCheck ?? null,
+    structuredAssessment: fields.structuredAssessment ?? null,
+    triageResult: fields.triageResult ?? null,
   };
 }
 
-function buildCompletedResult(fields: Omit<IterationResult, "skippedReason">): IterationResult {
-  return { ...fields, skippedReason: null };
+function buildCompletedResult(fields: Omit<IterationCompleted, "kind">): IterationCompleted {
+  return { kind: "completed", ...fields };
 }
 
 // --- Private pipeline stage: assess + name + triage ---
@@ -263,7 +270,7 @@ type AssessAndTriageSuccess = {
 
 type AssessAndTriageRejected = {
   rejected: true;
-  result: IterationResult;
+  result: IterationSkipped;
 };
 
 async function runAssessAndTriage(

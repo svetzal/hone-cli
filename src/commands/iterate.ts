@@ -74,7 +74,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
       skipTriage,
     });
 
-    if (result.skippedReason) {
+    if (result.kind === "skipped") {
       onProgress("result", result.skippedReason);
     }
 

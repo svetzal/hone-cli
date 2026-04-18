@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **`IterationResult` is now a discriminated union** — `IterationResult` splits
+  into `IterationSkipped` (`kind: "skipped"`) and `IterationCompleted`
+  (`kind: "completed"`). The `skippedReason` field moves exclusively to
+  `IterationSkipped`; `plan`, `execution`, `retries`, `headline`, and `summary`
+  move exclusively to `IterationCompleted`. **Breaking change:** the JSON output
+  of `hone iterate --json` now includes a `kind` field and no longer includes a
+  `skippedReason: null` field on completed results.
+
 ## [1.3.2] - 2026-04-11
 
 ### Changed

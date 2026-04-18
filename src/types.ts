@@ -37,7 +37,20 @@ export interface StageOutput {
   content: string;
 }
 
-export interface IterationResult {
+export interface IterationSkipped {
+  kind: "skipped";
+  skippedReason: string;
+  success: boolean;
+  name: string;
+  assessment: string;
+  gatesResult: GatesRunResult | null;
+  charterCheck: CharterCheckResult | null;
+  structuredAssessment: StructuredAssessment | null;
+  triageResult: TriageResult | null;
+}
+
+export interface IterationCompleted {
+  kind: "completed";
   name: string;
   assessment: string;
   plan: string;
@@ -48,10 +61,11 @@ export interface IterationResult {
   structuredAssessment: StructuredAssessment | null;
   triageResult: TriageResult | null;
   charterCheck: CharterCheckResult | null;
-  skippedReason: string | null;
   headline: string | null;
   summary: string | null;
 }
+
+export type IterationResult = IterationSkipped | IterationCompleted;
 
 export type HoneMode = "local" | "github";
 
