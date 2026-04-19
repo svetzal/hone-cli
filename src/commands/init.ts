@@ -30,6 +30,19 @@ interface InitResult {
   files: FileResult[];
 }
 
+export function printInitHelp(): void {
+  console.log(`
+Usage: hone init [OPTIONS]
+
+Install hone skill files for Claude Code.
+
+Options:
+      --global   Install to ~/.claude/skills/ (global) instead of .claude/skills/ in CWD
+      --force    Overwrite even if installed skill version is newer than this binary
+  -h, --help     Show this help
+`);
+}
+
 export function stampVersion(content: string): string {
   const closingIndex = content.indexOf("\n---", 1);
   if (closingIndex === -1) return content;

@@ -5,7 +5,7 @@ import { deriveCommand } from "./commands/derive.ts";
 import { deriveGatesCommand } from "./commands/derive-gates.ts";
 import { gatesCommand } from "./commands/gates.ts";
 import { historyCommand } from "./commands/history.ts";
-import { initCommand } from "./commands/init.ts";
+import { initCommand, printInitHelp } from "./commands/init.ts";
 import { iterateCommand } from "./commands/iterate.ts";
 import { listAgentsCommand } from "./commands/list-agents.ts";
 import { maintainCommand } from "./commands/maintain.ts";
@@ -139,6 +139,11 @@ async function main(): Promise<void> {
 
   if (parsed.flags.version) {
     console.log(`hone v${VERSION}`);
+    return;
+  }
+
+  if (parsed.flags.help && parsed.command === "init") {
+    printInitHelp();
     return;
   }
 

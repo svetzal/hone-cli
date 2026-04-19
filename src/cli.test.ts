@@ -29,6 +29,20 @@ describe("CLI", () => {
     expect(output.trim()).toMatch(/^hone v\d+\.\d+\.\d+$/);
   });
 
+  test("init --help prints init usage", async () => {
+    const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "init", "--help"], {
+      cwd: `${import.meta.dir}/..`,
+      stdout: "pipe",
+    });
+    const output = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+
+    expect(exitCode).toBe(0);
+    expect(output).toContain("Usage: hone init");
+    expect(output).toContain("--global");
+    expect(output).toContain("--force");
+  });
+
   test("unknown command exits with error", async () => {
     const proc = Bun.spawn([process.execPath, "run", "src/cli.ts", "nonexistent"], {
       cwd: `${import.meta.dir}/..`,
