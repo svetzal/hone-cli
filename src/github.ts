@@ -1,3 +1,4 @@
+import { warn } from "./errors.ts";
 import { runProcess } from "./process.ts";
 import type { CommandRunner, HoneIssue, HoneProposal } from "./types.ts";
 
@@ -74,7 +75,7 @@ export async function getIssueReactions(
     { cwd: projectDir },
   );
   if (exitCode !== 0) {
-    // No reactions or API error — return empty
+    warn(`Failed to fetch reactions for issue #${issueNumber}: ${stdout}`);
     return { thumbsUp: [], thumbsDown: [] };
   }
 
@@ -97,7 +98,7 @@ export async function getIssueReactions(
         if (reaction.content === "-1") thumbsDown.push(reaction.user);
       }
     } catch {
-      // Skip malformed lines
+      warn(`Skipping malformed reactions line: ${line}`);
     }
   }
 

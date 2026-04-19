@@ -1,5 +1,6 @@
 import { readAgentContent } from "./agents.ts";
 import { buildClaudeArgs } from "./claude.ts";
+import { warn } from "./errors.ts";
 import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
@@ -50,7 +51,8 @@ export async function extractGatesFromAgentContent(
   try {
     const output = await claude(args);
     return parseGatesJson(output);
-  } catch {
+  } catch (err) {
+    warn(`Gate extraction failed: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }
@@ -68,24 +70,25 @@ export async function extractGatesFromAgent(
 }
 
 export function parseGatesJson(raw: string): GateDefinition[] {
-  try {
-    const parsed = extractJsonArrayFromLlmOutput(raw);
-    if (!parsed) return [];
-
-    return parsed
-      .filter(
-        (g: unknown): g is { name: string; command: string; required?: boolean } =>
-          typeof g === "object" &&
-          g !== null &&
-          typeof (g as Record<string, unknown>).name === "string" &&
-          typeof (g as Record<string, unknown>).command === "string",
-      )
-      .map((g) => ({
-        name: g.name,
-        command: g.command,
-        required: g.required ?? true,
-      }));
-  } catch {
+  const result = extractJsonArrayFromLlmOutput(raw);
+  if (result.kind !== "parsed") {
+    if (result.kind === "malformed") {
+      warn(`Gate extraction response contained malformed JSON: ${raw.slice(0, 200)}`);
+    }
     return [];
   }
+
+  return result.value
+    .filter(
+      (g: unknown): g is { name: string; command: string; required?: boolean } =>
+        typeof g === "object" &&
+        g !== null &&
+        typeof (g as Record<string, unknown>).name === "string" &&
+        typeof (g as Record<string, unknown>).command === "string",
+    )
+    .map((g) => ({
+      name: g.name,
+      command: g.command,
+      required: g.required ?? true,
+    }));
 }

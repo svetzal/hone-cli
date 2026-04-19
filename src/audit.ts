@@ -1,5 +1,6 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
+import { warn } from "./errors.ts";
 
 export function resolveAuditDir(projectDir: string, auditDirName: string): string {
   return isAbsolute(auditDirName) ? auditDirName : join(projectDir, auditDirName);
@@ -62,7 +63,11 @@ export async function listIterations(auditDir: string): Promise<IterationEntry[]
     }
 
     return entries.sort((a, b) => b.date.getTime() - a.date.getTime());
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") {
+      warn(`Failed to read audit directory ${auditDir}: ${err instanceof Error ? err.message : String(err)}`);
+    }
     return [];
   }
 }

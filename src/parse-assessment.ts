@@ -1,3 +1,4 @@
+import { warn } from "./errors.ts";
 import { extractJsonFromLlmOutput, findBareJsonObject } from "./json-extraction.ts";
 import type { StructuredAssessment } from "./types.ts";
 
@@ -22,9 +23,14 @@ function extractProse(raw: string): string {
 }
 
 export function parseAssessment(raw: string): StructuredAssessment {
-  const json = extractJsonFromLlmOutput(raw);
+  const result = extractJsonFromLlmOutput(raw);
 
-  if (json) {
+  if (result.kind === "malformed") {
+    warn(`Assessment response contained malformed JSON: ${raw.slice(0, 200)}`);
+  }
+
+  if (result.kind === "parsed") {
+    const json = result.value;
     const severity = typeof json.severity === "number" ? clampSeverity(json.severity) : 3;
     const principle = typeof json.principle === "string" ? json.principle : "unknown";
     const category = typeof json.category === "string" ? json.category : "other";
@@ -33,7 +39,7 @@ export function parseAssessment(raw: string): StructuredAssessment {
     return { severity, principle, category, prose, raw };
   }
 
-  // Fallback: no JSON found
+  // Fallback: no JSON found or malformed
   return {
     severity: 3,
     principle: "unknown",

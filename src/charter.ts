@@ -1,14 +1,15 @@
 import { join } from "node:path";
+import { warn } from "./errors.ts";
 import type { CharterCheckResult, CharterSource } from "./types.ts";
 
 async function readFileContent(path: string): Promise<string | null> {
-  try {
-    const file = Bun.file(path);
-    if (await file.exists()) {
+  const file = Bun.file(path);
+  if (await file.exists()) {
+    try {
       return await file.text();
+    } catch (err) {
+      warn(`Could not read ${path}: ${err instanceof Error ? err.message : String(err)}`);
     }
-  } catch {
-    // File not readable
   }
   return null;
 }
@@ -35,7 +36,7 @@ async function readPackageDescription(projectDir: string): Promise<string | null
         return pkg.description;
       }
     } catch {
-      // Invalid JSON
+      warn(`${join(projectDir, "package.json")} has invalid JSON — skipping package description`);
     }
   }
 

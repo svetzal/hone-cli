@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { warn } from "./errors.ts";
 import type { HoneConfig, HoneMode } from "./types.ts";
 
 export function getDefaultConfig(): HoneConfig {
@@ -65,9 +66,9 @@ export async function loadConfig(configPath?: string): Promise<HoneConfig> {
   const defaults = getDefaultConfig();
   const resolvedPath = configPath ?? join(homedir(), ".config", "hone", "config.json");
 
-  try {
-    const file = Bun.file(resolvedPath);
-    if (await file.exists()) {
+  const file = Bun.file(resolvedPath);
+  if (await file.exists()) {
+    try {
       const raw = await file.json();
       const validated = validateUserConfig(raw);
       return {
@@ -80,9 +81,9 @@ export async function loadConfig(configPath?: string): Promise<HoneConfig> {
         minCharterLength: validated.minCharterLength ?? defaults.minCharterLength,
         severityThreshold: validated.severityThreshold ?? defaults.severityThreshold,
       };
+    } catch {
+      warn(`Config file ${resolvedPath} has invalid JSON — using defaults`);
     }
-  } catch {
-    // Config file missing or invalid — use defaults
   }
 
   return defaults;

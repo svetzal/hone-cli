@@ -123,14 +123,14 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
     });
     try {
       const output = await claude(extractArgs);
-      // extractJsonArrayFromLlmOutput returns null for "no valid array found",
-      // distinguishing it from the [] that parseGatesJson returns for both
-      // "valid empty" and "malformed output".
-      if (extractJsonArrayFromLlmOutput(output) !== null) {
+      // extractJsonArrayFromLlmOutput distinguishes "no valid array found" (no-json/malformed)
+      // from "parsed" — only proceed when we got a real array back.
+      const extractResult = extractJsonArrayFromLlmOutput(output);
+      if (extractResult.kind === "parsed") {
         gates = parseGatesJson(output);
       }
     } catch {
-      // Claude process failure or JSON.parse failure — both mean extraction failed
+      // Claude process failure — extraction failed
       gates = null;
     }
   }

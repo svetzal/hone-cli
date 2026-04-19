@@ -11,25 +11,25 @@ describe("extractJsonFromLlmOutput", () => {
     test("extracts JSON from ```json fenced block", () => {
       const raw = '```json\n{ "key": "value" }\n```';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ key: "value" });
+      expect(result).toEqual({ kind: "parsed", value: { key: "value" } });
     });
 
     test("extracts JSON from ``` fenced block without json tag", () => {
       const raw = '```\n{ "key": "value" }\n```';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ key: "value" });
+      expect(result).toEqual({ kind: "parsed", value: { key: "value" } });
     });
 
     test("extracts JSON from fenced block with surrounding text", () => {
       const raw = 'Here is the result:\n```json\n{ "severity": 4 }\n```\nSome more text.';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ severity: 4 });
+      expect(result).toEqual({ kind: "parsed", value: { severity: 4 } });
     });
 
     test("handles whitespace around JSON in fenced block", () => {
       const raw = '```json\n  { "key": "value" }  \n```';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ key: "value" });
+      expect(result).toEqual({ kind: "parsed", value: { key: "value" } });
     });
   });
 
@@ -37,48 +37,47 @@ describe("extractJsonFromLlmOutput", () => {
     test("extracts bare JSON object", () => {
       const raw = '{ "key": "value" }';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ key: "value" });
+      expect(result).toEqual({ kind: "parsed", value: { key: "value" } });
     });
 
     test("extracts bare JSON with surrounding text", () => {
       const raw = 'Some text before { "key": "value" } and after.';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ key: "value" });
+      expect(result).toEqual({ kind: "parsed", value: { key: "value" } });
     });
   });
 
   describe("error handling", () => {
-    test("returns null for no JSON content", () => {
+    test("returns no-json for no JSON content", () => {
       const result = extractJsonFromLlmOutput("No JSON here at all.");
-      expect(result).toBeNull();
+      expect(result).toEqual({ kind: "no-json" });
     });
 
-    test("returns null for empty string", () => {
+    test("returns no-json for empty string", () => {
       const result = extractJsonFromLlmOutput("");
-      expect(result).toBeNull();
+      expect(result).toEqual({ kind: "no-json" });
     });
 
-    test("returns null for invalid JSON in fenced block", () => {
+    test("returns malformed for invalid JSON in fenced block", () => {
       const raw = "```json\n{invalid json}\n```";
       const result = extractJsonFromLlmOutput(raw);
-      // Falls through fenced, tries bare — bare also fails to parse
-      expect(result).toBeNull();
+      expect(result.kind).toBe("malformed");
     });
 
-    test("falls through from invalid fenced to bare JSON", () => {
+    test("falls through from invalid fenced to bare JSON — returns malformed when both fail", () => {
       // Fenced block match fails JSON.parse, bare match picks up the fenced content
       const raw = '```json\n{not: valid}\n```\n{ "key": "value" }';
-      // The bare regex may match the first {...} (fenced content) which is invalid,
-      // so the entire extraction returns null
+      // The bare regex matches the first {...} (fenced content) which is invalid,
+      // so the entire extraction returns malformed
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toBeNull();
+      expect(result.kind).toBe("malformed");
     });
 
-    test("returns null when only arrays are present (not objects)", () => {
+    test("returns no-json when only arrays are present (not objects)", () => {
       const raw = "[1, 2, 3]";
       // The regex looks for { ... } so arrays are not matched
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toBeNull();
+      expect(result).toEqual({ kind: "no-json" });
     });
   });
 
@@ -86,37 +85,61 @@ describe("extractJsonFromLlmOutput", () => {
     test("handles nested JSON objects via brace-counting", () => {
       const raw = '{ "outer": { "inner": true } }';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ outer: { inner: true } });
+      expect(result).toEqual({ kind: "parsed", value: { outer: { inner: true } } });
     });
 
     test("handles deeply nested JSON objects", () => {
       const raw = '{ "a": { "b": { "c": 1 } } }';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ a: { b: { c: 1 } } });
+      expect(result).toEqual({ kind: "parsed", value: { a: { b: { c: 1 } } } });
     });
 
     test("handles nested JSON with surrounding text", () => {
       const raw = 'Result: { "config": { "enabled": true }, "count": 5 } done.';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ config: { enabled: true }, count: 5 });
+      expect(result).toEqual({ kind: "parsed", value: { config: { enabled: true }, count: 5 } });
     });
 
     test("handles braces inside JSON string values", () => {
       const raw = '{ "message": "use {} for objects", "ok": true }';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ message: "use {} for objects", ok: true });
+      expect(result).toEqual({ kind: "parsed", value: { message: "use {} for objects", ok: true } });
     });
 
     test("extracts object with multiple fields", () => {
       const raw = '```json\n{ "severity": 4, "principle": "SRP", "category": "architecture" }\n```';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ severity: 4, principle: "SRP", category: "architecture" });
+      expect(result).toEqual({ kind: "parsed", value: { severity: 4, principle: "SRP", category: "architecture" } });
     });
 
     test("extracts object with boolean and null values", () => {
       const raw = '{ "busyWork": true, "reason": null }';
       const result = extractJsonFromLlmOutput(raw);
-      expect(result).toEqual({ busyWork: true, reason: null });
+      expect(result).toEqual({ kind: "parsed", value: { busyWork: true, reason: null } });
+    });
+  });
+
+  describe("discriminated result kinds", () => {
+    test("parsed result has value field", () => {
+      const result = extractJsonFromLlmOutput('{ "x": 1 }');
+      expect(result.kind).toBe("parsed");
+      if (result.kind === "parsed") {
+        expect(result.value).toEqual({ x: 1 });
+      }
+    });
+
+    test("malformed result has raw field", () => {
+      const raw = "```json\n{bad}\n```";
+      const result = extractJsonFromLlmOutput(raw);
+      expect(result.kind).toBe("malformed");
+      if (result.kind === "malformed") {
+        expect(result.raw).toBe(raw);
+      }
+    });
+
+    test("no-json result has no extra fields", () => {
+      const result = extractJsonFromLlmOutput("plain text only");
+      expect(result).toEqual({ kind: "no-json" });
     });
   });
 });
@@ -151,55 +174,73 @@ describe("extractJsonArrayFromLlmOutput", () => {
   describe("fenced code block extraction", () => {
     test("extracts array from ```json fenced block", () => {
       const raw = "```json\n[1, 2, 3]\n```";
-      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([1, 2, 3]);
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual({ kind: "parsed", value: [1, 2, 3] });
     });
 
     test("extracts array from ``` fenced block without json tag", () => {
       const raw = '```\n["a", "b"]\n```';
-      expect(extractJsonArrayFromLlmOutput(raw)).toEqual(["a", "b"]);
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual({ kind: "parsed", value: ["a", "b"] });
     });
 
     test("extracts array from fenced block with surrounding text", () => {
       const raw = 'Here are the gates:\n```json\n[{"name":"test"}]\n```\nDone.';
-      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([{ name: "test" }]);
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual({ kind: "parsed", value: [{ name: "test" }] });
     });
   });
 
   describe("bare array extraction", () => {
     test("extracts bare JSON array", () => {
-      expect(extractJsonArrayFromLlmOutput("[1, 2, 3]")).toEqual([1, 2, 3]);
+      expect(extractJsonArrayFromLlmOutput("[1, 2, 3]")).toEqual({ kind: "parsed", value: [1, 2, 3] });
     });
 
     test("extracts bare array with surrounding text", () => {
       const raw = "Some text before [1, 2] and after.";
-      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([1, 2]);
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual({ kind: "parsed", value: [1, 2] });
     });
 
     test("handles nested arrays and objects", () => {
       const raw = '[{"name":"test","command":"bun test"}]';
-      expect(extractJsonArrayFromLlmOutput(raw)).toEqual([{ name: "test", command: "bun test" }]);
+      expect(extractJsonArrayFromLlmOutput(raw)).toEqual({
+        kind: "parsed",
+        value: [{ name: "test", command: "bun test" }],
+      });
     });
   });
 
   describe("error handling", () => {
-    test("returns null for no JSON content", () => {
-      expect(extractJsonArrayFromLlmOutput("No JSON here at all.")).toBeNull();
+    test("returns no-json for no JSON content", () => {
+      expect(extractJsonArrayFromLlmOutput("No JSON here at all.")).toEqual({ kind: "no-json" });
     });
 
-    test("returns null for empty string", () => {
-      expect(extractJsonArrayFromLlmOutput("")).toBeNull();
+    test("returns no-json for empty string", () => {
+      expect(extractJsonArrayFromLlmOutput("")).toEqual({ kind: "no-json" });
     });
 
-    test("returns null for invalid JSON array", () => {
-      expect(extractJsonArrayFromLlmOutput("[not valid json")).toBeNull();
+    test("returns no-json for incomplete JSON array (unbalanced brackets)", () => {
+      expect(extractJsonArrayFromLlmOutput("[not valid json").kind).toBe("no-json");
     });
 
-    test("returns null when only objects are present (not arrays)", () => {
-      expect(extractJsonArrayFromLlmOutput('{"key": "value"}')).toBeNull();
+    test("returns no-json when only objects are present (not arrays)", () => {
+      expect(extractJsonArrayFromLlmOutput('{"key": "value"}')).toEqual({ kind: "no-json" });
     });
 
-    test("returns empty array for valid empty array", () => {
-      expect(extractJsonArrayFromLlmOutput("[]")).toEqual([]);
+    test("returns parsed with empty array for valid empty array", () => {
+      expect(extractJsonArrayFromLlmOutput("[]")).toEqual({ kind: "parsed", value: [] });
+    });
+  });
+
+  describe("discriminated result kinds", () => {
+    test("parsed result has value field", () => {
+      const result = extractJsonArrayFromLlmOutput("[1, 2]");
+      expect(result.kind).toBe("parsed");
+      if (result.kind === "parsed") {
+        expect(result.value).toEqual([1, 2]);
+      }
+    });
+
+    test("no-json result has no extra fields", () => {
+      const result = extractJsonArrayFromLlmOutput("plain text only");
+      expect(result).toEqual({ kind: "no-json" });
     });
   });
 });

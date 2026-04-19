@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { warn } from "./errors.ts";
 import type { GateDefinition } from "./types.ts";
 
 const GATES_FILENAME = ".hone-gates.json";
@@ -39,13 +40,13 @@ export async function readGatesFile(projectDir: string): Promise<GateDefinition[
   const filePath = gatesFilePath(projectDir);
   const file = Bun.file(filePath);
 
-  try {
-    if (await file.exists()) {
+  if (await file.exists()) {
+    try {
       const config = await file.json();
       return validateGateArray(config);
+    } catch {
+      warn(`${filePath} has invalid JSON — falling through to agent gate extraction`);
     }
-  } catch {
-    // Invalid JSON or read error — fall through
   }
 
   return null;

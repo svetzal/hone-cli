@@ -1,3 +1,8 @@
+export type JsonExtractionResult<T> =
+  | { kind: "parsed"; value: T }
+  | { kind: "no-json" }
+  | { kind: "malformed"; raw: string };
+
 /**
  * Locates the first complete JSON array in a string using bracket-counting,
  * respecting string literals (including escaped characters).
@@ -67,15 +72,19 @@ export function findBareJsonObject(raw: string): string | null {
 /**
  * Extracts a JSON array from LLM output.
  * Tries two patterns: fenced code block (```json ... ```) and bare JSON.
- * This is the single source of truth for "how to extract a JSON array from LLM output".
+ * Returns a discriminated result: "parsed" with value, "no-json" if no array
+ * structure was found, or "malformed" if JSON-like content was found but failed to parse.
  */
-export function extractJsonArrayFromLlmOutput(raw: string): unknown[] | null {
+export function extractJsonArrayFromLlmOutput(raw: string): JsonExtractionResult<unknown[]> {
+  let foundCandidate = false;
+
   // Try fenced code block first: ```json [...] ```
   const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\[[\s\S]*?\])\s*\n?\s*```/);
   if (fencedMatch?.[1]) {
+    foundCandidate = true;
     try {
       const parsed = JSON.parse(fencedMatch[1]);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return { kind: "parsed", value: parsed };
     } catch {
       // Fall through
     }
@@ -84,28 +93,33 @@ export function extractJsonArrayFromLlmOutput(raw: string): unknown[] | null {
   // Try bare JSON array using bracket-counting to handle nested arrays/objects
   const bareJson = findBareJsonArray(raw);
   if (bareJson) {
+    foundCandidate = true;
     try {
       const parsed = JSON.parse(bareJson);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return { kind: "parsed", value: parsed };
     } catch {
       // Fall through
     }
   }
 
-  return null;
+  return foundCandidate ? { kind: "malformed", raw } : { kind: "no-json" };
 }
 
 /**
  * Extracts a JSON object from LLM output.
  * Tries two patterns: fenced code block (```json ... ```) and bare JSON.
- * This is the single source of truth for "how to extract JSON from LLM output".
+ * Returns a discriminated result: "parsed" with value, "no-json" if no object
+ * structure was found, or "malformed" if JSON-like content was found but failed to parse.
  */
-export function extractJsonFromLlmOutput(raw: string): Record<string, unknown> | null {
+export function extractJsonFromLlmOutput(raw: string): JsonExtractionResult<Record<string, unknown>> {
+  let foundCandidate = false;
+
   // Try fenced code block first: ```json ... ```
   const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\{[\s\S]*?\})\s*\n?\s*```/);
   if (fencedMatch?.[1]) {
+    foundCandidate = true;
     try {
-      return JSON.parse(fencedMatch[1]);
+      return { kind: "parsed", value: JSON.parse(fencedMatch[1]) };
     } catch {
       // Fall through
     }
@@ -114,12 +128,13 @@ export function extractJsonFromLlmOutput(raw: string): Record<string, unknown> |
   // Try bare JSON object using brace-counting to handle nested objects
   const bareJson = findBareJsonObject(raw);
   if (bareJson) {
+    foundCandidate = true;
     try {
-      return JSON.parse(bareJson);
+      return { kind: "parsed", value: JSON.parse(bareJson) };
     } catch {
       // Fall through
     }
   }
 
-  return null;
+  return foundCandidate ? { kind: "malformed", raw } : { kind: "no-json" };
 }
