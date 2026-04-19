@@ -42,6 +42,13 @@ jobs:
       - name: Build binary
         run: bun build src/cli.ts --compile --target=${{ matrix.target }} --outfile=${{ matrix.artifact }}
 
+      - name: Re-sign macOS binary (strip malformed bun signature, ad-hoc sign)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --remove-signature ${{ matrix.artifact }} || true
+          codesign --sign - --force --timestamp=none ${{ matrix.artifact }}
+          codesign --verify --verbose ${{ matrix.artifact }}
+
       - name: Create tarball (macOS/Linux)
         if: runner.os != 'Windows'
         run: tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
@@ -134,6 +141,8 @@ jobs:
                 sha256 "${SHA_ARM64}"
 
                 def install
+                  system "codesign", "--remove-signature", "hone-darwin-arm64"
+                  system "codesign", "--sign", "-", "--force", "hone-darwin-arm64"
                   bin.install "hone-darwin-arm64" => "hone"
                 end
               end
@@ -143,6 +152,8 @@ jobs:
                 sha256 "${SHA_X64}"
 
                 def install
+                  system "codesign", "--remove-signature", "hone-darwin-x64"
+                  system "codesign", "--sign", "-", "--force", "hone-darwin-x64"
                   bin.install "hone-darwin-x64" => "hone"
                 end
               end

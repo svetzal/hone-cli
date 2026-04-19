@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-04-19
+
+### Fixed
+
+- **macOS arm64 binary signature** — release pipeline now strips the
+  bun-compile-embedded signature and ad-hoc re-signs the macOS binaries
+  before tarballing, and the Homebrew formula also re-signs at install time.
+  Resolves v2.0.0 where the installed binary was SIGKILL-ed by Gatekeeper on
+  launch because `bun build --compile --target=bun-darwin-arm64` produced a
+  malformed LC_CODE_SIGNATURE that `codesign --verify` could not parse and
+  `codesign --sign -` could not replace.
+
 ## [2.0.0] - 2026-04-19
 
 ### Changed

@@ -177,6 +177,23 @@ Releases follow semver. To cut a release:
 The `--notes-from-tag` flag pulls release notes from the tag. Alternatively,
 pass the changelog section content via `--notes`.
 
+### macOS arm64 signing
+
+`bun build --compile --target=bun-darwin-*` on arm64 has produced malformed
+LC_CODE_SIGNATURE blobs that macOS Gatekeeper rejects (seen in v2.0.0,
+2026-04-19). The release workflow and brew formula both strip and ad-hoc
+re-sign macOS binaries to work around this:
+
+- `.github/workflows/release.yml` runs `codesign --remove-signature` +
+  `codesign --sign - --force` + `codesign --verify` on the macOS matrix
+  entries before tarballing.
+- The generated Homebrew formula repeats the same strip + re-sign in its
+  `install` block as defense-in-depth.
+
+**Sibling tools using the same bun-compile-to-brew pattern (hopper, future
+ones) are at latent risk** and should apply the same mitigation before their
+next release. This mitigation is independent of the bun version used.
+
 ## Event Tracking
 
 Hone emits structured events to the Operations event stream (`~/Work/Operations/Events/intake/YYYY-MM.jsonl`)
