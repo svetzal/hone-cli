@@ -194,49 +194,6 @@ re-sign macOS binaries to work around this:
 ones) are at latent risk** and should apply the same mitigation before their
 next release. This mitigation is independent of the bun version used.
 
-## Event Tracking
-
-Hone emits structured events to the Operations event stream (`~/Work/Operations/Events/intake/YYYY-MM.jsonl`)
-to enable cross-project visibility and integration with other Mojility skills.
-
-### Event Types
-
-| Event | When Emitted | Key Data |
-|-------|-------------|----------|
-| `hone_iteration_started` | After preamble passes | iterationId, project, agent, mode, gatesFound |
-| `hone_assessment_completed` | After assessment stage | severity, principle, category, auditFile |
-| `hone_triage_completed` | After triage decision | accepted, changeType, busyWork, reason |
-| `hone_execution_completed` | After execute+verify loop | success, retries, gatesPassed, gateResults |
-| `hone_proposal_created` | GitHub mode: issue filed | issueNumber, issueTitle, severity, principle |
-| `hone_proposal_executed` | GitHub mode: approved & applied | issueNumber, commitSha, success, retries |
-
-### Client Derivation
-
-Events automatically derive the `client.name` field from the project path:
-
-| Project Path | Client Name |
-|-------------|-------------|
-| `Projects/Clients/ORT/*` | `ORT` |
-| `Projects/Clients/ContinuousCoaching/*` | `ContinuousCoaching` |
-| `Projects/Clients/Elevate21/*` | `Elevate21` |
-| `Projects/Clients/HaliburtonElectric/*` | `HaliburtonElectric` |
-| `Projects/Clients/Reaction/*` | `Reaction` |
-| `Projects/Mojility/*` | `Mojility` |
-| `Projects/Personal/*` | `personal` |
-
-### Graceful Fallback
-
-When hone-cli runs outside the Operations repository (cannot find the event stream),
-events are silently skipped with a warning to stderr. Hone continues to work normally
-but does not emit events.
-
-### Audit Files
-
-The existing audit markdown files remain as detailed artifacts. Events capture the
-structured facts (what happened, severity, outcome), while audit files hold the
-unstructured detail (full assessment prose, execution logs). Events reference audit
-files by relative path in the `auditFile` field.
-
 ## Branching Workflow
 
 Trunk-based development. `main` is the only long-lived branch. All work lands on
