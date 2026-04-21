@@ -31,12 +31,26 @@ function formatGatesStatus(gatesResult: GatesRunResult | null): string {
   return `${failed.length} gate(s) failed`;
 }
 
+function buildSummarizePromptTail(execution: string): string[] {
+  const excerpt = execution.slice(0, 500);
+  return [
+    "",
+    "What was done (excerpt):",
+    excerpt,
+    "",
+    "Respond with ONLY a JSON object:",
+    "```json",
+    '{ "headline": "<imperative, single-line, max 72 chars, for git commit subject>",',
+    '  "summary": "<2-5 lines for git commit body>" }',
+    "```",
+  ];
+}
+
 export function buildIterateSummarizePrompt(ctx: IterateSummarizeContext): string {
   const severity = ctx.structuredAssessment?.severity ?? "unknown";
   const principle = ctx.structuredAssessment?.principle ?? "unknown";
   const category = ctx.structuredAssessment?.category ?? "unknown";
   const changeType = ctx.triageResult?.changeType ?? "unknown";
-  const excerpt = ctx.execution.slice(0, 500);
 
   return [
     "Generate a headline and summary for a code improvement.",
@@ -48,36 +62,18 @@ export function buildIterateSummarizePrompt(ctx: IterateSummarizeContext): strin
     `- Change type: ${changeType}`,
     `- Retries: ${ctx.retries}`,
     `- Gates: ${formatGatesStatus(ctx.gatesResult)}`,
-    "",
-    "What was done (excerpt):",
-    excerpt,
-    "",
-    "Respond with ONLY a JSON object:",
-    "```json",
-    '{ "headline": "<imperative, single-line, max 72 chars, for git commit subject>",',
-    '  "summary": "<2-5 lines for git commit body>" }',
-    "```",
+    ...buildSummarizePromptTail(ctx.execution),
   ].join("\n");
 }
 
 export function buildMaintainSummarizePrompt(ctx: MaintainSummarizeContext): string {
-  const excerpt = ctx.execution.slice(0, 500);
-
   return [
     "Generate a headline and summary for a dependency maintenance update.",
     "",
     "Context:",
     `- Retries: ${ctx.retries}`,
     `- Gates: ${formatGatesStatus(ctx.gatesResult)}`,
-    "",
-    "What was done (excerpt):",
-    excerpt,
-    "",
-    "Respond with ONLY a JSON object:",
-    "```json",
-    '{ "headline": "<imperative, single-line, max 72 chars, for git commit subject>",',
-    '  "summary": "<2-5 lines for git commit body>" }',
-    "```",
+    ...buildSummarizePromptTail(ctx.execution),
   ].join("\n");
 }
 

@@ -112,18 +112,22 @@ async function listDirectoryTree(dir: string, depth: number = 3, prefix: string 
   return lines.join("\n");
 }
 
-export async function gatherContext(folder: string): Promise<ProjectContext> {
-  const directoryTree = await listDirectoryTree(folder);
-
-  const packageFiles: string[] = [];
-  for (const file of PACKAGE_FILES) {
-    const f = Bun.file(join(folder, file));
+async function filterExistingFiles(folder: string, files: string[]): Promise<string[]> {
+  const results: string[] = [];
+  for (const file of files) {
     try {
-      if (await f.exists()) packageFiles.push(file);
+      if (await Bun.file(join(folder, file)).exists()) results.push(file);
     } catch {
       // Not readable
     }
   }
+  return results;
+}
+
+export async function gatherContext(folder: string): Promise<ProjectContext> {
+  const directoryTree = await listDirectoryTree(folder);
+
+  const packageFiles = await filterExistingFiles(folder, PACKAGE_FILES);
 
   const ciConfigs: string[] = [];
   for (const pattern of CI_PATTERNS) {
@@ -144,26 +148,16 @@ export async function gatherContext(folder: string): Promise<ProjectContext> {
     }
   }
 
-  const toolConfigs: string[] = [];
-  for (const file of TOOL_CONFIG_FILES) {
-    if (packageFiles.includes(file)) continue; // Already captured
-    const f = Bun.file(join(folder, file));
-    try {
-      if (await f.exists()) toolConfigs.push(file);
-    } catch {
-      // Not readable
-    }
-  }
+  const toolConfigs = await filterExistingFiles(
+    folder,
+    TOOL_CONFIG_FILES.filter((f) => !packageFiles.includes(f)),
+  );
 
-  const lockfiles: LockfileInfo[] = [];
-  for (const [file, packageManager] of Object.entries(LOCKFILE_MAP)) {
-    const f = Bun.file(join(folder, file));
-    try {
-      if (await f.exists()) lockfiles.push({ file, packageManager });
-    } catch {
-      // Not readable
-    }
-  }
+  const lockfileNames = await filterExistingFiles(folder, Object.keys(LOCKFILE_MAP));
+  const lockfiles: LockfileInfo[] = lockfileNames.map((file) => ({
+    file,
+    packageManager: LOCKFILE_MAP[file] as string,
+  }));
 
   const shellScripts: string[] = [];
   try {

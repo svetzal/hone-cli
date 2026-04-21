@@ -20,9 +20,11 @@ export interface MaintainOptions {
   gateResolver?: GateResolverFn;
 }
 
-export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
-  const gateList = gates.map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`).join("\n");
+function formatGateList(gates: GateDefinition[]): string {
+  return gates.map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`).join("\n");
+}
 
+export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
   return [
     `Update the project dependencies in ${folder} to their latest compatible versions.`,
     "",
@@ -33,7 +35,7 @@ export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): st
     "- Run the project's quality gates after updating to verify nothing breaks",
     "",
     "The project has these quality gates configured:",
-    gateList,
+    formatGateList(gates),
   ].join("\n");
 }
 
@@ -43,14 +45,12 @@ export function buildMaintainRetryPrompt(
   currentFailedGates: { name: string; output: string }[],
   priorAttempts: AttemptRecord[],
 ): string {
-  const gateList = gates.map((g) => `- ${g.name}: \`${g.command}\`${g.required ? "" : " (optional)"}`).join("\n");
-
   return buildRetryPromptScaffold(
     [
       `Update the project dependencies in ${folder} to their latest compatible versions.`,
       "",
       "Quality gates:",
-      gateList,
+      formatGateList(gates),
     ],
     [
       "The dependency updates introduced quality gate failures that must be fixed.",
