@@ -1,11 +1,11 @@
 import { join } from "node:path";
 import { agentExists, readAgentContent } from "./agents.ts";
 import type { loadConfig } from "./config.ts";
-import type { ProjectContext } from "./derive.ts";
 import { suggestExpandedName } from "./derive.ts";
 import { CliError } from "./errors.ts";
 import { mix } from "./mix.ts";
 import { progress, writeJson } from "./output.ts";
+import type { ProjectContext } from "./project-context.ts";
 import type { PromptFn } from "./prompt.ts";
 import type { ClaudeInvoker } from "./types.ts";
 

@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildDerivePrompt, derive, extractAgentName, gatherContext, suggestExpandedName } from "./derive.ts";
+import { extractAgentName } from "./agent-frontmatter.ts";
+import { buildDerivePrompt, derive, suggestExpandedName } from "./derive.ts";
 import { updateFrontmatterName } from "./derive-conflict.ts";
+import { gatherContext } from "./project-context.ts";
 import { createDeriveMock, extractPrompt } from "./test-helpers.ts";
 
 describe("gatherContext", () => {

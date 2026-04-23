@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ProjectContext } from "./derive.ts";
+import type { ProjectContext } from "./project-context.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
 
 const emptyContext: ProjectContext = {

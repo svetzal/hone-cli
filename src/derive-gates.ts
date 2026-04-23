@@ -1,6 +1,6 @@
 import { buildClaudeArgs } from "./claude.ts";
-import { gatherContext, type ProjectContext } from "./derive.ts";
 import { parseGatesJson } from "./extract-gates.ts";
+import { gatherContext, type ProjectContext } from "./project-context.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 

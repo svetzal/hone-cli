@@ -3,13 +3,9 @@ import {
   closeIssueWithComment,
   createHoneIssue,
   ensureHoneLabel,
-  formatIssueBody,
   getIssueReactions,
-  getLatestCommitHash,
   getRepoOwner,
-  gitCommit,
   listHoneIssues,
-  parseIssueBody,
 } from "./github.ts";
 import type { CommandRunner } from "./types.ts";
 
@@ -190,87 +186,5 @@ describe("closeIssueWithComment", () => {
     expect(capturedArgs[0]).toContain("42");
     expect(capturedArgs[0]).toContain("--comment");
     expect(capturedArgs[0]).toContain("Completed");
-  });
-});
-
-describe("formatIssueBody / parseIssueBody", () => {
-  test("round-trip: format then parse", () => {
-    const proposal = {
-      name: "fix-srp-violation",
-      assessment: "The code violates SRP.",
-      plan: "Step 1: Extract class\nStep 2: Move methods",
-      agent: "typescript-craftsperson",
-      severity: 4,
-      principle: "Single Responsibility",
-    };
-
-    const body = formatIssueBody(proposal);
-    const parsed = parseIssueBody(body);
-
-    expect(parsed).not.toBeNull();
-    expect(parsed?.name).toBe("fix-srp-violation");
-    expect(parsed?.agent).toBe("typescript-craftsperson");
-    expect(parsed?.severity).toBe(4);
-    expect(parsed?.principle).toBe("Single Responsibility");
-    expect(parsed?.assessment).toBe("The code violates SRP.");
-    expect(parsed?.plan).toBe("Step 1: Extract class\nStep 2: Move methods");
-  });
-
-  test("parseIssueBody returns null for non-hone body", () => {
-    const result = parseIssueBody("This is a regular issue body without metadata.");
-    expect(result).toBeNull();
-  });
-
-  test("parseIssueBody returns null for malformed metadata", () => {
-    const result = parseIssueBody("<!-- hone-metadata\ninvalid json\n-->");
-    expect(result).toBeNull();
-  });
-
-  test("parseIssueBody returns null when agent is a number instead of string", () => {
-    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: 42, severity: 3, principle: "SRP" })}\n-->`;
-    expect(parseIssueBody(body)).toBeNull();
-  });
-
-  test("parseIssueBody returns null when severity is missing", () => {
-    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: "typescript-craftsperson", principle: "SRP" })}\n-->`;
-    expect(parseIssueBody(body)).toBeNull();
-  });
-
-  test("parseIssueBody returns null when severity is a string instead of number", () => {
-    const body = `<!-- hone-metadata\n${JSON.stringify({ agent: "typescript-craftsperson", severity: "high", principle: "SRP" })}\n-->`;
-    expect(parseIssueBody(body)).toBeNull();
-  });
-});
-
-describe("getLatestCommitHash", () => {
-  test("returns trimmed hash", async () => {
-    const run = mockRunner(new Map([["rev-parse", { stdout: "abc123def456\n", exitCode: 0 }]]));
-
-    const hash = await getLatestCommitHash("/project", run);
-    expect(hash).toBe("abc123def456");
-  });
-});
-
-describe("gitCommit", () => {
-  test("stages, commits, and returns hash", async () => {
-    const capturedCalls: string[] = [];
-    const run: CommandRunner = async (cmd, args) => {
-      const key = `${cmd} ${args.join(" ")}`;
-      capturedCalls.push(key);
-      if (key.includes("rev-parse")) return { stdout: "newcommithash\n", exitCode: 0 };
-      return { stdout: "", exitCode: 0 };
-    };
-
-    const hash = await gitCommit("/project", "test commit", run);
-    expect(hash).toBe("newcommithash");
-    expect(capturedCalls[0]).toContain("add -A");
-    expect(capturedCalls[1]).toContain("commit -m");
-    expect(capturedCalls[1]).toContain("test commit");
-  });
-
-  test("throws when git add fails", async () => {
-    const run: CommandRunner = async () => ({ stdout: "error", exitCode: 1 });
-
-    expect(gitCommit("/project", "msg", run)).rejects.toThrow("git add failed");
   });
 });

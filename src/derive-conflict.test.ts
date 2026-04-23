@@ -3,9 +3,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import type { ProjectContext } from "./derive.ts";
 import { type ConflictContext, resolveConflict, updateFrontmatterName } from "./derive-conflict.ts";
 import { CliError } from "./errors.ts";
+import type { ProjectContext } from "./project-context.ts";
 
 // ---------------------------------------------------------------------------
 // updateFrontmatterName — pure function, no side effects

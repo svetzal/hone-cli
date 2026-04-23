@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import { formatIssueBody } from "./github.ts";
 import { closeRejectedIssues, executeApprovedIssues, githubIterate, proposeImprovements } from "./github-iterate.ts";
+import { formatIssueBody } from "./issue-body.ts";
 import {
   acceptingTriageRunner,
   createIterateMock,

@@ -1,4 +1,4 @@
-import type { ProjectContext } from "./derive.ts";
+import type { ProjectContext } from "./project-context.ts";
 
 /**
  * Renders project context as markdown sections for LLM prompts.

@@ -1,19 +1,18 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
+import { createCommandRunner } from "./command-runner.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
+import { gitCommit } from "./git.ts";
 import {
   closeIssueWithComment,
-  createCommandRunner,
   createHoneIssue,
   ensureHoneLabel,
-  formatIssueBody,
   getIssueReactions,
   getRepoOwner,
-  gitCommit,
   listHoneIssues,
-  parseIssueBody,
 } from "./github.ts";
+import { formatIssueBody, parseIssueBody } from "./issue-body.ts";
 import { buildExecutePrompt, buildRetryPrompt, runPlanStage, runProposalPipeline } from "./iterate.ts";
 import { runPreamble } from "./preamble.ts";
 import { resolveGates } from "./resolve-gates.ts";
