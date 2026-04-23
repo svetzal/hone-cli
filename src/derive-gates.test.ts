@@ -100,7 +100,7 @@ describe("deriveGates", () => {
         },
       );
 
-      const gates = await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude);
+      const gates = await deriveGates(dir, { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude });
 
       expect(callCount).toBe(1);
       expect(gates.length).toBe(2);
@@ -124,7 +124,11 @@ describe("deriveGates", () => {
         },
       });
 
-      await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude, "# My Agent Content");
+      await deriveGates(
+        dir,
+        { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        "# My Agent Content",
+      );
 
       expect(capturedPrompt).toContain("My Agent Content");
       expect(capturedPrompt).toContain("Agent Context");
@@ -138,7 +142,7 @@ describe("deriveGates", () => {
     try {
       const mockClaude = createDeriveGatesMock("not valid json at all");
 
-      const gates = await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude);
+      const gates = await deriveGates(dir, { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude });
 
       expect(gates).toEqual([]);
     } finally {
@@ -153,7 +157,7 @@ describe("deriveGates", () => {
         throw new Error("Claude failed");
       };
 
-      const gates = await deriveGates(dir, "sonnet", "Read Glob Grep", mockClaude);
+      const gates = await deriveGates(dir, { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude });
 
       expect(gates).toEqual([]);
     } finally {

@@ -70,7 +70,11 @@ describe("resolveGates", () => {
         throw new Error("Should not be called");
       };
 
-      const gates = await resolveGates(dir, "some-agent", "haiku", "Read Glob Grep", mockClaude);
+      const gates = await resolveGates(dir, "some-agent", {
+        model: "haiku",
+        readOnlyTools: "Read Glob Grep",
+        claude: mockClaude,
+      });
 
       expect(gates.length).toBe(1);
       expect(gates[0]?.command).toBe("bun test");
@@ -89,7 +93,11 @@ describe("resolveGates", () => {
         return JSON.stringify([{ name: "test", command: "pytest", required: true }]);
       };
 
-      const gates = await resolveGates(dir, "nonexistent-agent", "haiku", "Read Glob Grep", mockClaude);
+      const gates = await resolveGates(dir, "nonexistent-agent", {
+        model: "haiku",
+        readOnlyTools: "Read Glob Grep",
+        claude: mockClaude,
+      });
 
       // Agent doesn't exist, so extractGatesFromAgent returns []
       expect(gates).toEqual([]);
@@ -103,7 +111,11 @@ describe("resolveGates", () => {
     try {
       const mockClaude: ClaudeInvoker = async () => "no gates found";
 
-      const gates = await resolveGates(dir, "nonexistent-agent", "haiku", "Read Glob Grep", mockClaude);
+      const gates = await resolveGates(dir, "nonexistent-agent", {
+        model: "haiku",
+        readOnlyTools: "Read Glob Grep",
+        claude: mockClaude,
+      });
 
       expect(gates).toEqual([]);
     } finally {

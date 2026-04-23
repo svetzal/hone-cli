@@ -84,7 +84,11 @@ export async function maintain(opts: MaintainOptions): Promise<MaintainResult> {
 
   // Resolve gates
   onProgress("gates", "Resolving quality gates...");
-  const gates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
+  const gates = await gateResolver(folder, agent, {
+    model: config.models.gates,
+    readOnlyTools: config.readOnlyTools,
+    claude,
+  });
 
   if (gates.length === 0) {
     onProgress("gates", "No quality gates found. Cannot run maintain without gates.");

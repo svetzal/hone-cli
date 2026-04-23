@@ -143,7 +143,11 @@ describe("summarize", () => {
     const mockClaude = async () =>
       '```json\n{ "headline": "Fix SRP violation in auth", "summary": "Split module." }\n```';
 
-    const result = await summarize("Generate a headline...", "haiku", "Read Glob Grep WebFetch WebSearch", mockClaude);
+    const result = await summarize("Generate a headline...", {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep WebFetch WebSearch",
+      claude: mockClaude,
+    });
 
     expect(result).not.toBeNull();
     expect(result?.headline).toBe("Fix SRP violation in auth");
@@ -153,7 +157,11 @@ describe("summarize", () => {
   test("returns null on unparseable output", async () => {
     const mockClaude = async () => "I cannot generate JSON right now.";
 
-    const result = await summarize("Generate a headline...", "haiku", "Read Glob Grep WebFetch WebSearch", mockClaude);
+    const result = await summarize("Generate a headline...", {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep WebFetch WebSearch",
+      claude: mockClaude,
+    });
 
     expect(result).toBeNull();
   });
@@ -165,7 +173,7 @@ describe("summarize", () => {
       return '{ "headline": "h", "summary": "s" }';
     };
 
-    await summarize("prompt", "haiku", "Read Glob Grep", mockClaude);
+    await summarize("prompt", { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude });
 
     expect(capturedArgs).not.toContain("--agent");
   });
@@ -177,7 +185,7 @@ describe("summarize", () => {
       return '{ "headline": "h", "summary": "s" }';
     };
 
-    await summarize("prompt", "haiku", "Read Glob Grep", mockClaude);
+    await summarize("prompt", { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude });
 
     expect(capturedArgs).toContain("--allowedTools");
   });

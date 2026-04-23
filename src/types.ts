@@ -88,6 +88,12 @@ export interface ParsedArgs {
 
 export type ClaudeInvoker = (args: string[]) => Promise<string>;
 
+export interface ClaudeContext {
+  model: string;
+  readOnlyTools: string;
+  claude: ClaudeInvoker;
+}
+
 export interface PipelineContext {
   agent: string;
   folder: string;
@@ -98,22 +104,14 @@ export interface PipelineContext {
 
 export type GateRunner = (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
 
-export type GateResolverFn = (
-  projectDir: string,
-  agentName: string,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
-) => Promise<GateDefinition[]>;
+export type GateResolverFn = (projectDir: string, agentName: string, ctx: ClaudeContext) => Promise<GateDefinition[]>;
 
 export type CharterCheckerFn = (projectDir: string, minLength: number) => Promise<CharterCheckResult>;
 
 export type TriageRunnerFn = (
   assessment: StructuredAssessment,
   threshold: number,
-  model: string,
-  tools: string,
-  claude: ClaudeInvoker,
+  ctx: ClaudeContext,
 ) => Promise<TriageResult>;
 
 // Charter check types

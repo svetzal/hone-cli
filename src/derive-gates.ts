@@ -2,7 +2,7 @@ import { buildClaudeArgs } from "./claude.ts";
 import { parseGatesJson } from "./extract-gates.ts";
 import { gatherContext, type ProjectContext } from "./project-context.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
-import type { ClaudeInvoker, GateDefinition } from "./types.ts";
+import type { ClaudeContext, GateDefinition } from "./types.ts";
 
 export function buildDeriveGatesPrompt(folder: string, context: ProjectContext, agentContent?: string): string {
   const sections: string[] = [
@@ -60,11 +60,10 @@ export function buildDeriveGatesPrompt(folder: string, context: ProjectContext, 
 
 export async function deriveGates(
   folder: string,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
+  ctx: ClaudeContext,
   agentContent?: string,
 ): Promise<GateDefinition[]> {
+  const { model, readOnlyTools, claude } = ctx;
   const context = await gatherContext(folder);
   const prompt = buildDeriveGatesPrompt(folder, context, agentContent);
 

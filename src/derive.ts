@@ -3,7 +3,7 @@ import { buildClaudeArgs } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
 import { gatherContext, type ProjectContext } from "./project-context.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
-import type { ClaudeInvoker, GateDefinition } from "./types.ts";
+import type { ClaudeContext, GateDefinition } from "./types.ts";
 
 export interface DeriveResult {
   agentContent: string;
@@ -108,10 +108,9 @@ export async function suggestExpandedName(
   conflictingName: string,
   context: ProjectContext,
   existingNames: string[],
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
+  ctx: ClaudeContext,
 ): Promise<string> {
+  const { model, readOnlyTools, claude } = ctx;
   const signals: string[] = [];
   if (context.lockfiles.length > 0) {
     signals.push(`Lockfiles: ${context.lockfiles.map((l) => `${l.file} (${l.packageManager})`).join(", ")}`);
@@ -146,12 +145,11 @@ Output ONLY the new name, nothing else.`;
 
 export async function derive(
   folder: string,
-  model: string,
-  gatesModel: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
+  deriveCtx: ClaudeContext,
+  gatesCtx: ClaudeContext,
   existingAgentNames: string[] = [],
 ): Promise<DeriveResult> {
+  const { model, readOnlyTools, claude } = deriveCtx;
   const context = await gatherContext(folder);
   const prompt = buildDerivePrompt(folder, context, existingAgentNames);
 
@@ -166,7 +164,7 @@ export async function derive(
   const agentName = extractAgentName(agentContent);
 
   // Extract gates from the generated agent content
-  const gates = await extractGatesFromAgentContent(agentContent, gatesModel, readOnlyTools, claude);
+  const gates = await extractGatesFromAgentContent(agentContent, gatesCtx);
 
   return { agentContent, agentName, gates, context };
 }

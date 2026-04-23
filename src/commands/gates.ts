@@ -42,7 +42,11 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   if (agentName) {
     // With agent: use full resolution chain (override > agent extraction)
-    gates = await resolveGates(folder, agentName, config.models.gates, config.readOnlyTools, createClaudeInvoker());
+    gates = await resolveGates(folder, agentName, {
+      model: config.models.gates,
+      readOnlyTools: config.readOnlyTools,
+      claude: createClaudeInvoker(),
+    });
   } else {
     // Without agent: only use override file
     gates = (await loadOverrideGates(folder)) ?? [];

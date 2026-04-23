@@ -1,7 +1,7 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonFromLlmOutput } from "./json-extraction.ts";
-import type { ClaudeInvoker, GatesRunResult, StructuredAssessment, TriageResult } from "./types.ts";
+import type { ClaudeContext, GatesRunResult, StructuredAssessment, TriageResult } from "./types.ts";
 
 export interface SummarizeResult {
   headline: string;
@@ -98,12 +98,8 @@ export function parseSummarizeResponse(raw: string): SummarizeResult | null {
   };
 }
 
-export async function summarize(
-  prompt: string,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
-): Promise<SummarizeResult | null> {
+export async function summarize(prompt: string, ctx: ClaudeContext): Promise<SummarizeResult | null> {
+  const { model, readOnlyTools, claude } = ctx;
   const args = buildClaudeArgs({
     model,
     prompt,

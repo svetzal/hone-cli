@@ -2,7 +2,7 @@ import { readAgentContent } from "./agents.ts";
 import { buildClaudeArgs } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
-import type { ClaudeInvoker, GateDefinition } from "./types.ts";
+import type { ClaudeContext, GateDefinition } from "./types.ts";
 
 export const EXTRACTION_PROMPT = `You are analyzing a Claude agent definition file. Extract all quality assurance gate commands that this agent expects to be run against a project.
 
@@ -37,10 +37,9 @@ Agent content:
 
 export async function extractGatesFromAgentContent(
   agentContent: string,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
+  ctx: ClaudeContext,
 ): Promise<GateDefinition[]> {
+  const { model, readOnlyTools, claude } = ctx;
   const args = buildClaudeArgs({
     model,
     prompt: EXTRACTION_PROMPT + agentContent,
@@ -57,16 +56,11 @@ export async function extractGatesFromAgentContent(
   }
 }
 
-export async function extractGatesFromAgent(
-  agentName: string,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
-): Promise<GateDefinition[]> {
+export async function extractGatesFromAgent(agentName: string, ctx: ClaudeContext): Promise<GateDefinition[]> {
   const content = await readAgentContent(agentName);
   if (!content) return [];
 
-  return extractGatesFromAgentContent(content, model, readOnlyTools, claude);
+  return extractGatesFromAgentContent(content, ctx);
 }
 
 export function parseGatesJson(raw: string): GateDefinition[] {

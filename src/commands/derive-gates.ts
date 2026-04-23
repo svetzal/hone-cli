@@ -46,9 +46,7 @@ export async function deriveGatesCommand(parsed: ParsedArgs, deps?: { claude?: C
 
   const gates = await deriveGates(
     resolvedFolder,
-    model,
-    config.readOnlyTools,
-    deps?.claude ?? createClaudeInvoker(),
+    { model, readOnlyTools: config.readOnlyTools, claude: deps?.claude ?? createClaudeInvoker() },
     agentContent,
   );
 

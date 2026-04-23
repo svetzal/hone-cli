@@ -245,9 +245,7 @@ describe("suggestExpandedName", () => {
         lockfiles: [{ file: "bun.lockb", packageManager: "bun" }],
       },
       ["typescript-craftsperson"],
-      "haiku",
-      "Read Glob Grep",
-      mockClaude,
+      { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
     );
 
     expect(result).toBe("bun-typescript-react-craftsperson");
@@ -271,9 +269,7 @@ describe("suggestExpandedName", () => {
         lockfiles: [{ file: "uv.lock", packageManager: "uv" }],
       },
       ["python-craftsperson"],
-      "haiku",
-      "Read Glob Grep",
-      mockClaude,
+      { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
     );
 
     expect(capturedPrompt).toContain("python-craftsperson");
@@ -335,7 +331,11 @@ description: Test agent
         },
       );
 
-      const result = await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
+      const result = await derive(
+        dir,
+        { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+      );
 
       expect(result.agentName).toBe("test-craftsperson");
       expect(result.agentContent).toContain("Test Craftsperson");
@@ -360,7 +360,11 @@ description: Test agent
         gateExtraction: "[]",
       });
 
-      const result = await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
+      const result = await derive(
+        dir,
+        { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+      );
 
       expect(result.context).toBeDefined();
       expect(result.context.packageFiles).toContain("package.json");
@@ -391,7 +395,12 @@ description: Test agent
         },
       );
 
-      await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude, ["existing-agent"]);
+      await derive(
+        dir,
+        { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        ["existing-agent"],
+      );
 
       expect(capturedPrompt).toContain("existing-agent");
       expect(capturedPrompt).toContain("Existing Agent Names");
@@ -422,7 +431,11 @@ description: Test agent
         },
       );
 
-      await derive(dir, "sonnet", "haiku", "Read Glob Grep", mockClaude);
+      await derive(
+        dir,
+        { model: "sonnet", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+        { model: "haiku", readOnlyTools: "Read Glob Grep", claude: mockClaude },
+      );
 
       // Should contain the project location
       expect(capturedPrompt).toContain(dir);

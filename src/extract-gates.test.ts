@@ -79,12 +79,11 @@ describe("extractGatesFromAgentContent", () => {
       ]);
     };
 
-    const gates = await extractGatesFromAgentContent(
-      "# Agent\n## QA\nRun bun test and tsc --noEmit",
-      "haiku",
-      "Read Glob Grep",
-      mockClaude,
-    );
+    const gates = await extractGatesFromAgentContent("# Agent\n## QA\nRun bun test and tsc --noEmit", {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(gates.length).toBe(2);
     expect(gates[0]?.name).toBe("test");
@@ -94,12 +93,11 @@ describe("extractGatesFromAgentContent", () => {
   test("returns empty array when Claude returns invalid JSON", async () => {
     const mockClaude: ClaudeInvoker = async () => "I don't know what gates to extract.";
 
-    const gates = await extractGatesFromAgentContent(
-      "# Agent with no QA section",
-      "haiku",
-      "Read Glob Grep",
-      mockClaude,
-    );
+    const gates = await extractGatesFromAgentContent("# Agent with no QA section", {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(gates).toEqual([]);
   });
@@ -109,7 +107,11 @@ describe("extractGatesFromAgentContent", () => {
       throw new Error("Claude process crashed");
     };
 
-    const gates = await extractGatesFromAgentContent("# Agent content", "haiku", "Read Glob Grep", mockClaude);
+    const gates = await extractGatesFromAgentContent("# Agent content", {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(gates).toEqual([]);
   });

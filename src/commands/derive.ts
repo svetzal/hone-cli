@@ -58,10 +58,8 @@ export async function deriveCommand(
 
   const result = await derive(
     resolvedFolder,
-    config.models.derive,
-    config.models.gates,
-    config.readOnlyTools,
-    claude,
+    { model: config.models.derive, readOnlyTools: config.readOnlyTools, claude },
+    { model: config.models.gates, readOnlyTools: config.readOnlyTools, claude },
     existingAgentNames,
   );
 

@@ -210,13 +210,11 @@ export async function runProposalPipeline(
   // Stage: Triage
   if (!skipTriage) {
     progress.onTriageStart();
-    const triageResult = await triageRunner(
-      structuredAssessment,
-      config.severityThreshold,
-      config.models.triage,
-      config.readOnlyTools,
+    const triageResult = await triageRunner(structuredAssessment, config.severityThreshold, {
+      model: config.models.triage,
+      readOnlyTools: config.readOnlyTools,
       claude,
-    );
+    });
 
     if (!triageResult.accepted) {
       progress.onTriageRejected(triageResult.reason);

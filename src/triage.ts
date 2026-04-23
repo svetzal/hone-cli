@@ -1,7 +1,7 @@
 import { buildClaudeArgs } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonFromLlmOutput } from "./json-extraction.ts";
-import type { ClaudeInvoker, StructuredAssessment, TriageResult } from "./types.ts";
+import type { ClaudeContext, StructuredAssessment, TriageResult } from "./types.ts";
 
 export function checkSeverityThreshold(severity: number, threshold: number): { passed: boolean; reason: string } {
   if (severity < threshold) {
@@ -66,10 +66,9 @@ export function parseTriageResponse(raw: string): {
 export async function triage(
   assessment: StructuredAssessment,
   threshold: number,
-  model: string,
-  readOnlyTools: string,
-  claude: ClaudeInvoker,
+  ctx: ClaudeContext,
 ): Promise<TriageResult> {
+  const { model, readOnlyTools, claude } = ctx;
   // Step 1: Severity threshold (no LLM)
   const severityCheck = checkSeverityThreshold(assessment.severity, threshold);
   if (!severityCheck.passed) {

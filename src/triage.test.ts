@@ -76,7 +76,11 @@ describe("triage", () => {
       return "";
     };
 
-    const result = await triage(makeAssessment(1), 3, "haiku", "Read Glob Grep", mockClaude);
+    const result = await triage(makeAssessment(1), 3, {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(result.accepted).toBe(false);
     expect(result.reason).toContain("below threshold");
@@ -87,7 +91,11 @@ describe("triage", () => {
     const mockClaude = async () =>
       '```json\n{ "changeType": "cosmetic", "busyWork": true, "reason": "Just adding comments" }\n```';
 
-    const result = await triage(makeAssessment(4), 3, "haiku", "Read Glob Grep", mockClaude);
+    const result = await triage(makeAssessment(4), 3, {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(result.accepted).toBe(false);
     expect(result.busyWork).toBe(true);
@@ -98,7 +106,11 @@ describe("triage", () => {
     const mockClaude = async () =>
       '```json\n{ "changeType": "architecture", "busyWork": false, "reason": "Genuine SRP violation" }\n```';
 
-    const result = await triage(makeAssessment(4), 3, "haiku", "Read Glob Grep", mockClaude);
+    const result = await triage(makeAssessment(4), 3, {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(result.accepted).toBe(true);
     expect(result.busyWork).toBe(false);
@@ -108,7 +120,11 @@ describe("triage", () => {
   test("at threshold + substantive — accepted", async () => {
     const mockClaude = async () => '```json\n{ "changeType": "bugfix", "busyWork": false, "reason": "Real bug" }\n```';
 
-    const result = await triage(makeAssessment(3), 3, "haiku", "Read Glob Grep", mockClaude);
+    const result = await triage(makeAssessment(3), 3, {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
 
     expect(result.accepted).toBe(true);
   });

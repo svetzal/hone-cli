@@ -17,7 +17,11 @@ export async function runSummarizeStage(
   const { config, claude, onProgress } = ctx;
   try {
     onProgress("summarize", "Generating headline and summary...");
-    const result = await runSummarize(buildPrompt(), config.models.summarize, config.readOnlyTools, claude);
+    const result = await runSummarize(buildPrompt(), {
+      model: config.models.summarize,
+      readOnlyTools: config.readOnlyTools,
+      claude,
+    });
     if (result) {
       return { headline: result.headline, summary: result.summary };
     }

@@ -59,14 +59,11 @@ export async function resolveConflict(ctx: ConflictContext): Promise<ConflictRes
 
     case "e": {
       progress(ctx.isJson, "Generating expanded name...");
-      const expanded = await suggestExpandedName(
-        ctx.agentName,
-        ctx.context,
-        ctx.existingAgentNames,
-        ctx.config.models.triage, // haiku — cheap call
-        ctx.readOnlyTools,
-        ctx.claude,
-      );
+      const expanded = await suggestExpandedName(ctx.agentName, ctx.context, ctx.existingAgentNames, {
+        model: ctx.config.models.triage,
+        readOnlyTools: ctx.readOnlyTools,
+        claude: ctx.claude,
+      });
 
       if (await agentExists(expanded, ctx.agentDir)) {
         throw new CliError(`Expanded name "${expanded}" also conflicts. Use --name to specify a name manually.`);

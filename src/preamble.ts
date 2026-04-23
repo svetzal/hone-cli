@@ -72,7 +72,11 @@ export async function runPreamble(opts: PreambleOptions): Promise<PreambleResult
   let preflightGates: GateDefinition[] = [];
   if (!skipGates) {
     onProgress("preflight", "Resolving quality gates...");
-    preflightGates = await gateResolver(folder, agent, config.models.gates, config.readOnlyTools, claude);
+    preflightGates = await gateResolver(folder, agent, {
+      model: config.models.gates,
+      readOnlyTools: config.readOnlyTools,
+      claude,
+    });
 
     if (preflightGates.length > 0) {
       onProgress("preflight", "Running preflight gate check on unmodified codebase...");
