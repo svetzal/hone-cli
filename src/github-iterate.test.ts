@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
@@ -9,10 +9,11 @@ import {
   acceptingTriageRunner,
   createIterateMock,
   emptyGateResolver,
+  extractPrompt,
   failingCharterChecker,
   rejectingTriageRunner,
 } from "./test-helpers.ts";
-import type { CommandRunner, GatesRunResult, HoneIssue, PipelineContext } from "./types.ts";
+import type { ClaudeInvoker, CommandRunner, GatesRunResult, HoneIssue, PipelineContext } from "./types.ts";
 
 function makeCtx(
   dir: string,
@@ -716,6 +717,203 @@ describe("executeApprovedIssues", () => {
       });
 
       expect(executed).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("execution exception → outcome has error, success: false", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const errorMessage = "Unexpected execution failure";
+
+    const throwingClaude: ClaudeInvoker = async (args) => {
+      const prompt = extractPrompt(args);
+      if (prompt.startsWith("Execute")) {
+        throw new Error(errorMessage);
+      }
+      return "";
+    };
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 20,
+        title: "[Hone] SRP: fix-something",
+        body: formatIssueBody({
+          name: "fix-something",
+          assessment: "assessment",
+          plan: "plan",
+          agent: "test-agent",
+          severity: 4,
+          principle: "SRP",
+        }),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, throwingClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
+
+      expect(executed).toHaveLength(1);
+      expect(executed[0]?.success).toBe(false);
+      expect(executed[0]?.error).toContain(errorMessage);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("approved issues are processed oldest-first", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const mockClaude = createIterateMock({
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "done",
+    });
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 30,
+        title: "[Hone] SRP: fix-newer",
+        body: formatIssueBody({
+          name: "fix-newer",
+          assessment: "assessment",
+          plan: "plan",
+          agent: "test-agent",
+          severity: 4,
+          principle: "SRP",
+        }),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-02-01T00:00:00Z",
+      },
+      {
+        number: 31,
+        title: "[Hone] SRP: fix-older",
+        body: formatIssueBody({
+          name: "fix-older",
+          assessment: "assessment",
+          plan: "plan",
+          agent: "test-agent",
+          severity: 4,
+          principle: "SRP",
+        }),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
+
+      expect(executed).toHaveLength(2);
+      expect(executed[0]?.issueNumber).toBe(31);
+      expect(executed[1]?.issueNumber).toBe(30);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("proposal without name falls back to github-{number}", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const mockClaude = createIterateMock({
+      assess: "a",
+      name: "n",
+      plan: "p",
+      execute: "done",
+    });
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 40,
+        title: "[Hone] SRP: unnamed",
+        body: formatIssueBody({
+          name: "",
+          assessment: "assessment",
+          plan: "plan",
+          agent: "test-agent",
+          severity: 4,
+          principle: "SRP",
+        }),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
+
+      expect(executed).toHaveLength(1);
+      expect(executed[0]?.success).toBe(true);
+
+      const auditFiles = await readdir(join(dir, "audit"));
+      expect(auditFiles.some((f) => f.startsWith("github-40"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("proposal agent overrides context agent for execution", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-exec-"));
+    const capturedArgs: string[][] = [];
+
+    const mockClaude = createIterateMock(
+      { assess: "a", name: "n", plan: "p", execute: "done" },
+      { onCall: (args) => capturedArgs.push([...args]) },
+    );
+
+    const { runner } = createMockGhRunner({ owner: "testowner" });
+
+    const issues: HoneIssue[] = [
+      {
+        number: 50,
+        title: "[Hone] SRP: fix-something",
+        body: formatIssueBody({
+          name: "fix-something",
+          assessment: "assessment",
+          plan: "plan",
+          agent: "proposal-agent",
+          severity: 4,
+          principle: "SRP",
+        }),
+        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+
+    try {
+      await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+        skipGates: true,
+        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+        gates: [],
+        ghRunner: runner,
+      });
+
+      const executeArgs = capturedArgs.find((args) => extractPrompt(args).startsWith("Execute"));
+      expect(executeArgs).toBeDefined();
+      const agentIdx = executeArgs?.indexOf("--agent") ?? -1;
+      expect(agentIdx).not.toBe(-1);
+      expect(executeArgs?.[agentIdx + 1]).toBe("proposal-agent");
     } finally {
       await rm(dir, { recursive: true });
     }
