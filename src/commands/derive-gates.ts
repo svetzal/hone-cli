@@ -4,11 +4,11 @@ import { createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
 import { deriveGates } from "../derive-gates.ts";
 import { CliError } from "../errors.ts";
-import { runAllGates } from "../gates.ts";
 import { writeGatesFile } from "../gates-file.ts";
-import { progress, reportGateValidation, writeJson } from "../output.ts";
+import { progress, writeJson } from "../output.ts";
 import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
 import { parseGatesArgs } from "./gates.ts";
+import { validateAndReportGates } from "./validate-and-report-gates.ts";
 
 export async function deriveGatesCommand(parsed: ParsedArgs, deps?: { claude?: ClaudeInvoker }): Promise<void> {
   if (parsed.positional.length === 0) {
@@ -62,11 +62,13 @@ export async function deriveGatesCommand(parsed: ParsedArgs, deps?: { claude?: C
   // Optionally run gates
   let gateValidation: GateResult[] | null = null;
   if (shouldRun && gates.length > 0) {
-    progress(isJson, "Running discovered gates...");
-    const validationResult = await runAllGates(gates, resolvedFolder, config.gateTimeout);
-    gateValidation = validationResult.results;
-
-    reportGateValidation(validationResult.results, validationResult.allPassed, isJson);
+    gateValidation = await validateAndReportGates(
+      gates,
+      resolvedFolder,
+      config.gateTimeout,
+      isJson,
+      "Running discovered gates...",
+    );
   }
 
   if (isJson) {

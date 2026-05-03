@@ -1,9 +1,9 @@
-import { createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
 import { maintain } from "../maintain.ts";
-import { createProgressCallback, writeJson } from "../output.ts";
-import type { HoneConfig, ParsedArgs, PipelineContext } from "../types.ts";
+import { writeJson } from "../output.ts";
+import type { HoneConfig, ParsedArgs } from "../types.ts";
+import { buildPipelineContext } from "./build-pipeline-context.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
 import { applySharedFlags } from "./shared-flags.ts";
 
@@ -19,9 +19,7 @@ export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
 
   const isJson = parsed.flags.json === true;
 
-  const onProgress = createProgressCallback(isJson);
-  const claude = createClaudeInvoker({ cwd: resolvedFolder });
-  const ctx: PipelineContext = { agent, folder: resolvedFolder, config, claude, onProgress };
+  const ctx = buildPipelineContext(agent, resolvedFolder, config, isJson);
 
   const result = await maintain({ ctx });
 

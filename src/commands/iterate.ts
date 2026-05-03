@@ -1,10 +1,10 @@
-import { createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
 import { CliError } from "../errors.ts";
 import { githubIterate } from "../github-iterate.ts";
 import { iterate } from "../iterate.ts";
-import { createProgressCallback, writeJson } from "../output.ts";
-import type { HoneConfig, HoneMode, ParsedArgs, PipelineContext } from "../types.ts";
+import { writeJson } from "../output.ts";
+import type { HoneConfig, HoneMode, ParsedArgs } from "../types.ts";
+import { buildPipelineContext } from "./build-pipeline-context.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
 import { applySharedFlags } from "./shared-flags.ts";
 
@@ -42,9 +42,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
   const isJson = parsed.flags.json === true;
   const mode = config.mode;
 
-  const onProgress = createProgressCallback(isJson);
-  const claude = createClaudeInvoker({ cwd: resolvedFolder });
-  const ctx: PipelineContext = { agent, folder: resolvedFolder, config, claude, onProgress };
+  const ctx = buildPipelineContext(agent, resolvedFolder, config, isJson);
 
   if (mode === "github") {
     const proposalsFlag = parsed.flags.proposals;
@@ -75,7 +73,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     });
 
     if (result.kind === "skipped") {
-      onProgress("result", result.skippedReason);
+      ctx.onProgress("result", result.skippedReason);
     }
 
     if (isJson) {

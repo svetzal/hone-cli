@@ -7,12 +7,12 @@ import { loadConfig } from "../config.ts";
 import { derive } from "../derive.ts";
 import { resolveConflict, updateFrontmatterName } from "../derive-conflict.ts";
 import { CliError } from "../errors.ts";
-import { runAllGates } from "../gates.ts";
 import { writeGatesFile } from "../gates-file.ts";
-import { progress, reportGateValidation, writeJson } from "../output.ts";
+import { progress, writeJson } from "../output.ts";
 import type { PromptFn } from "../prompt.ts";
 import { promptChoice } from "../prompt.ts";
 import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
+import { validateAndReportGates } from "./validate-and-report-gates.ts";
 
 export async function deriveCommand(
   parsed: ParsedArgs,
@@ -122,11 +122,13 @@ export async function deriveCommand(
   // Validate generated gates
   let gateValidation: GateResult[] | null = null;
   if (result.gates.length > 0) {
-    progress(isJson, "Validating generated gates...");
-    const validationResult = await runAllGates(result.gates, resolvedFolder, config.gateTimeout);
-    gateValidation = validationResult.results;
-
-    reportGateValidation(validationResult.results, validationResult.allPassed, isJson);
+    gateValidation = await validateAndReportGates(
+      result.gates,
+      resolvedFolder,
+      config.gateTimeout,
+      isJson,
+      "Validating generated gates...",
+    );
   }
 
   if (isJson) {
