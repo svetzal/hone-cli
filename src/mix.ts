@@ -1,4 +1,4 @@
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeReadOnlyStage, invokeWriteStage } from "./claude.ts";
 import { EXTRACTION_PROMPT, parseGatesJson } from "./extract-gates.ts";
 import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
@@ -78,28 +78,28 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
   let principlesMixed = false;
   let gatesMixed = false;
 
-  if (opts.mixPrinciples) {
-    const prompt = buildPrinciplesMixPrompt(opts.foreignAgentContent, opts.agentPath);
-    const args = buildClaudeArgs({
-      model: opts.model,
-      prompt,
-      readOnly: false,
-      readOnlyTools: opts.readOnlyTools,
-    });
-    await claude(args); // Claude edits the file directly; stdout ignored
-    principlesMixed = true;
-  }
-
-  if (opts.mixGates) {
-    const prompt = buildGatesMixPrompt(opts.foreignAgentContent, opts.agentPath);
-    const args = buildClaudeArgs({
-      model: opts.model,
-      prompt,
-      readOnly: false,
-      readOnlyTools: opts.readOnlyTools,
-    });
-    await claude(args); // Claude edits the file directly; stdout ignored
-    gatesMixed = true;
+  const writeCtx = { model: opts.model, readOnlyTools: opts.readOnlyTools, claude };
+  const mixOps = [
+    {
+      flag: opts.mixPrinciples,
+      builder: buildPrinciplesMixPrompt,
+      setMixed: () => {
+        principlesMixed = true;
+      },
+    },
+    {
+      flag: opts.mixGates,
+      builder: buildGatesMixPrompt,
+      setMixed: () => {
+        gatesMixed = true;
+      },
+    },
+  ];
+  for (const op of mixOps) {
+    if (op.flag) {
+      await invokeWriteStage(writeCtx, op.builder(opts.foreignAgentContent, opts.agentPath));
+      op.setMixed();
+    }
   }
 
   // Read the updated content back from disk after Claude's edits
@@ -115,14 +115,11 @@ export async function mix(opts: MixOptions, claude: ClaudeInvoker, readFile: Fil
   // 3. JSON array is not valid JSON (malformed)
   let gates: GateDefinition[] | null = null;
   if (gatesMixed) {
-    const extractArgs = buildClaudeArgs({
-      model: opts.gatesModel,
-      prompt: EXTRACTION_PROMPT + updatedContent,
-      readOnly: true,
-      readOnlyTools: opts.readOnlyTools,
-    });
     try {
-      const output = await claude(extractArgs);
+      const output = await invokeReadOnlyStage(
+        { model: opts.gatesModel, readOnlyTools: opts.readOnlyTools, claude },
+        EXTRACTION_PROMPT + updatedContent,
+      );
       // extractJsonArrayFromLlmOutput distinguishes "no valid array found" (no-json/malformed)
       // from "parsed" — only proceed when we got a real array back.
       const extractResult = extractJsonArrayFromLlmOutput(output);

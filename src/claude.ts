@@ -1,5 +1,5 @@
 import { runProcess } from "./process.ts";
-import type { ClaudeInvoker } from "./types.ts";
+import type { ClaudeContext, ClaudeInvoker } from "./types.ts";
 
 export interface ClaudeStageArgs {
   agent?: string;
@@ -40,4 +40,26 @@ export async function invokeClaude(args: string[], cwd?: string): Promise<string
 export function createClaudeInvoker(opts?: { cwd?: string }): ClaudeInvoker {
   const cwd = opts?.cwd;
   return (args) => invokeClaude(args, cwd);
+}
+
+export async function invokeReadOnlyStage(
+  ctx: ClaudeContext,
+  prompt: string,
+  opts?: { agent?: string },
+): Promise<string> {
+  return ctx.claude(
+    buildClaudeArgs({ agent: opts?.agent, model: ctx.model, prompt, readOnly: true, readOnlyTools: ctx.readOnlyTools }),
+  );
+}
+
+export async function invokeWriteStage(ctx: ClaudeContext, prompt: string, opts?: { agent?: string }): Promise<string> {
+  return ctx.claude(
+    buildClaudeArgs({
+      agent: opts?.agent,
+      model: ctx.model,
+      prompt,
+      readOnly: false,
+      readOnlyTools: ctx.readOnlyTools,
+    }),
+  );
 }

@@ -1,5 +1,5 @@
 import { extractAgentName } from "./agent-frontmatter.ts";
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeReadOnlyStage } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
 import { gatherContext, type ProjectContext } from "./project-context.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
@@ -132,14 +132,7 @@ ${existingNames.map((n) => `- ${n}`).join("\n")}
 
 Output ONLY the new name, nothing else.`;
 
-  const args = buildClaudeArgs({
-    model,
-    prompt,
-    readOnly: true,
-    readOnlyTools,
-  });
-
-  const raw = await claude(args);
+  const raw = await invokeReadOnlyStage({ model, readOnlyTools, claude }, prompt);
   return raw.trim().replace(/[`"']/g, "");
 }
 
@@ -153,14 +146,7 @@ export async function derive(
   const context = await gatherContext(folder);
   const prompt = buildDerivePrompt(folder, context, existingAgentNames);
 
-  const args = buildClaudeArgs({
-    model,
-    prompt,
-    readOnly: true,
-    readOnlyTools,
-  });
-
-  const agentContent = await claude(args);
+  const agentContent = await invokeReadOnlyStage({ model, readOnlyTools, claude }, prompt);
   const agentName = extractAgentName(agentContent);
 
   // Extract gates from the generated agent content

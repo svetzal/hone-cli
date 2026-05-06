@@ -1,6 +1,6 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeReadOnlyStage } from "./claude.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { parseAssessment } from "./parse-assessment.ts";
@@ -89,11 +89,10 @@ export function buildExecutePrompt(folder: string, assessment: string, plan: str
 // --- Extracted stage functions ---
 
 export async function runAssessStage(ctx: PipelineContext): Promise<string> {
-  const { agent, folder, config, claude } = ctx;
-  const assessArgs = buildClaudeArgs({
-    agent,
-    model: config.models.assess,
-    prompt: [
+  const { agent, folder, config } = ctx;
+  return invokeReadOnlyStage(
+    { model: config.models.assess, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    [
       `Assess the project in ${folder} against your principles.`,
       "Identify the principle that it is most violating,",
       "and describe how we should correct it.",
@@ -106,18 +105,15 @@ export async function runAssessStage(ctx: PipelineContext): Promise<string> {
       "",
       "Severity: 1=cosmetic, 2=minor, 3=moderate, 4=significant, 5=critical",
     ].join("\n"),
-    readOnly: true,
-    readOnlyTools: config.readOnlyTools,
-  });
-  return claude(assessArgs);
+    { agent },
+  );
 }
 
 export async function runNameStage(ctx: PipelineContext, assessment: string): Promise<string> {
-  const { agent, config, claude } = ctx;
-  const nameArgs = buildClaudeArgs({
-    agent,
-    model: config.models.name,
-    prompt: [
+  const { agent, config } = ctx;
+  const rawName = await invokeReadOnlyStage(
+    { model: config.models.name, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    [
       "Output ONLY a short kebab-case filename (no extension) summarizing the main issue.",
       "Rules: lowercase, hyphens only, no spaces, no backticks, no explanation, max 50 chars.",
       "Example: fix-duplicate-api-helpers",
@@ -125,19 +121,16 @@ export async function runNameStage(ctx: PipelineContext, assessment: string): Pr
       "Assessment:",
       assessment,
     ].join("\n"),
-    readOnly: true,
-    readOnlyTools: config.readOnlyTools,
-  });
-  const rawName = await claude(nameArgs);
+    { agent },
+  );
   return sanitizeName(rawName) || `assessment-${Date.now()}`;
 }
 
 export async function runPlanStage(ctx: PipelineContext, assessment: string): Promise<string> {
-  const { agent, config, claude } = ctx;
-  const planArgs = buildClaudeArgs({
-    agent,
-    model: config.models.plan,
-    prompt: [
+  const { agent, config } = ctx;
+  return invokeReadOnlyStage(
+    { model: config.models.plan, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    [
       "Based on the following assessment, create a step-by-step plan to address the issues identified.",
       "Make sure each step is clear and actionable.",
       "",
@@ -151,10 +144,8 @@ export async function runPlanStage(ctx: PipelineContext, assessment: string): Pr
       "Assessment:",
       assessment,
     ].join("\n"),
-    readOnly: true,
-    readOnlyTools: config.readOnlyTools,
-  });
-  return claude(planArgs);
+    { agent },
+  );
 }
 
 // --- Shared pipeline types ---

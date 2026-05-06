@@ -1,5 +1,5 @@
 import { saveStageOutput } from "./audit.ts";
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeWriteStage } from "./claude.ts";
 import type { AttemptRecord, GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 
@@ -24,14 +24,11 @@ export async function runExecuteWithVerify(
   const { skipGates, gateRunner, gates, auditDir, name, buildRetryPrompt: buildRetryPromptFn } = opts;
 
   onProgress("execute", "Executing plan...");
-  const executeArgs = buildClaudeArgs({
-    agent,
-    model: config.models.execute,
+  let execution = await invokeWriteStage(
+    { model: config.models.execute, readOnlyTools: config.readOnlyTools, claude },
     prompt,
-    readOnly: false,
-    readOnlyTools: config.readOnlyTools,
-  });
-  let execution = await claude(executeArgs);
+    { agent },
+  );
 
   const actionsPath = await saveStageOutput(auditDir, name, "actions", execution);
   onProgress("execute", `Saved: ${actionsPath}`);

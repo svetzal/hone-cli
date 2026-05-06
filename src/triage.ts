@@ -1,4 +1,4 @@
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeReadOnlyStage } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeContext, StructuredAssessment, TriageResult } from "./types.ts";
@@ -83,13 +83,7 @@ export async function triage(
 
   // Step 2: LLM-based busy-work detection
   const prompt = buildTriagePrompt(assessment.prose, assessment.principle);
-  const args = buildClaudeArgs({
-    model,
-    prompt,
-    readOnly: true,
-    readOnlyTools,
-  });
-  const raw = await claude(args);
+  const raw = await invokeReadOnlyStage({ model, readOnlyTools, claude }, prompt);
   const parsed = parseTriageResponse(raw);
 
   if (parsed.busyWork) {

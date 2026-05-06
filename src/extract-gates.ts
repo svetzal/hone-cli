@@ -1,5 +1,5 @@
 import { readAgentContent } from "./agents.ts";
-import { buildClaudeArgs } from "./claude.ts";
+import { invokeReadOnlyStage } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
 import type { ClaudeContext, GateDefinition } from "./types.ts";
@@ -39,16 +39,8 @@ export async function extractGatesFromAgentContent(
   agentContent: string,
   ctx: ClaudeContext,
 ): Promise<GateDefinition[]> {
-  const { model, readOnlyTools, claude } = ctx;
-  const args = buildClaudeArgs({
-    model,
-    prompt: EXTRACTION_PROMPT + agentContent,
-    readOnly: true,
-    readOnlyTools,
-  });
-
   try {
-    const output = await claude(args);
+    const output = await invokeReadOnlyStage(ctx, EXTRACTION_PROMPT + agentContent);
     return parseGatesJson(output);
   } catch (err) {
     warn(`Gate extraction failed: ${err instanceof Error ? err.message : String(err)}`);
