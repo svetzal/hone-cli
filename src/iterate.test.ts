@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import { buildRetryPrompt, iterate, sanitizeName } from "./iterate.ts";
+import { iterate } from "./iterate.ts";
+import { buildRetryPrompt, sanitizeName } from "./pipeline.ts";
 import {
   acceptingTriageRunner,
   createIterateMock,

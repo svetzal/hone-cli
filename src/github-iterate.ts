@@ -13,7 +13,7 @@ import {
   listHoneIssues,
 } from "./github.ts";
 import { formatIssueBody, parseIssueBody } from "./issue-body.ts";
-import { buildExecutePrompt, buildRetryPrompt, runPlanStage, runProposalPipeline } from "./iterate.ts";
+import { buildExecutePrompt, buildRetryPrompt, runPlanStage, runProposalPipeline } from "./pipeline.ts";
 import { runPreamble } from "./preamble.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { triage as runTriageDefault } from "./triage.ts";
