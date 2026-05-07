@@ -11,7 +11,7 @@ import { writeGatesFile } from "../gates-file.ts";
 import { progress, writeJson } from "../output.ts";
 import type { PromptFn } from "../prompt.ts";
 import { promptChoice } from "../prompt.ts";
-import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
+import { type ClaudeInvoker, claudeCtxFromConfig, type GateResult, type ParsedArgs } from "../types.ts";
 import { validateAndReportGates } from "./validate-and-report-gates.ts";
 
 export async function deriveCommand(
@@ -58,8 +58,8 @@ export async function deriveCommand(
 
   const result = await derive(
     resolvedFolder,
-    { model: config.models.derive, readOnlyTools: config.readOnlyTools, claude },
-    { model: config.models.gates, readOnlyTools: config.readOnlyTools, claude },
+    claudeCtxFromConfig(config, "derive", claude),
+    claudeCtxFromConfig(config, "gates", claude),
     existingAgentNames,
   );
 

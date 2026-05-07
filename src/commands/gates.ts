@@ -6,7 +6,7 @@ import { runAllGates } from "../gates.ts";
 import { writeGatesFile } from "../gates-file.ts";
 import { progress, writeJson } from "../output.ts";
 import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
-import type { GateDefinition, ParsedArgs } from "../types.ts";
+import { claudeCtxFromConfig, type GateDefinition, type ParsedArgs } from "../types.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;
@@ -42,11 +42,7 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   if (agentName) {
     // With agent: use full resolution chain (override > agent extraction)
-    gates = await resolveGates(folder, agentName, {
-      model: config.models.gates,
-      readOnlyTools: config.readOnlyTools,
-      claude: createClaudeInvoker(),
-    });
+    gates = await resolveGates(folder, agentName, claudeCtxFromConfig(config, "gates", createClaudeInvoker()));
   } else {
     // Without agent: only use override file
     gates = (await loadOverrideGates(folder)) ?? [];

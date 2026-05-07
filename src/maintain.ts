@@ -5,13 +5,14 @@ import { resolveGates } from "./resolve-gates.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
-import type {
-  AttemptRecord,
-  GateDefinition,
-  GateResolverFn,
-  GateRunner,
-  MaintainResult,
-  PipelineContext,
+import {
+  type AttemptRecord,
+  claudeCtx,
+  type GateDefinition,
+  type GateResolverFn,
+  type GateRunner,
+  type MaintainResult,
+  type PipelineContext,
 } from "./types.ts";
 
 export interface MaintainOptions {
@@ -80,15 +81,11 @@ function formatTimestamp(): string {
 export async function maintain(opts: MaintainOptions): Promise<MaintainResult> {
   const { ctx, gateRunner = runAllGates, gateResolver = resolveGates } = opts;
 
-  const { agent, folder, config, claude, onProgress } = ctx;
+  const { agent, folder, config, onProgress } = ctx;
 
   // Resolve gates
   onProgress("gates", "Resolving quality gates...");
-  const gates = await gateResolver(folder, agent, {
-    model: config.models.gates,
-    readOnlyTools: config.readOnlyTools,
-    claude,
-  });
+  const gates = await gateResolver(folder, agent, claudeCtx(ctx, "gates"));
 
   if (gates.length === 0) {
     onProgress("gates", "No quality gates found. Cannot run maintain without gates.");

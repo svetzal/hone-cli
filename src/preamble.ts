@@ -1,11 +1,12 @@
-import type {
-  CharterCheckerFn,
-  CharterCheckResult,
-  GateDefinition,
-  GateResolverFn,
-  GateRunner,
-  GatesRunResult,
-  PipelineContext,
+import {
+  type CharterCheckerFn,
+  type CharterCheckResult,
+  claudeCtx,
+  type GateDefinition,
+  type GateResolverFn,
+  type GateRunner,
+  type GatesRunResult,
+  type PipelineContext,
 } from "./types.ts";
 
 export interface PreambleOptions {
@@ -42,7 +43,7 @@ export type PreambleResult =
  */
 export async function runPreamble(opts: PreambleOptions): Promise<PreambleResult> {
   const { ctx, skipCharter, skipGates, gateResolver, gateRunner, charterChecker } = opts;
-  const { folder, agent, config, claude, onProgress } = ctx;
+  const { folder, agent, config, onProgress } = ctx;
 
   // --- Charter check ---
   let charterCheckResult: CharterCheckResult | null = null;
@@ -72,11 +73,7 @@ export async function runPreamble(opts: PreambleOptions): Promise<PreambleResult
   let preflightGates: GateDefinition[] = [];
   if (!skipGates) {
     onProgress("preflight", "Resolving quality gates...");
-    preflightGates = await gateResolver(folder, agent, {
-      model: config.models.gates,
-      readOnlyTools: config.readOnlyTools,
-      claude,
-    });
+    preflightGates = await gateResolver(folder, agent, claudeCtx(ctx, "gates"));
 
     if (preflightGates.length > 0) {
       onProgress("preflight", "Running preflight gate check on unmodified codebase...");

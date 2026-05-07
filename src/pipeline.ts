@@ -2,7 +2,14 @@ import { saveStageOutput } from "./audit.ts";
 import { invokeReadOnlyStage } from "./claude.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
-import type { AttemptRecord, PipelineContext, StructuredAssessment, TriageResult, TriageRunnerFn } from "./types.ts";
+import {
+  type AttemptRecord,
+  claudeCtx,
+  type PipelineContext,
+  type StructuredAssessment,
+  type TriageResult,
+  type TriageRunnerFn,
+} from "./types.ts";
 
 export function sanitizeName(raw: string): string {
   const lower = raw.toLowerCase();
@@ -54,9 +61,9 @@ export function buildExecutePrompt(folder: string, assessment: string, plan: str
 }
 
 export async function runAssessStage(ctx: PipelineContext): Promise<string> {
-  const { agent, folder, config } = ctx;
+  const { agent, folder } = ctx;
   return invokeReadOnlyStage(
-    { model: config.models.assess, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    claudeCtx(ctx, "assess"),
     [
       `Assess the project in ${folder} against your principles.`,
       "Identify the principle that it is most violating,",
@@ -75,9 +82,9 @@ export async function runAssessStage(ctx: PipelineContext): Promise<string> {
 }
 
 export async function runNameStage(ctx: PipelineContext, assessment: string): Promise<string> {
-  const { agent, config } = ctx;
+  const { agent } = ctx;
   const rawName = await invokeReadOnlyStage(
-    { model: config.models.name, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    claudeCtx(ctx, "name"),
     [
       "Output ONLY a short kebab-case filename (no extension) summarizing the main issue.",
       "Rules: lowercase, hyphens only, no spaces, no backticks, no explanation, max 50 chars.",
@@ -92,9 +99,9 @@ export async function runNameStage(ctx: PipelineContext, assessment: string): Pr
 }
 
 export async function runPlanStage(ctx: PipelineContext, assessment: string): Promise<string> {
-  const { agent, config } = ctx;
+  const { agent } = ctx;
   return invokeReadOnlyStage(
-    { model: config.models.plan, readOnlyTools: config.readOnlyTools, claude: ctx.claude },
+    claudeCtx(ctx, "plan"),
     [
       "Based on the following assessment, create a step-by-step plan to address the issues identified.",
       "Make sure each step is clear and actionable.",
@@ -144,7 +151,7 @@ export async function runProposalPipeline(
   auditDir: string,
   opts: { skipTriage: boolean; triageRunner: TriageRunnerFn; progress: ProposalProgress },
 ): Promise<ProposalPipelineOutcome> {
-  const { config, claude } = ctx;
+  const { config } = ctx;
   const { skipTriage, triageRunner, progress } = opts;
 
   // Stage: Assess
@@ -162,11 +169,7 @@ export async function runProposalPipeline(
   // Stage: Triage
   if (!skipTriage) {
     progress.onTriageStart();
-    const triageResult = await triageRunner(structuredAssessment, config.severityThreshold, {
-      model: config.models.triage,
-      readOnlyTools: config.readOnlyTools,
-      claude,
-    });
+    const triageResult = await triageRunner(structuredAssessment, config.severityThreshold, claudeCtx(ctx, "triage"));
 
     if (!triageResult.accepted) {
       progress.onTriageRejected(triageResult.reason);

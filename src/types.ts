@@ -201,3 +201,23 @@ export type AttemptRecord = {
   attempt: number;
   failedGates: { name: string; output: string }[];
 };
+
+export function claudeCtx(ctx: PipelineContext, stage: keyof ModelConfig): ClaudeContext {
+  return {
+    model: ctx.config.models[stage],
+    readOnlyTools: ctx.config.readOnlyTools,
+    claude: ctx.claude,
+  };
+}
+
+export function claudeCtxFromConfig(
+  config: HoneConfig,
+  stage: keyof ModelConfig,
+  claude: ClaudeInvoker,
+): ClaudeContext {
+  return {
+    model: config.models[stage],
+    readOnlyTools: config.readOnlyTools,
+    claude,
+  };
+}

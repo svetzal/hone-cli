@@ -1,7 +1,14 @@
 import { saveStageOutput } from "./audit.ts";
 import { invokeWriteStage } from "./claude.ts";
 import { loadOverrideGates } from "./resolve-gates.ts";
-import type { AttemptRecord, GateDefinition, GateRunner, GatesRunResult, PipelineContext } from "./types.ts";
+import {
+  type AttemptRecord,
+  claudeCtx,
+  type GateDefinition,
+  type GateRunner,
+  type GatesRunResult,
+  type PipelineContext,
+} from "./types.ts";
 
 export type RetryPromptBuilder = (
   failedGates: { name: string; output: string }[],
@@ -30,9 +37,7 @@ export async function verifyWithRetry(
   opts: VerifyWithRetryOpts,
 ): Promise<VerifyWithRetryResult> {
   const { ctx, gates, gateRunner, maxRetries, gateTimeout, auditDir, name, buildRetryPrompt } = opts;
-  const { agent, folder, claude, onProgress, config } = ctx;
-  const executeModel = config.models.execute;
-  const readOnlyTools = config.readOnlyTools;
+  const { agent, folder, onProgress } = ctx;
 
   let execution = initialExecution;
   let gatesResult: GatesRunResult | null = null;
@@ -69,7 +74,7 @@ export async function verifyWithRetry(
     attempts.push({ attempt: retries, failedGates });
 
     onProgress("execute", `Retry ${retries}: fixing gate failures...`);
-    execution = await invokeWriteStage({ model: executeModel, readOnlyTools, claude }, retryPrompt, { agent });
+    execution = await invokeWriteStage(claudeCtx(ctx, "execute"), retryPrompt, { agent });
 
     const retryPath = await saveStageOutput(auditDir, name, `retry-${retries}-actions`, execution);
     onProgress("execute", `Saved: ${retryPath}`);

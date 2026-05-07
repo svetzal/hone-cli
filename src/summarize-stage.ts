@@ -1,5 +1,5 @@
 import { summarize as runSummarize } from "./summarize.ts";
-import type { PipelineContext } from "./types.ts";
+import { claudeCtx, type PipelineContext } from "./types.ts";
 
 export interface SummarizeStageResult {
   headline: string | null;
@@ -14,14 +14,10 @@ export async function runSummarizeStage(
   buildPrompt: () => string,
   ctx: PipelineContext,
 ): Promise<SummarizeStageResult> {
-  const { config, claude, onProgress } = ctx;
+  const { onProgress } = ctx;
   try {
     onProgress("summarize", "Generating headline and summary...");
-    const result = await runSummarize(buildPrompt(), {
-      model: config.models.summarize,
-      readOnlyTools: config.readOnlyTools,
-      claude,
-    });
+    const result = await runSummarize(buildPrompt(), claudeCtx(ctx, "summarize"));
     if (result) {
       return { headline: result.headline, summary: result.summary };
     }
