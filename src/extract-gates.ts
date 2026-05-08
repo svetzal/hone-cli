@@ -44,7 +44,7 @@ export async function extractGatesFromAgentContent(
     return parseGatesJson(output);
   } catch (err) {
     warn(`Gate extraction failed: ${err instanceof Error ? err.message : String(err)}`);
-    return [];
+    throw err;
   }
 }
 

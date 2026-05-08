@@ -1,4 +1,20 @@
 import { describe, expect, test } from "bun:test";
+import { CliError, SilentExitError } from "./errors.ts";
+
+describe("SilentExitError", () => {
+  test("is an instance of CliError", () => {
+    const err = new SilentExitError();
+    expect(err).toBeInstanceOf(CliError);
+    expect(err.message).toBe("");
+    expect(err.name).toBe("SilentExitError");
+  });
+
+  test("CliError with message is not a SilentExitError", () => {
+    const err = new CliError("something went wrong");
+    expect(err).not.toBeInstanceOf(SilentExitError);
+    expect(err.message).toBe("something went wrong");
+  });
+});
 
 // Test parseArgs by importing the module and testing the CLI behavior
 // Since parseArgs is not exported, we test via CLI execution

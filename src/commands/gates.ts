@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
-import { CliError } from "../errors.ts";
+import { SilentExitError } from "../errors.ts";
 import { runAllGates } from "../gates.ts";
 import { writeGatesFile } from "../gates-file.ts";
 import { progress, writeJson } from "../output.ts";
@@ -111,6 +111,6 @@ export async function gatesCommand(parsed: ParsedArgs): Promise<void> {
 
   // Exit code remains the same for both modes
   if (!result.requiredPassed) {
-    throw new CliError("");
+    throw new SilentExitError();
   }
 }

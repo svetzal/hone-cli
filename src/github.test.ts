@@ -115,7 +115,7 @@ describe("getIssueReactions", () => {
     expect(result.thumbsDown).toEqual(["bob"]);
   });
 
-  test("returns empty on API error", async () => {
+  test("returns fetchFailed: true on API error", async () => {
     const run = mockRunner(
       new Map([
         ["repo view", { stdout: "org/repo\n", exitCode: 0 }],
@@ -126,6 +126,7 @@ describe("getIssueReactions", () => {
     const result = await getIssueReactions("/project", 1, run);
     expect(result.thumbsUp).toEqual([]);
     expect(result.thumbsDown).toEqual([]);
+    expect(result.fetchFailed).toBe(true);
   });
 
   test("ignores lines with user as a number instead of string", async () => {

@@ -58,6 +58,10 @@ export async function closeRejectedIssues(
 
   for (const issue of issues) {
     const reactions = await getIssueReactions(folder, issue.number, run);
+    if (reactions.fetchFailed) {
+      onProgress("housekeeping", `Warning: could not fetch reactions for issue #${issue.number}, skipping.`);
+      continue;
+    }
     if (reactions.thumbsDown.includes(owner)) {
       onProgress("housekeeping", `Closing rejected issue #${issue.number}: ${issue.title}`);
       await closeIssueWithComment(

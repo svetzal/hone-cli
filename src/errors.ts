@@ -5,6 +5,13 @@ export class CliError extends Error {
   }
 }
 
+export class SilentExitError extends CliError {
+  constructor() {
+    super("");
+    this.name = "SilentExitError";
+  }
+}
+
 export function warn(message: string): void {
   process.stderr.write(`warning: ${message}\n`);
 }

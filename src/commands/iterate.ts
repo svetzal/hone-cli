@@ -1,5 +1,5 @@
 import { loadConfig } from "../config.ts";
-import { CliError } from "../errors.ts";
+import { CliError, SilentExitError } from "../errors.ts";
 import { githubIterate } from "../github-iterate.ts";
 import { iterate } from "../iterate.ts";
 import { writeJson } from "../output.ts";
@@ -81,7 +81,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     }
 
     if (!result.success) {
-      throw new CliError("");
+      throw new SilentExitError();
     }
   }
 }

@@ -11,7 +11,7 @@ import { listAgentsCommand } from "./commands/list-agents.ts";
 import { maintainCommand } from "./commands/maintain.ts";
 import { mixCommand } from "./commands/mix.ts";
 import { VERSION } from "./constants.ts";
-import { CliError } from "./errors.ts";
+import { CliError, SilentExitError } from "./errors.ts";
 import type { ParsedArgs } from "./types.ts";
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -190,10 +190,11 @@ async function main(): Promise<void> {
         process.exit(1);
     }
   } catch (error) {
+    if (error instanceof SilentExitError) {
+      process.exit(1);
+    }
     if (error instanceof CliError) {
-      if (error.message) {
-        console.error(error.message);
-      }
+      console.error(error.message);
       process.exit(1);
     }
     if (error instanceof Error) {

@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { agentExists, readAgentContent } from "./agents.ts";
 import type { loadConfig } from "./config.ts";
 import { suggestExpandedName } from "./derive.ts";
-import { CliError } from "./errors.ts";
+import { CliError, SilentExitError } from "./errors.ts";
 import { mix } from "./mix.ts";
 import { progress, writeJson } from "./output.ts";
 import type { ProjectContext } from "./project-context.ts";
@@ -36,7 +36,7 @@ export async function resolveConflict(ctx: ConflictContext): Promise<ConflictRes
       targetDir: ctx.agentDir,
       suggestedActions: ["overwrite", "expand", "merge", "abort"],
     });
-    throw new CliError("");
+    throw new SilentExitError();
   }
 
   // Read existing agent description for context

@@ -1,5 +1,5 @@
 import { loadConfig } from "../config.ts";
-import { CliError } from "../errors.ts";
+import { SilentExitError } from "../errors.ts";
 import { maintain } from "../maintain.ts";
 import { writeJson } from "../output.ts";
 import type { HoneConfig, ParsedArgs } from "../types.ts";
@@ -28,6 +28,6 @@ export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
   }
 
   if (!result.success) {
-    throw new CliError("");
+    throw new SilentExitError();
   }
 }

@@ -5,7 +5,7 @@ import { join } from "node:path";
 // Source of truth lives in skills/ — .claude/skills/ is the installed copy
 import HONE_SKILL_MD from "../../skills/hone/SKILL.md" with { type: "text" };
 import { VERSION } from "../constants.ts";
-import { CliError } from "../errors.ts";
+import { SilentExitError } from "../errors.ts";
 import { writeJson } from "../output.ts";
 
 interface SkillFile {
@@ -165,6 +165,6 @@ export async function initCommand(parsed: { flags: Record<string, string | boole
   }
 
   if (skipped > 0) {
-    throw new CliError("");
+    throw new SilentExitError();
   }
 }

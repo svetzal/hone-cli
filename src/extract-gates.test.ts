@@ -102,17 +102,17 @@ describe("extractGatesFromAgentContent", () => {
     expect(gates).toEqual([]);
   });
 
-  test("returns empty array when Claude call fails", async () => {
+  test("throws when Claude call fails", async () => {
     const mockClaude: ClaudeInvoker = async () => {
       throw new Error("Claude process crashed");
     };
 
-    const gates = await extractGatesFromAgentContent("# Agent content", {
-      model: "haiku",
-      readOnlyTools: "Read Glob Grep",
-      claude: mockClaude,
-    });
-
-    expect(gates).toEqual([]);
+    expect(
+      extractGatesFromAgentContent("# Agent content", {
+        model: "haiku",
+        readOnlyTools: "Read Glob Grep",
+        claude: mockClaude,
+      }),
+    ).rejects.toThrow("Claude process crashed");
   });
 });

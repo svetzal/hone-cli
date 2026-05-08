@@ -61,7 +61,7 @@ export async function getIssueReactions(
   projectDir: string,
   issueNumber: number,
   run: CommandRunner,
-): Promise<{ thumbsUp: string[]; thumbsDown: string[] }> {
+): Promise<{ thumbsUp: string[]; thumbsDown: string[]; fetchFailed?: boolean }> {
   const repoName = await getRepoNameWithOwner(projectDir, run);
   const { stdout, exitCode } = await run(
     "gh",
@@ -75,7 +75,7 @@ export async function getIssueReactions(
   );
   if (exitCode !== 0) {
     warn(`Failed to fetch reactions for issue #${issueNumber}: ${stdout}`);
-    return { thumbsUp: [], thumbsDown: [] };
+    return { thumbsUp: [], thumbsDown: [], fetchFailed: true };
   }
 
   const thumbsUp: string[] = [];
