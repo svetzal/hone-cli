@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-05-09
+
+### Fixed
+
+- **Recursion guard** — `hone iterate` and `hone maintain` now refuse to run
+  when invoked from inside an existing hone-spawned agent context, exiting
+  with code 2. Hone propagates `HONE_AGENT_DEPTH` to every Claude subprocess
+  it spawns; the entry handlers refuse when the variable is set above 0.
+  Previously, an agent spawned by `hone maintain <agent>` could discover the
+  same `hone maintain <agent>` command and invoke it recursively, producing
+  unbounded process trees. Verified live on 2026-05-09 with a 7-level
+  recursion before the outer agent self-debugged. Maintain and iterate
+  prompts also updated to explicitly forbid recursive `hone` invocations.
+
 ## [2.0.1] - 2026-04-19
 
 ### Fixed
