@@ -261,6 +261,19 @@ describe("buildMaintainPrompt", () => {
     expect(prompt).toContain("- security: `npm audit` (optional)");
     expect(prompt).toContain("Update the project dependencies");
   });
+
+  test("starts with the role-clarification line", () => {
+    const gates: GateDefinition[] = [{ name: "test", command: "bun test", required: true }];
+    const prompt = buildMaintainPrompt("/my/project", gates);
+    const firstLine = prompt.split("\n")[0];
+    expect(firstLine).toBe("You are running inside a hone maintenance run for the project at /my/project.");
+  });
+
+  test("contains do-not-invoke hone maintain instruction", () => {
+    const gates: GateDefinition[] = [{ name: "test", command: "bun test", required: true }];
+    const prompt = buildMaintainPrompt("/my/project", gates);
+    expect(prompt).toContain("do not invoke `hone maintain`");
+  });
 });
 
 describe("buildMaintainRetryPrompt", () => {

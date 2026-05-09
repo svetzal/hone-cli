@@ -57,4 +57,13 @@ describe("runProcess", () => {
     expect(result.stdout.trim()).toBe("stdout");
     expect(result.stderr.trim()).toBe("stderr");
   });
+
+  it("should pass env option through to the subprocess", async () => {
+    const result = await runProcess(["sh", "-c", "echo $MY_VAR"], {
+      env: { ...process.env, MY_VAR: "hello" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("hello");
+  });
 });

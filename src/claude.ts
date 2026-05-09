@@ -1,4 +1,5 @@
 import { runProcess } from "./process.ts";
+import { nextDepthEnv } from "./recursion-guard.ts";
 import type { ClaudeContext, ClaudeInvoker } from "./types.ts";
 
 export interface ClaudeStageArgs {
@@ -28,7 +29,8 @@ export function buildClaudeArgs(opts: ClaudeStageArgs): string[] {
 }
 
 export async function invokeClaude(args: string[], cwd?: string): Promise<string> {
-  const { stdout, stderr, exitCode } = await runProcess(["claude", ...args], cwd ? { cwd } : undefined);
+  const env = nextDepthEnv(process.env);
+  const { stdout, stderr, exitCode } = await runProcess(["claude", ...args], { cwd, env });
 
   if (exitCode !== 0) {
     throw new Error(`claude exited with code ${exitCode}: ${stderr || stdout}`);

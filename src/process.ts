@@ -7,11 +7,13 @@ export interface ProcessResult {
 export interface RunProcessOptions {
   cwd?: string;
   timeout?: number;
+  env?: Record<string, string | undefined>;
 }
 
 export async function runProcess(command: string[], opts?: RunProcessOptions): Promise<ProcessResult> {
   const proc = Bun.spawn(command, {
     cwd: opts?.cwd,
+    env: opts?.env,
     stdout: "pipe",
     stderr: "pipe",
   });

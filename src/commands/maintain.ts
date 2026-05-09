@@ -2,6 +2,7 @@ import { loadConfig } from "../config.ts";
 import { SilentExitError } from "../errors.ts";
 import { maintain } from "../maintain.ts";
 import { writeJson } from "../output.ts";
+import { assertNotRecursive } from "../recursion-guard.ts";
 import type { HoneConfig, ParsedArgs } from "../types.ts";
 import { buildPipelineContext } from "./build-pipeline-context.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
@@ -12,6 +13,7 @@ export function applyMaintainFlags(config: HoneConfig, flags: Record<string, str
 }
 
 export async function maintainCommand(parsed: ParsedArgs): Promise<void> {
+  assertNotRecursive("maintain");
   const { agent, resolvedFolder } = await resolveCommandArgs(parsed, "maintain");
 
   const baseConfig = await loadConfig();

@@ -3,6 +3,7 @@ import { CliError, SilentExitError } from "../errors.ts";
 import { githubIterate } from "../github-iterate.ts";
 import { iterate } from "../iterate.ts";
 import { writeJson } from "../output.ts";
+import { assertNotRecursive } from "../recursion-guard.ts";
 import type { HoneConfig, HoneMode, ParsedArgs } from "../types.ts";
 import { buildPipelineContext } from "./build-pipeline-context.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
@@ -31,6 +32,7 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
 }
 
 export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
+  assertNotRecursive("iterate");
   const { agent, resolvedFolder } = await resolveCommandArgs(parsed, "iterate");
 
   const baseConfig = await loadConfig();

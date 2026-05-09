@@ -728,7 +728,7 @@ describe("executeApprovedIssues", () => {
 
     const throwingClaude: ClaudeInvoker = async (args) => {
       const prompt = extractPrompt(args);
-      if (prompt.startsWith("Execute")) {
+      if (prompt.includes("Execute the following plan")) {
         throw new Error(errorMessage);
       }
       return "";
@@ -909,7 +909,7 @@ describe("executeApprovedIssues", () => {
         ghRunner: runner,
       });
 
-      const executeArgs = capturedArgs.find((args) => extractPrompt(args).startsWith("Execute"));
+      const executeArgs = capturedArgs.find((args) => extractPrompt(args).includes("Execute the following plan"));
       expect(executeArgs).toBeDefined();
       const agentIdx = executeArgs?.indexOf("--agent") ?? -1;
       expect(agentIdx).not.toBe(-1);

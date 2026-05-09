@@ -201,6 +201,14 @@ Trunk-based development. `main` is the only long-lived branch. All work lands on
 requests are not used. Short-lived local working branches (e.g. hopper worktrees)
 are merged to `main` and deleted locally before work is considered complete.
 
+## Recursion Guard
+
+Hone propagates a `HONE_AGENT_DEPTH` environment variable to every Claude subprocess it spawns. The `iterate` and `maintain` commands refuse to run when this variable is set to a value greater than 0, exiting with code 2.
+
+**Do not remove this check.** Verified live on 2026-05-09: a foundryd-style harness spawned Claude with a hone-derived agent and a hone maintain prompt. The agent called `hone maintain` thinking it was the right tool, which spawned another Claude with the same prompt, repeating 7 levels deep before the outer agent self-debugged and killed the children. The `HONE_AGENT_DEPTH` guard is the hard stop that prevents this. If a Claude agent running inside hone needs to verify quality gates, it should run the gate commands directly using its Bash tool, not call `hone` recursively.
+
+Exit code 2 (not 1) distinguishes recursion-refusal from a normal gate failure.
+
 ## Client Code
 
 `mojility` — this is internal Mojility tooling.

@@ -27,7 +27,12 @@ function formatGateList(gates: GateDefinition[]): string {
 
 export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
   return [
-    `Update the project dependencies in ${folder} to their latest compatible versions.`,
+    `You are running inside a hone maintenance run for the project at ${folder}.`,
+    "You are the agent doing the work — do not invoke `hone maintain`, `hone iterate`,",
+    "or `hone gates --run` from inside this session. Run the gate commands listed below",
+    "directly using your Bash tool.",
+    "",
+    "Update the project dependencies to their latest compatible versions.",
     "",
     "Guidelines:",
     "- Prefer minor and patch updates over major version bumps",

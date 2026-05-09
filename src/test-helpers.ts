@@ -49,7 +49,11 @@ export function createIterateMock(
     if (prompt.startsWith("You are a skeptical")) return responses.triage ?? "";
     if (prompt.startsWith("Based on")) return responses.plan;
     if (prompt.startsWith("Generate a headline")) return responses.summarize ?? "";
-    if (prompt.startsWith("Execute") || prompt.startsWith("The previous execution") || prompt.startsWith("## Goal")) {
+    if (
+      prompt.includes("Execute the following plan") ||
+      prompt.startsWith("The previous execution") ||
+      prompt.startsWith("## Goal")
+    ) {
       return responses.execute;
     }
     return "";

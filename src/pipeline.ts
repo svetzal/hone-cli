@@ -50,6 +50,11 @@ export function buildRetryPrompt(
 
 export function buildExecutePrompt(folder: string, assessment: string, plan: string): string {
   return [
+    `You are running inside a hone iterate run for the project at ${folder}.`,
+    "You are the agent doing the work — do not invoke `hone iterate`, `hone maintain`,",
+    "or `hone gates --run` from inside this session. Run any verification commands",
+    "directly using your Bash tool.",
+    "",
     `Execute the following plan to improve the project in ${folder}.`,
     "",
     "Why:",
