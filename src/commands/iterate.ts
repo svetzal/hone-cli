@@ -22,10 +22,14 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
     result.mode = flags.mode as HoneMode;
   }
   if (typeof flags["severity-threshold"] === "string") {
-    result.severityThreshold = parseInt(flags["severity-threshold"], 10);
+    const parsed = parseInt(flags["severity-threshold"], 10);
+    if (Number.isNaN(parsed)) throw new CliError(`--severity-threshold must be an integer, got: ${flags["severity-threshold"]}`);
+    result.severityThreshold = parsed;
   }
   if (typeof flags["min-charter-length"] === "string") {
-    result.minCharterLength = parseInt(flags["min-charter-length"], 10);
+    const parsed = parseInt(flags["min-charter-length"], 10);
+    if (Number.isNaN(parsed)) throw new CliError(`--min-charter-length must be an integer, got: ${flags["min-charter-length"]}`);
+    result.minCharterLength = parsed;
   }
 
   return result;
@@ -48,7 +52,12 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
 
   if (mode === "github") {
     const proposalsFlag = parsed.flags.proposals;
-    const proposals = typeof proposalsFlag === "string" ? parseInt(proposalsFlag, 10) : 1;
+    let proposals = 1;
+    if (typeof proposalsFlag === "string") {
+      const parsed2 = parseInt(proposalsFlag, 10);
+      if (Number.isNaN(parsed2)) throw new CliError(`--proposals must be an integer, got: ${proposalsFlag}`);
+      proposals = parsed2;
+    }
 
     const result = await githubIterate({
       ctx,

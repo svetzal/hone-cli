@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { CliError } from "../errors.ts";
 import type { HoneConfig } from "../types.ts";
 import { applyIterateFlags } from "./iterate.ts";
 
@@ -128,6 +129,16 @@ describe("applyIterateFlags", () => {
   it("should ignore boolean mode flag", () => {
     const result = applyIterateFlags(defaultConfig, { mode: true });
     expect(result.mode).toBe("local"); // Unchanged
+  });
+
+  it("should throw CliError when severity-threshold is not a valid integer", () => {
+    expect(() => applyIterateFlags(defaultConfig, { "severity-threshold": "foo" })).toThrow(CliError);
+    expect(() => applyIterateFlags(defaultConfig, { "severity-threshold": "foo" })).toThrow("--severity-threshold must be an integer");
+  });
+
+  it("should throw CliError when min-charter-length is not a valid integer", () => {
+    expect(() => applyIterateFlags(defaultConfig, { "min-charter-length": "bar" })).toThrow(CliError);
+    expect(() => applyIterateFlags(defaultConfig, { "min-charter-length": "bar" })).toThrow("--min-charter-length must be an integer");
   });
 });
 

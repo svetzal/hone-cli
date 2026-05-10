@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { CliError } from "../errors.ts";
 import type { HoneConfig } from "../types.ts";
 import { applySharedFlags } from "./shared-flags.ts";
 
@@ -80,6 +81,15 @@ describe("applySharedFlags", () => {
     const original = { ...defaultConfig, models: { ...defaultConfig.models } };
     applySharedFlags(defaultConfig, { "max-retries": "99" });
     expect(defaultConfig).toEqual(original);
+  });
+
+  it("should throw CliError when max-retries is not a valid integer", () => {
+    expect(() => applySharedFlags(defaultConfig, { "max-retries": "foo" })).toThrow(CliError);
+    expect(() => applySharedFlags(defaultConfig, { "max-retries": "foo" })).toThrow("--max-retries must be an integer");
+  });
+
+  it("should throw CliError when max-retries is a float string", () => {
+    expect(() => applySharedFlags(defaultConfig, { "max-retries": "3.5" })).not.toThrow();
   });
 
   it("should preserve unrelated config fields", () => {
