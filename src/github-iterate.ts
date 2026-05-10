@@ -1,5 +1,6 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
+import { CliError } from "./errors.ts";
 import { createCommandRunner } from "./command-runner.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
@@ -286,7 +287,7 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
   });
 
   if (!preambleResult.passed) {
-    throw new Error(preambleResult.failureReason);
+    throw new CliError(preambleResult.failureReason);
   }
 
   const preflightGates = preambleResult.gates;
