@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CliError } from "./errors.ts";
 import {
   closeIssueWithComment,
   createHoneIssue,
@@ -30,6 +31,7 @@ describe("getRepoOwner", () => {
   test("throws on failure", async () => {
     const run = mockRunner(new Map([["repo view", { stdout: "error", exitCode: 1 }]]));
 
+    expect(getRepoOwner("/project", run)).rejects.toThrow(CliError);
     expect(getRepoOwner("/project", run)).rejects.toThrow("Failed to get repo owner");
   });
 });
@@ -171,6 +173,7 @@ describe("createHoneIssue", () => {
   test("throws on failure", async () => {
     const run = mockRunner(new Map([["issue create", { stdout: "error", exitCode: 1 }]]));
 
+    expect(createHoneIssue("/project", "title", "body", run)).rejects.toThrow(CliError);
     expect(createHoneIssue("/project", "title", "body", run)).rejects.toThrow("Failed to create issue");
   });
 });

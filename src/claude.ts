@@ -1,3 +1,4 @@
+import { CliError } from "./errors.ts";
 import { runProcess } from "./process.ts";
 import { nextDepthEnv } from "./recursion-guard.ts";
 import type { ClaudeContext, ClaudeInvoker } from "./types.ts";
@@ -33,7 +34,7 @@ export async function invokeClaude(args: string[], cwd?: string): Promise<string
   const { stdout, stderr, exitCode } = await runProcess(["claude", ...args], { cwd, env });
 
   if (exitCode !== 0) {
-    throw new Error(`claude exited with code ${exitCode}: ${stderr || stdout}`);
+    throw new CliError(`claude exited with code ${exitCode}: ${stderr || stdout}`);
   }
 
   return stdout.trim();

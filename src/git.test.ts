@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CliError } from "./errors.ts";
 import { getLatestCommitHash, gitCommit } from "./git.ts";
 import type { CommandRunner } from "./types.ts";
 
@@ -35,6 +36,7 @@ describe("gitCommit", () => {
   test("throws when git add fails", async () => {
     const run: CommandRunner = async () => ({ stdout: "error", exitCode: 1 });
 
+    expect(gitCommit("/project", "msg", run)).rejects.toThrow(CliError);
     expect(gitCommit("/project", "msg", run)).rejects.toThrow("git add failed");
   });
 });

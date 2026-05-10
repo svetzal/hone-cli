@@ -1,4 +1,4 @@
-import { warn } from "./errors.ts";
+import { CliError, warn } from "./errors.ts";
 import type { CommandRunner, HoneIssue } from "./types.ts";
 
 export async function getRepoOwner(projectDir: string, run: CommandRunner): Promise<string> {
@@ -6,7 +6,7 @@ export async function getRepoOwner(projectDir: string, run: CommandRunner): Prom
     cwd: projectDir,
   });
   if (exitCode !== 0) {
-    throw new Error(`Failed to get repo owner: ${stdout}`);
+    throw new CliError(`Failed to get repo owner: ${stdout}`);
   }
   return stdout.trim();
 }
@@ -16,7 +16,7 @@ export async function getRepoNameWithOwner(projectDir: string, run: CommandRunne
     cwd: projectDir,
   });
   if (exitCode !== 0) {
-    throw new Error(`Failed to get repo name: ${stdout}`);
+    throw new CliError(`Failed to get repo name: ${stdout}`);
   }
   return stdout.trim();
 }
@@ -42,7 +42,7 @@ export async function listHoneIssues(projectDir: string, run: CommandRunner): Pr
     { cwd: projectDir },
   );
   if (exitCode !== 0) {
-    throw new Error(`Failed to list issues: ${stdout}`);
+    throw new CliError(`Failed to list issues: ${stdout}`);
   }
 
   const raw: unknown = JSON.parse(stdout || "[]");
@@ -123,13 +123,13 @@ export async function createHoneIssue(
     { cwd: projectDir },
   );
   if (exitCode !== 0) {
-    throw new Error(`Failed to create issue: ${stdout}`);
+    throw new CliError(`Failed to create issue: ${stdout}`);
   }
 
   // gh issue create prints the URL, extract issue number from it
   const match = stdout.trim().match(/\/issues\/(\d+)/);
   if (!match?.[1]) {
-    throw new Error(`Could not parse issue number from: ${stdout}`);
+    throw new CliError(`Could not parse issue number from: ${stdout}`);
   }
   return parseInt(match[1], 10);
 }
@@ -144,6 +144,6 @@ export async function closeIssueWithComment(
     cwd: projectDir,
   });
   if (exitCode !== 0) {
-    throw new Error(`Failed to close issue #${issueNumber}: ${stdout}`);
+    throw new CliError(`Failed to close issue #${issueNumber}: ${stdout}`);
   }
 }
