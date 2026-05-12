@@ -133,12 +133,16 @@ describe("applyIterateFlags", () => {
 
   it("should throw CliError when severity-threshold is not a valid integer", () => {
     expect(() => applyIterateFlags(defaultConfig, { "severity-threshold": "foo" })).toThrow(CliError);
-    expect(() => applyIterateFlags(defaultConfig, { "severity-threshold": "foo" })).toThrow("--severity-threshold must be an integer");
+    expect(() => applyIterateFlags(defaultConfig, { "severity-threshold": "foo" })).toThrow(
+      "--severity-threshold must be an integer",
+    );
   });
 
   it("should throw CliError when min-charter-length is not a valid integer", () => {
     expect(() => applyIterateFlags(defaultConfig, { "min-charter-length": "bar" })).toThrow(CliError);
-    expect(() => applyIterateFlags(defaultConfig, { "min-charter-length": "bar" })).toThrow("--min-charter-length must be an integer");
+    expect(() => applyIterateFlags(defaultConfig, { "min-charter-length": "bar" })).toThrow(
+      "--min-charter-length must be an integer",
+    );
   });
 });
 

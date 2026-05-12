@@ -23,12 +23,14 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
   }
   if (typeof flags["severity-threshold"] === "string") {
     const parsed = parseInt(flags["severity-threshold"], 10);
-    if (Number.isNaN(parsed)) throw new CliError(`--severity-threshold must be an integer, got: ${flags["severity-threshold"]}`);
+    if (Number.isNaN(parsed))
+      throw new CliError(`--severity-threshold must be an integer, got: ${flags["severity-threshold"]}`);
     result.severityThreshold = parsed;
   }
   if (typeof flags["min-charter-length"] === "string") {
     const parsed = parseInt(flags["min-charter-length"], 10);
-    if (Number.isNaN(parsed)) throw new CliError(`--min-charter-length must be an integer, got: ${flags["min-charter-length"]}`);
+    if (Number.isNaN(parsed))
+      throw new CliError(`--min-charter-length must be an integer, got: ${flags["min-charter-length"]}`);
     result.minCharterLength = parsed;
   }
 

@@ -1,7 +1,7 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
-import { CliError } from "./errors.ts";
 import { createCommandRunner } from "./command-runner.ts";
+import { CliError } from "./errors.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { gitCommit } from "./git.ts";
