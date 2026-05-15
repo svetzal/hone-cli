@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
 import { iterate } from "./iterate.ts";
-import { buildRetryPrompt, sanitizeName } from "./pipeline.ts";
 import {
   acceptingTriageRunner,
   createIterateMock,
@@ -718,121 +717,5 @@ describe("iterate", () => {
     } finally {
       await rm(dir, { recursive: true });
     }
-  });
-});
-
-describe("sanitizeName", () => {
-  test("extracts kebab-case name from clean LLM output", () => {
-    expect(sanitizeName("fix-broken-auth-handler")).toBe("fix-broken-auth-handler");
-  });
-
-  test("extracts from output with surrounding markdown backticks", () => {
-    expect(sanitizeName("`improve-error-handling`")).toBe("improve-error-handling");
-  });
-
-  test("caps at 50 characters", () => {
-    const longName = "a".repeat(60);
-    expect(sanitizeName(longName)).toBe("a".repeat(50));
-  });
-
-  test("returns empty string when no alphanumeric content", () => {
-    expect(sanitizeName("!!!---!!!")).toBe("");
-    expect(sanitizeName("")).toBe("");
-  });
-
-  test("extracts kebab-case name from surrounding prose", () => {
-    expect(sanitizeName("The name is fix-auth")).toBe("fix-auth");
-  });
-
-  test("handles trailing newline", () => {
-    expect(sanitizeName("fix-auth-bug\n")).toBe("fix-auth-bug");
-  });
-
-  test("lowercases input to handle mixed-case LLM output", () => {
-    expect(sanitizeName("Fix-Broken-Auth")).toBe("fix-broken-auth");
-    expect(sanitizeName("ALLCAPS")).toBe("allcaps");
-  });
-
-  test("prefers longest multi-segment kebab match", () => {
-    expect(sanitizeName("Try fix-auth or fix-broken-auth-handler")).toBe("fix-broken-auth-handler");
-  });
-
-  test("falls back to single word when no kebab segments found", () => {
-    expect(sanitizeName("refactor")).toBe("refactor");
-  });
-});
-
-describe("buildRetryPrompt", () => {
-  test("includes original plan and failed gate output", () => {
-    const prompt = buildRetryPrompt(
-      "/my/project",
-      "Step 1: Fix the thing",
-      "Assessment content",
-      [{ name: "test", output: "FAIL: expected 1 got 2" }],
-      [],
-    );
-
-    expect(prompt).toContain("## Original Plan");
-    expect(prompt).toContain("Step 1: Fix the thing");
-    expect(prompt).toContain("## Current Failed Gates");
-    expect(prompt).toContain("### Gate: test");
-    expect(prompt).toContain("FAIL: expected 1 got 2");
-  });
-
-  test("formats multiple failed gates", () => {
-    const prompt = buildRetryPrompt(
-      "/my/project",
-      "Plan content",
-      "Assessment content",
-      [
-        { name: "test", output: "test failure" },
-        { name: "lint", output: "lint failure" },
-      ],
-      [],
-    );
-
-    expect(prompt).toContain("### Gate: test");
-    expect(prompt).toContain("test failure");
-    expect(prompt).toContain("### Gate: lint");
-    expect(prompt).toContain("lint failure");
-  });
-
-  test("includes instruction to not regress", () => {
-    const prompt = buildRetryPrompt("/my/project", "Plan", "Assessment", [{ name: "test", output: "fail" }], []);
-    expect(prompt).toContain("Fix the failures below WITHOUT regressing");
-  });
-
-  test("includes goal section with folder and assessment", () => {
-    const prompt = buildRetryPrompt(
-      "/my/project",
-      "Plan",
-      "Assessment content here",
-      [{ name: "test", output: "fail" }],
-      [],
-    );
-    expect(prompt).toContain("## Goal");
-    expect(prompt).toContain("/my/project");
-    expect(prompt).toContain("## Assessment");
-    expect(prompt).toContain("Assessment content here");
-  });
-
-  test("includes cumulative prior attempt history", () => {
-    const prompt = buildRetryPrompt(
-      "/my/project",
-      "Plan",
-      "Assessment",
-      [{ name: "test", output: "FAIL: attempt 3 error" }],
-      [
-        { attempt: 1, failedGates: [{ name: "test", output: "FAIL: attempt 1 error" }] },
-        { attempt: 2, failedGates: [{ name: "test", output: "FAIL: attempt 2 error" }] },
-      ],
-    );
-
-    expect(prompt).toContain("## Attempt 1");
-    expect(prompt).toContain("FAIL: attempt 1 error");
-    expect(prompt).toContain("## Attempt 2");
-    expect(prompt).toContain("FAIL: attempt 2 error");
-    expect(prompt).toContain("## Current Failed Gates");
-    expect(prompt).toContain("FAIL: attempt 3 error");
   });
 });
