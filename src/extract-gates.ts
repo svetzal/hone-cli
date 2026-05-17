@@ -1,7 +1,7 @@
 import { readAgentContent } from "./agents.ts";
 import { invokeReadOnlyStage } from "./claude.ts";
 import { warn } from "./errors.ts";
-import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
+import { extractJsonArrayFromLlmOutput, warnOnMalformedJson } from "./json-extraction.ts";
 import type { ClaudeContext, GateDefinition } from "./types.ts";
 
 export const EXTRACTION_PROMPT = `You are analyzing a Claude agent definition file. Extract all quality assurance gate commands that this agent expects to be run against a project.
@@ -57,14 +57,10 @@ export async function extractGatesFromAgent(agentName: string, ctx: ClaudeContex
 
 export function parseGatesJson(raw: string): GateDefinition[] {
   const result = extractJsonArrayFromLlmOutput(raw);
-  if (result.kind !== "parsed") {
-    if (result.kind === "malformed") {
-      warn(`Gate extraction response contained malformed JSON: ${raw.slice(0, 200)}`);
-    }
-    return [];
-  }
+  const value = warnOnMalformedJson(result, "Gate extraction response");
+  if (!value) return [];
 
-  return result.value
+  return value
     .filter(
       (g: unknown): g is { name: string; command: string; required?: boolean } =>
         typeof g === "object" &&

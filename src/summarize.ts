@@ -1,6 +1,6 @@
 import { invokeReadOnlyStage } from "./claude.ts";
 import { warn } from "./errors.ts";
-import { extractJsonFromLlmOutput } from "./json-extraction.ts";
+import { extractJsonFromLlmOutput, warnOnMalformedJson } from "./json-extraction.ts";
 import type { ClaudeContext, GatesRunResult, StructuredAssessment, TriageResult } from "./types.ts";
 
 export interface SummarizeResult {
@@ -79,14 +79,8 @@ export function buildMaintainSummarizePrompt(ctx: MaintainSummarizeContext): str
 
 export function parseSummarizeResponse(raw: string): SummarizeResult | null {
   const result = extractJsonFromLlmOutput(raw);
-  if (result.kind !== "parsed") {
-    if (result.kind === "malformed") {
-      warn(`Summarize response contained malformed JSON: ${raw.slice(0, 200)}`);
-    }
-    return null;
-  }
-
-  const json = result.value;
+  const json = warnOnMalformedJson(result, "Summarize response");
+  if (!json) return null;
   if (typeof json.headline !== "string" || typeof json.summary !== "string") {
     warn("Summarize response missing required fields: headline and summary");
     return null;

@@ -1,7 +1,7 @@
 import { CliError } from "../errors.ts";
 import type { HoneConfig } from "../types.ts";
 
-function parseIntFlag(name: string, value: string): number {
+export function parseIntFlag(name: string, value: string): number {
   const parsed = parseInt(value, 10);
   if (Number.isNaN(parsed)) throw new CliError(`--${name} must be an integer, got: ${value}`);
   return parsed;

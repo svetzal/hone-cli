@@ -1,7 +1,17 @@
+import { warn } from "./errors.ts";
+
 export type JsonExtractionResult<T> =
   | { kind: "parsed"; value: T }
   | { kind: "no-json" }
   | { kind: "malformed"; raw: string };
+
+export function warnOnMalformedJson<T>(result: JsonExtractionResult<T>, label: string): T | null {
+  if (result.kind === "parsed") return result.value;
+  if (result.kind === "malformed") {
+    warn(`${label} contained malformed JSON: ${result.raw.slice(0, 200)}`);
+  }
+  return null;
+}
 
 function findBalancedJson(raw: string, openChar: string, closeChar: string): string | null {
   const start = raw.indexOf(openChar);

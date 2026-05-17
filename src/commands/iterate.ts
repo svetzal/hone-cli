@@ -7,7 +7,7 @@ import { assertNotRecursive } from "../recursion-guard.ts";
 import type { HoneConfig, HoneMode, ParsedArgs } from "../types.ts";
 import { buildPipelineContext } from "./build-pipeline-context.ts";
 import { resolveCommandArgs } from "./resolve-command-args.ts";
-import { applySharedFlags } from "./shared-flags.ts";
+import { applySharedFlags, parseIntFlag } from "./shared-flags.ts";
 
 export function applyIterateFlags(config: HoneConfig, flags: Record<string, string | boolean>): HoneConfig {
   const result = applySharedFlags(config, flags);
@@ -22,16 +22,10 @@ export function applyIterateFlags(config: HoneConfig, flags: Record<string, stri
     result.mode = flags.mode as HoneMode;
   }
   if (typeof flags["severity-threshold"] === "string") {
-    const parsed = parseInt(flags["severity-threshold"], 10);
-    if (Number.isNaN(parsed))
-      throw new CliError(`--severity-threshold must be an integer, got: ${flags["severity-threshold"]}`);
-    result.severityThreshold = parsed;
+    result.severityThreshold = parseIntFlag("severity-threshold", flags["severity-threshold"]);
   }
   if (typeof flags["min-charter-length"] === "string") {
-    const parsed = parseInt(flags["min-charter-length"], 10);
-    if (Number.isNaN(parsed))
-      throw new CliError(`--min-charter-length must be an integer, got: ${flags["min-charter-length"]}`);
-    result.minCharterLength = parsed;
+    result.minCharterLength = parseIntFlag("min-charter-length", flags["min-charter-length"]);
   }
 
   return result;
@@ -56,9 +50,7 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
     const proposalsFlag = parsed.flags.proposals;
     let proposals = 1;
     if (typeof proposalsFlag === "string") {
-      const parsed2 = parseInt(proposalsFlag, 10);
-      if (Number.isNaN(parsed2)) throw new CliError(`--proposals must be an integer, got: ${proposalsFlag}`);
-      proposals = parsed2;
+      proposals = parseIntFlag("proposals", proposalsFlag);
     }
 
     const result = await githubIterate({

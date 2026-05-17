@@ -1,6 +1,5 @@
 import { invokeReadOnlyStage } from "./claude.ts";
-import { warn } from "./errors.ts";
-import { extractJsonFromLlmOutput } from "./json-extraction.ts";
+import { extractJsonFromLlmOutput, warnOnMalformedJson } from "./json-extraction.ts";
 import type { ClaudeContext, StructuredAssessment, TriageResult } from "./types.ts";
 
 export function checkSeverityThreshold(severity: number, threshold: number): { passed: boolean; reason: string } {
@@ -47,15 +46,10 @@ export function parseTriageResponse(raw: string): {
   reason: string;
 } {
   const result = extractJsonFromLlmOutput(raw);
-  if (result.kind !== "parsed") {
-    if (result.kind === "malformed") {
-      warn(`Triage response contained malformed JSON: ${raw.slice(0, 200)}`);
-    }
-    // Fail-open: don't block real work on parse errors
+  const json = warnOnMalformedJson(result, "Triage response");
+  if (!json) {
     return { changeType: "other", busyWork: false, reason: "Failed to parse triage response" };
   }
-
-  const json = result.value;
   return {
     changeType: typeof json.changeType === "string" ? json.changeType : "other",
     busyWork: typeof json.busyWork === "boolean" ? json.busyWork : false,
