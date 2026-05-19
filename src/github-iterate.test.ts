@@ -513,24 +513,22 @@ describe("closeRejectedIssues", () => {
         number: 1,
         title: "Bad",
         body: "x",
-        reactions: { thumbsUp: [], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
       {
         number: 2,
         title: "Good",
         body: "y",
-        reactions: { thumbsUp: [], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
 
     try {
-      const closed = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
+      const { closed, reactionsByIssue } = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
 
       expect(closed).toEqual([1]);
       expect(closedIssues).toEqual([1]);
-      expect(issues[1]?.reactions.thumbsUp).toContain("testowner");
+      expect(reactionsByIssue.get(2)?.thumbsUp).toContain("testowner");
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -556,16 +554,15 @@ describe("closeRejectedIssues", () => {
         number: 3,
         title: "Neutral",
         body: "z",
-        reactions: { thumbsUp: [], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
 
     try {
-      const closed = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
+      const { closed, reactionsByIssue } = await closeRejectedIssues(issues, "testowner", dir, runner, () => {});
 
       expect(closed).toEqual([]);
-      expect(issues[0]?.reactions.thumbsUp).toEqual(["otheruser"]);
+      expect(reactionsByIssue.get(3)?.thumbsUp).toEqual(["otheruser"]);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -598,7 +595,6 @@ describe("executeApprovedIssues", () => {
         number: 10,
         title: "[Hone] SRP: fix-something",
         body: formatIssueBody(proposal),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -609,6 +605,7 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([[10, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
       });
 
       expect(executed).toHaveLength(1);
@@ -645,7 +642,6 @@ describe("executeApprovedIssues", () => {
         number: 11,
         title: "[Hone] SRP: fix-something",
         body: formatIssueBody(proposal),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -676,6 +672,7 @@ describe("executeApprovedIssues", () => {
           gateRunner: failingGateRunner,
           gates: [{ name: "test", command: "npm test", required: true }],
           ghRunner: runner,
+          reactionsByIssue: new Map([[11, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
         },
       );
 
@@ -703,7 +700,6 @@ describe("executeApprovedIssues", () => {
         number: 12,
         title: "[Hone] Invalid",
         body: "this is not a valid proposal body",
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -714,6 +710,7 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([[12, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
       });
 
       expect(executed).toHaveLength(0);
@@ -748,7 +745,6 @@ describe("executeApprovedIssues", () => {
           severity: 4,
           principle: "SRP",
         }),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -759,6 +755,7 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([[20, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
       });
 
       expect(executed).toHaveLength(1);
@@ -792,7 +789,6 @@ describe("executeApprovedIssues", () => {
           severity: 4,
           principle: "SRP",
         }),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-02-01T00:00:00Z",
       },
       {
@@ -806,7 +802,6 @@ describe("executeApprovedIssues", () => {
           severity: 4,
           principle: "SRP",
         }),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -817,6 +812,10 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([
+          [30, { thumbsUp: ["testowner"], thumbsDown: [] }],
+          [31, { thumbsUp: ["testowner"], thumbsDown: [] }],
+        ]),
       });
 
       expect(executed).toHaveLength(2);
@@ -850,7 +849,6 @@ describe("executeApprovedIssues", () => {
           severity: 4,
           principle: "SRP",
         }),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -861,6 +859,7 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([[40, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
       });
 
       expect(executed).toHaveLength(1);
@@ -896,7 +895,6 @@ describe("executeApprovedIssues", () => {
           severity: 4,
           principle: "SRP",
         }),
-        reactions: { thumbsUp: ["testowner"], thumbsDown: [] },
         createdAt: "2024-01-01T00:00:00Z",
       },
     ];
@@ -907,6 +905,7 @@ describe("executeApprovedIssues", () => {
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
         ghRunner: runner,
+        reactionsByIssue: new Map([[50, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
       });
 
       const executeArgs = capturedArgs.find((args) => extractPrompt(args).includes("Execute the following plan"));

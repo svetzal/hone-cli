@@ -52,7 +52,6 @@ export async function listHoneIssues(projectDir: string, run: CommandRunner): Pr
     number: issue.number,
     title: issue.title,
     body: issue.body,
-    reactions: { thumbsUp: [], thumbsDown: [] },
     createdAt: issue.createdAt,
   }));
 }

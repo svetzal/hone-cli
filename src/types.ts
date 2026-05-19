@@ -69,6 +69,8 @@ export type IterationResult = IterationSkipped | IterationCompleted;
 
 export type HoneMode = "local" | "github";
 
+export type IssueReactions = { thumbsUp: string[]; thumbsDown: string[] };
+
 export interface HoneConfig {
   models: ModelConfig;
   auditDir: string;
@@ -151,7 +153,6 @@ export interface HoneIssue {
   number: number;
   title: string;
   body: string;
-  reactions: { thumbsUp: string[]; thumbsDown: string[] };
   createdAt: string;
 }
 

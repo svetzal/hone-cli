@@ -27,6 +27,7 @@ import type {
   GateRunner,
   GitHubIterateResult,
   HoneIssue,
+  IssueReactions,
   PipelineContext,
   TriageRunnerFn,
 } from "./types.ts";
@@ -54,8 +55,9 @@ export async function closeRejectedIssues(
   folder: string,
   run: CommandRunner,
   onProgress: (stage: string, message: string) => void,
-): Promise<number[]> {
+): Promise<{ closed: number[]; reactionsByIssue: Map<number, IssueReactions> }> {
   const closed: number[] = [];
+  const reactionsByIssue = new Map<number, IssueReactions>();
 
   for (const issue of issues) {
     const reactions = await getIssueReactions(folder, issue.number, run);
@@ -73,12 +75,11 @@ export async function closeRejectedIssues(
       );
       closed.push(issue.number);
     } else {
-      // Store reactions for later use by executeApprovedIssues
-      issue.reactions = reactions;
+      reactionsByIssue.set(issue.number, { thumbsUp: reactions.thumbsUp, thumbsDown: reactions.thumbsDown });
     }
   }
 
-  return closed;
+  return { closed, reactionsByIssue };
 }
 
 async function executeSingleIssue(
@@ -175,10 +176,12 @@ export async function executeApprovedIssues(
     gateRunner: GateRunner;
     gates: GateDefinition[];
     ghRunner: CommandRunner;
+    reactionsByIssue: Map<number, IssueReactions>;
   },
 ): Promise<ExecutionOutcome[]> {
+  const { reactionsByIssue } = opts;
   const approvedIssues = issues
-    .filter((issue) => issue.reactions.thumbsUp.includes(owner))
+    .filter((issue) => (reactionsByIssue.get(issue.number)?.thumbsUp ?? []).includes(owner))
     .filter((issue) => !closedIssueNumbers.includes(issue.number))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
@@ -301,7 +304,7 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
   const issues = await listHoneIssues(folder, ghRunner);
 
   // --- Phase 1: Close rejected issues ---
-  const closed = await closeRejectedIssues(issues, owner, folder, ghRunner, onProgress);
+  const { closed, reactionsByIssue } = await closeRejectedIssues(issues, owner, folder, ghRunner, onProgress);
 
   // --- Phase 2: Execute approved backlog ---
   const executed = await executeApprovedIssues(issues, owner, closed, ctx, {
@@ -309,6 +312,7 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
     gateRunner,
     gates: preflightGates,
     ghRunner,
+    reactionsByIssue,
   });
 
   // --- Phase 3: Propose new improvements ---
