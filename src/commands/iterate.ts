@@ -61,8 +61,16 @@ export async function iterateCommand(parsed: ParsedArgs): Promise<void> {
       skipCharter,
     });
 
+    if (result.skippedReason) {
+      ctx.onProgress("result", result.skippedReason);
+    }
+
     if (isJson) {
       writeJson(result);
+    }
+
+    if (!result.success) {
+      throw new SilentExitError();
     }
   } else {
     // Local mode

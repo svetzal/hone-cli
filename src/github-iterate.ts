@@ -1,7 +1,6 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
 import { createCommandRunner } from "./command-runner.ts";
-import { CliError } from "./errors.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { gitCommit } from "./git.ts";
@@ -290,7 +289,17 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
   });
 
   if (!preambleResult.passed) {
-    throw new CliError(preambleResult.failureReason);
+    return {
+      mode: "github",
+      success: false,
+      skippedReason: preambleResult.failureReason,
+      charterCheck: preambleResult.charterCheck,
+      gatesResult: preambleResult.gatesResult ?? null,
+      housekeeping: { closed: [] },
+      executed: [],
+      proposed: [],
+      skippedTriage: 0,
+    };
   }
 
   const preflightGates = preambleResult.gates;
@@ -320,6 +329,10 @@ export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubI
 
   return {
     mode: "github",
+    success: true,
+    skippedReason: null,
+    charterCheck: preambleResult.charterCheck,
+    gatesResult: null,
     housekeeping: { closed },
     executed,
     proposed,

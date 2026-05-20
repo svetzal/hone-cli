@@ -176,6 +176,10 @@ export interface ExecutionOutcome {
 
 export interface GitHubIterateResult {
   mode: "github";
+  success: boolean;
+  skippedReason: string | null;
+  charterCheck: CharterCheckResult | null;
+  gatesResult: GatesRunResult | null;
   housekeeping: { closed: number[] };
   executed: ExecutionOutcome[];
   proposed: number[];

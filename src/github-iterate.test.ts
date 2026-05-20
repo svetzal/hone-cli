@@ -140,7 +140,7 @@ function createMockGhRunner(opts: {
 }
 
 describe("githubIterate", () => {
-  test("charter fails → throws error", async () => {
+  test("charter fails → returns failure result", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const mockClaude = createIterateMock({
       assess: "x",
@@ -151,16 +151,19 @@ describe("githubIterate", () => {
     const { runner } = createMockGhRunner({});
 
     try {
-      expect(
-        githubIterate({
-          ctx: makeCtx(dir, mockClaude),
-          proposals: 1,
-          skipGates: true,
-          skipTriage: true,
-          charterChecker: failingCharterChecker,
-          ghRunner: runner,
-        }),
-      ).rejects.toThrow("Charter clarity insufficient");
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 1,
+        skipGates: true,
+        skipTriage: true,
+        charterChecker: failingCharterChecker,
+        ghRunner: runner,
+      });
+      expect(result.success).toBe(false);
+      expect(result.skippedReason).toContain("Charter clarity insufficient");
+      expect(result.housekeeping.closed).toEqual([]);
+      expect(result.executed).toEqual([]);
+      expect(result.proposed).toEqual([]);
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -405,7 +408,7 @@ describe("githubIterate", () => {
     }
   });
 
-  test("preflight fails → throws error before executing", async () => {
+  test("preflight fails → returns failure result before executing", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-gh-"));
     const claudeCalls: string[][] = [];
     const mockClaude = createIterateMock(
@@ -431,19 +434,19 @@ describe("githubIterate", () => {
     });
 
     try {
-      await expect(
-        githubIterate({
-          ctx: makeCtx(dir, mockClaude),
-          proposals: 1,
-          skipGates: false,
-          skipTriage: true,
-          skipCharter: true,
-          ghRunner: runner,
-          gateRunner: failingGateRunner,
-          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
-        }),
-      ).rejects.toThrow("Preflight failed");
+      const result = await githubIterate({
+        ctx: makeCtx(dir, mockClaude),
+        proposals: 1,
+        skipGates: false,
+        skipTriage: true,
+        skipCharter: true,
+        ghRunner: runner,
+        gateRunner: failingGateRunner,
+        gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+      });
 
+      expect(result.success).toBe(false);
+      expect(result.skippedReason).toContain("Preflight failed");
       // No Claude calls should have been made
       expect(claudeCalls.length).toBe(0);
     } finally {
