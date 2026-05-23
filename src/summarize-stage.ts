@@ -1,5 +1,6 @@
+import { claudeCtx } from "./claude.ts";
 import { summarize as runSummarize } from "./summarize.ts";
-import { claudeCtx, type PipelineContext } from "./types.ts";
+import type { PipelineContext } from "./types.ts";
 
 export interface SummarizeStageResult {
   headline: string | null;

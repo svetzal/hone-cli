@@ -1,7 +1,7 @@
 import { CliError } from "./errors.ts";
 import { runProcess } from "./process.ts";
 import { nextDepthEnv } from "./recursion-guard.ts";
-import type { ClaudeContext, ClaudeInvoker } from "./types.ts";
+import type { ClaudeContext, ClaudeInvoker, HoneConfig, ModelConfig, PipelineContext } from "./types.ts";
 
 export interface ClaudeStageArgs {
   agent?: string;
@@ -65,4 +65,24 @@ export async function invokeWriteStage(ctx: ClaudeContext, prompt: string, opts?
       readOnlyTools: ctx.readOnlyTools,
     }),
   );
+}
+
+export function claudeCtx(ctx: PipelineContext, stage: keyof ModelConfig): ClaudeContext {
+  return {
+    model: ctx.config.models[stage],
+    readOnlyTools: ctx.config.readOnlyTools,
+    claude: ctx.claude,
+  };
+}
+
+export function claudeCtxFromConfig(
+  config: HoneConfig,
+  stage: keyof ModelConfig,
+  claude: ClaudeInvoker,
+): ClaudeContext {
+  return {
+    model: config.models[stage],
+    readOnlyTools: config.readOnlyTools,
+    claude,
+  };
 }

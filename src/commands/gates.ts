@@ -1,12 +1,12 @@
 import { resolve } from "node:path";
-import { createClaudeInvoker } from "../claude.ts";
+import { claudeCtxFromConfig, createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
 import { SilentExitError } from "../errors.ts";
 import { runAllGates } from "../gates.ts";
 import { writeGatesFile } from "../gates-file.ts";
 import { progress, writeJson } from "../output.ts";
 import { loadOverrideGates, resolveGates } from "../resolve-gates.ts";
-import { claudeCtxFromConfig, type GateDefinition, type ParsedArgs } from "../types.ts";
+import type { GateDefinition, ParsedArgs } from "../types.ts";
 
 export interface GatesArgs {
   agentName: string | undefined;

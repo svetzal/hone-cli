@@ -1,15 +1,8 @@
 import { saveStageOutput } from "./audit.ts";
-import { invokeReadOnlyStage } from "./claude.ts";
+import { claudeCtx, invokeReadOnlyStage } from "./claude.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
-import {
-  type AttemptRecord,
-  claudeCtx,
-  type PipelineContext,
-  type StructuredAssessment,
-  type TriageResult,
-  type TriageRunnerFn,
-} from "./types.ts";
+import type { AttemptRecord, PipelineContext, StructuredAssessment, TriageResult, TriageRunnerFn } from "./types.ts";
 
 export function sanitizeName(raw: string): string {
   const lower = raw.toLowerCase();

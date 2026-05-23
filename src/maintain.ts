@@ -1,18 +1,18 @@
 import { ensureAuditDir } from "./audit.ts";
+import { claudeCtx } from "./claude.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
 import { runSummarizeStage } from "./summarize-stage.ts";
-import {
-  type AttemptRecord,
-  claudeCtx,
-  type GateDefinition,
-  type GateResolverFn,
-  type GateRunner,
-  type MaintainResult,
-  type PipelineContext,
+import type {
+  AttemptRecord,
+  GateDefinition,
+  GateResolverFn,
+  GateRunner,
+  MaintainResult,
+  PipelineContext,
 } from "./types.ts";
 
 export interface MaintainOptions {

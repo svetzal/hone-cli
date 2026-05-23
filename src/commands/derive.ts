@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { agentExists, listAgents } from "../agents.ts";
-import { createClaudeInvoker } from "../claude.ts";
+import { claudeCtxFromConfig, createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
 import { derive } from "../derive.ts";
 import { resolveConflict, updateFrontmatterName } from "../derive-conflict.ts";
@@ -11,7 +11,7 @@ import { writeGatesFile } from "../gates-file.ts";
 import { progress, writeJson } from "../output.ts";
 import type { PromptFn } from "../prompt.ts";
 import { promptChoice } from "../prompt.ts";
-import { type ClaudeInvoker, claudeCtxFromConfig, type GateResult, type ParsedArgs } from "../types.ts";
+import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
 import { validateAndReportGates } from "./validate-and-report-gates.ts";
 
 export async function deriveCommand(

@@ -1,12 +1,12 @@
-import {
-  type CharterCheckerFn,
-  type CharterCheckResult,
-  claudeCtx,
-  type GateDefinition,
-  type GateResolverFn,
-  type GateRunner,
-  type GatesRunResult,
-  type PipelineContext,
+import { claudeCtx } from "./claude.ts";
+import type {
+  CharterCheckerFn,
+  CharterCheckResult,
+  GateDefinition,
+  GateResolverFn,
+  GateRunner,
+  GatesRunResult,
+  PipelineContext,
 } from "./types.ts";
 
 export interface PreambleOptions {

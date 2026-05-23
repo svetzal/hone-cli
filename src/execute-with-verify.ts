@@ -1,12 +1,6 @@
 import { saveStageOutput } from "./audit.ts";
-import { invokeWriteStage } from "./claude.ts";
-import {
-  type AttemptRecord,
-  claudeCtx,
-  type GateDefinition,
-  type GatesRunResult,
-  type PipelineContext,
-} from "./types.ts";
+import { claudeCtx, invokeWriteStage } from "./claude.ts";
+import type { AttemptRecord, GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 
 export async function runExecuteWithVerify(
