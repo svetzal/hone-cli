@@ -1,6 +1,7 @@
 import { saveStageOutput } from "./audit.ts";
 import { claudeCtx, invokeWriteStage } from "./claude.ts";
-import type { AttemptRecord, GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
+import type { GateDefinition, GateRunner, GatesRunResult, PipelineContext } from "./types.ts";
+import type { RetryPromptBuilder } from "./verify-loop.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 
 export async function runExecuteWithVerify(
@@ -8,11 +9,11 @@ export async function runExecuteWithVerify(
   prompt: string,
   opts: {
     skipGates: boolean;
-    gateRunner: (gates: GateDefinition[], projectDir: string, timeout: number) => Promise<GatesRunResult>;
+    gateRunner: GateRunner;
     gates: GateDefinition[];
     auditDir: string;
     name: string;
-    buildRetryPrompt: (failedGates: { name: string; output: string }[], priorAttempts: AttemptRecord[]) => string;
+    buildRetryPrompt: RetryPromptBuilder;
   },
 ): Promise<{
   execution: string;
