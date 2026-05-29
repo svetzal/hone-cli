@@ -1,11 +1,29 @@
+import { getDefaultConfig } from "./config.ts";
 import type {
   CharterCheckResult,
   ClaudeInvoker,
   GateDefinition,
   GatesRunResult,
+  PipelineContext,
   StructuredAssessment,
   TriageResult,
 } from "./types.ts";
+
+/**
+ * Shared PipelineContext factory for tests.
+ * Defaults: agent="test-agent", folder="/test", default config, no-op onProgress, empty claude.
+ * Pass overrides to customize any field.
+ */
+export function makeCtx(overrides: Partial<PipelineContext> = {}): PipelineContext {
+  return {
+    agent: "test-agent",
+    folder: "/test",
+    config: getDefaultConfig(),
+    claude: async () => "",
+    onProgress: () => {},
+    ...overrides,
+  };
+}
 
 /**
  * Extract the prompt string from a Claude CLI args array.

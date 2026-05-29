@@ -11,25 +11,10 @@ import {
   emptyGateResolver,
   extractPrompt,
   failingCharterChecker,
+  makeCtx,
   rejectingTriageRunner,
 } from "./test-helpers.ts";
-import type { ClaudeInvoker, CommandRunner, GatesRunResult, HoneIssue, PipelineContext } from "./types.ts";
-
-function makeCtx(
-  dir: string,
-  claude: PipelineContext["claude"],
-  onProgress: PipelineContext["onProgress"] = () => {},
-  configOverride?: Partial<ReturnType<typeof getDefaultConfig>>,
-): PipelineContext {
-  const config = { ...getDefaultConfig(), ...configOverride };
-  return {
-    agent: "test-agent",
-    folder: dir,
-    config,
-    claude,
-    onProgress,
-  };
-}
+import type { ClaudeInvoker, CommandRunner, GatesRunResult, HoneIssue } from "./types.ts";
 
 function createMockGhRunner(opts: {
   owner?: string;
@@ -152,7 +137,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 1,
         skipGates: true,
         skipTriage: true,
@@ -201,7 +186,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 0,
         skipGates: true,
         skipTriage: true,
@@ -250,7 +235,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 0,
         skipGates: true,
         skipTriage: true,
@@ -326,7 +311,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude, () => {}, { maxRetries: 0 }),
+        ctx: makeCtx({ folder: dir, claude: mockClaude, config: { ...getDefaultConfig(), maxRetries: 0 } }),
         proposals: 0,
         skipGates: false,
         skipTriage: true,
@@ -357,7 +342,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 1,
         skipGates: true,
         skipTriage: false,
@@ -391,7 +376,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 3,
         skipGates: true,
         skipTriage: true,
@@ -435,7 +420,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 1,
         skipGates: false,
         skipTriage: true,
@@ -470,7 +455,7 @@ describe("githubIterate", () => {
 
     try {
       const result = await githubIterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         proposals: 1,
         skipGates: true,
         skipTriage: true,
@@ -603,13 +588,19 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
-        skipGates: true,
-        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-        gates: [],
-        ghRunner: runner,
-        reactionsByIssue: new Map([[10, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
-      });
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        makeCtx({ folder: dir, claude: mockClaude }),
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gates: [],
+          ghRunner: runner,
+          reactionsByIssue: new Map([[10, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
+        },
+      );
 
       expect(executed).toHaveLength(1);
       expect(executed[0]?.success).toBe(true);
@@ -669,7 +660,7 @@ describe("executeApprovedIssues", () => {
         issues,
         "testowner",
         [],
-        makeCtx(dir, mockClaude, () => {}, { maxRetries: 0 }),
+        makeCtx({ folder: dir, claude: mockClaude, config: { ...getDefaultConfig(), maxRetries: 0 } }),
         {
           skipGates: false,
           gateRunner: failingGateRunner,
@@ -708,13 +699,19 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
-        skipGates: true,
-        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-        gates: [],
-        ghRunner: runner,
-        reactionsByIssue: new Map([[12, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
-      });
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        makeCtx({ folder: dir, claude: mockClaude }),
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gates: [],
+          ghRunner: runner,
+          reactionsByIssue: new Map([[12, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
+        },
+      );
 
       expect(executed).toHaveLength(0);
     } finally {
@@ -753,13 +750,19 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, throwingClaude), {
-        skipGates: true,
-        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-        gates: [],
-        ghRunner: runner,
-        reactionsByIssue: new Map([[20, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
-      });
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        makeCtx({ folder: dir, claude: throwingClaude }),
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gates: [],
+          ghRunner: runner,
+          reactionsByIssue: new Map([[20, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
+        },
+      );
 
       expect(executed).toHaveLength(1);
       expect(executed[0]?.success).toBe(false);
@@ -810,16 +813,22 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
-        skipGates: true,
-        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-        gates: [],
-        ghRunner: runner,
-        reactionsByIssue: new Map([
-          [30, { thumbsUp: ["testowner"], thumbsDown: [] }],
-          [31, { thumbsUp: ["testowner"], thumbsDown: [] }],
-        ]),
-      });
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        makeCtx({ folder: dir, claude: mockClaude }),
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gates: [],
+          ghRunner: runner,
+          reactionsByIssue: new Map([
+            [30, { thumbsUp: ["testowner"], thumbsDown: [] }],
+            [31, { thumbsUp: ["testowner"], thumbsDown: [] }],
+          ]),
+        },
+      );
 
       expect(executed).toHaveLength(2);
       expect(executed[0]?.issueNumber).toBe(31);
@@ -857,13 +866,19 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      const executed = await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
-        skipGates: true,
-        gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
-        gates: [],
-        ghRunner: runner,
-        reactionsByIssue: new Map([[40, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
-      });
+      const executed = await executeApprovedIssues(
+        issues,
+        "testowner",
+        [],
+        makeCtx({ folder: dir, claude: mockClaude }),
+        {
+          skipGates: true,
+          gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
+          gates: [],
+          ghRunner: runner,
+          reactionsByIssue: new Map([[40, { thumbsUp: ["testowner"], thumbsDown: [] }]]),
+        },
+      );
 
       expect(executed).toHaveLength(1);
       expect(executed[0]?.success).toBe(true);
@@ -903,7 +918,7 @@ describe("executeApprovedIssues", () => {
     ];
 
     try {
-      await executeApprovedIssues(issues, "testowner", [], makeCtx(dir, mockClaude), {
+      await executeApprovedIssues(issues, "testowner", [], makeCtx({ folder: dir, claude: mockClaude }), {
         skipGates: true,
         gateRunner: async () => ({ allPassed: true, requiredPassed: true, results: [] }),
         gates: [],
@@ -938,7 +953,7 @@ describe("proposeImprovements", () => {
     });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx({ folder: dir, claude: mockClaude }), {
         proposals: 2,
         skipTriage: true,
         ghRunner: runner,
@@ -965,7 +980,7 @@ describe("proposeImprovements", () => {
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx({ folder: dir, claude: mockClaude }), {
         proposals: 1,
         skipTriage: false,
         ghRunner: runner,
@@ -992,7 +1007,7 @@ describe("proposeImprovements", () => {
     const { runner, createdIssues } = createMockGhRunner({ owner: "testowner" });
 
     try {
-      const { proposed, skippedTriage } = await proposeImprovements(makeCtx(dir, mockClaude), {
+      const { proposed, skippedTriage } = await proposeImprovements(makeCtx({ folder: dir, claude: mockClaude }), {
         proposals: 3,
         skipTriage: false,
         ghRunner: runner,

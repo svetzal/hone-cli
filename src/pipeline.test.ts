@@ -3,7 +3,6 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getDefaultConfig } from "./config.ts";
 import type { ProposalProgress } from "./pipeline.ts";
 import {
   buildExecutePrompt,
@@ -18,23 +17,10 @@ import {
   acceptingTriageRunner,
   createIterateMock,
   extractPrompt,
+  makeCtx,
   rejectingBusyWorkTriageRunner,
 } from "./test-helpers.ts";
-import type { ClaudeInvoker, PipelineContext } from "./types.ts";
-
-function makeCtx(
-  folder: string,
-  claude: ClaudeInvoker,
-  onProgress: PipelineContext["onProgress"] = () => {},
-): PipelineContext {
-  return {
-    agent: "test-agent",
-    folder,
-    config: getDefaultConfig(),
-    claude,
-    onProgress,
-  };
-}
+import type { ClaudeInvoker } from "./types.ts";
 
 function makeProgress(): ProposalProgress {
   return {
@@ -199,7 +185,7 @@ describe("buildRetryPrompt", () => {
 describe("runAssessStage", () => {
   test("returns value from the invoker", async () => {
     const mockClaude: ClaudeInvoker = async () => "canned assessment";
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     const result = await runAssessStage(ctx);
     expect(result).toBe("canned assessment");
   });
@@ -210,7 +196,7 @@ describe("runAssessStage", () => {
       captured = args;
       return "assessment";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runAssessStage(ctx);
     const prompt = extractPrompt(captured);
     expect(prompt).toContain("Assess the project");
@@ -223,7 +209,7 @@ describe("runAssessStage", () => {
       captured = args;
       return "assessment";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runAssessStage(ctx);
     const prompt = extractPrompt(captured);
     expect(prompt).toContain('"severity"');
@@ -235,7 +221,7 @@ describe("runAssessStage", () => {
       captured = args;
       return "assessment";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runAssessStage(ctx);
     expect(captured).toEqual(expect.arrayContaining(["--agent", "test-agent"]));
   });
@@ -244,14 +230,14 @@ describe("runAssessStage", () => {
 describe("runNameStage", () => {
   test("returns sanitized kebab-case from clean invoker response", async () => {
     const mockClaude: ClaudeInvoker = async () => "fix-broken-auth-handler";
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     const result = await runNameStage(ctx, "some assessment");
     expect(result).toBe("fix-broken-auth-handler");
   });
 
   test("falls back to assessment-<timestamp> when response cannot be sanitized", async () => {
     const mockClaude: ClaudeInvoker = async () => "!!!";
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     const result = await runNameStage(ctx, "some assessment");
     expect(result.startsWith("assessment-")).toBe(true);
     const suffix = result.slice("assessment-".length);
@@ -264,7 +250,7 @@ describe("runNameStage", () => {
       captured = args;
       return "fix-auth";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runNameStage(ctx, "The project has auth issues");
     const prompt = extractPrompt(captured);
     expect(prompt).toContain("Output ONLY");
@@ -275,7 +261,7 @@ describe("runNameStage", () => {
 describe("runPlanStage", () => {
   test("returns plan from the invoker", async () => {
     const mockClaude: ClaudeInvoker = async () => "Step 1: Fix\nStep 2: Done";
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     const result = await runPlanStage(ctx, "assessment text");
     expect(result).toBe("Step 1: Fix\nStep 2: Done");
   });
@@ -286,7 +272,7 @@ describe("runPlanStage", () => {
       captured = args;
       return "plan";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runPlanStage(ctx, "the assessment content");
     const prompt = extractPrompt(captured);
     expect(prompt).toContain("Based on the following assessment");
@@ -299,7 +285,7 @@ describe("runPlanStage", () => {
       captured = args;
       return "plan";
     };
-    const ctx = makeCtx("/test/project", mockClaude);
+    const ctx = makeCtx({ folder: "/test/project", claude: mockClaude });
     await runPlanStage(ctx, "assessment");
     const prompt = extractPrompt(captured);
     expect(prompt).toContain("CRITICAL RULES");
@@ -316,7 +302,7 @@ describe("runProposalPipeline", () => {
         plan: "",
         execute: "",
       });
-      const ctx = makeCtx(dir, mockClaude);
+      const ctx = makeCtx({ folder: dir, claude: mockClaude });
       const result = await runProposalPipeline(ctx, dir, {
         skipTriage: true,
         triageRunner: acceptingTriageRunner,
@@ -342,7 +328,7 @@ describe("runProposalPipeline", () => {
         plan: "",
         execute: "",
       });
-      const ctx = makeCtx(dir, mockClaude);
+      const ctx = makeCtx({ folder: dir, claude: mockClaude });
       const result = await runProposalPipeline(ctx, dir, {
         skipTriage: false,
         triageRunner: acceptingTriageRunner,
@@ -367,7 +353,7 @@ describe("runProposalPipeline", () => {
         plan: "",
         execute: "",
       });
-      const ctx = makeCtx(dir, mockClaude);
+      const ctx = makeCtx({ folder: dir, claude: mockClaude });
       const result = await runProposalPipeline(ctx, dir, {
         skipTriage: false,
         triageRunner: rejectingBusyWorkTriageRunner,
@@ -392,7 +378,7 @@ describe("runProposalPipeline", () => {
         plan: "",
         execute: "",
       });
-      const ctx = makeCtx(dir, mockClaude);
+      const ctx = makeCtx({ folder: dir, claude: mockClaude });
       const order: string[] = [];
       const progress: ProposalProgress = {
         onAssess: () => {
@@ -438,7 +424,7 @@ describe("runProposalPipeline", () => {
         plan: "",
         execute: "",
       });
-      const ctx = makeCtx(dir, mockClaude);
+      const ctx = makeCtx({ folder: dir, claude: mockClaude });
       await runProposalPipeline(ctx, dir, {
         skipTriage: true,
         triageRunner: acceptingTriageRunner,

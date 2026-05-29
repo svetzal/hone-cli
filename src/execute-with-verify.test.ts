@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { buildClaudeArgs } from "./claude.ts";
 import { getDefaultConfig } from "./config.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
-import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
+import { makeCtx } from "./test-helpers.ts";
+import type { GateDefinition, GatesRunResult } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -25,27 +26,11 @@ const failingResult: GatesRunResult = {
   results: [{ name: "test", command: "npm test", passed: false, required: true, output: "FAIL: error", exitCode: 1 }],
 };
 
-function simpleClaude(response: string) {
-  return async (_args: string[]) => response;
-}
-
 async function makeTempDirs(prefix: string) {
   const folder = await mkdtemp(join(tmpdir(), prefix));
   const auditDir = join(folder, "audit");
   await mkdir(auditDir, { recursive: true });
   return { folder, auditDir };
-}
-
-function makeCtx(folder: string, overrides: Partial<PipelineContext> = {}): PipelineContext {
-  const config = getDefaultConfig();
-  return {
-    agent: "test-agent",
-    folder,
-    config,
-    claude: simpleClaude("execution output"),
-    onProgress: () => {},
-    ...overrides,
-  };
 }
 
 function baseOpts(
@@ -77,7 +62,7 @@ describe("runExecuteWithVerify", () => {
       return "execution output";
     };
 
-    const ctx = makeCtx(folder, { claude: mockClaude });
+    const ctx = makeCtx({ folder, claude: mockClaude });
     const prompt = "apply the fix";
 
     try {
@@ -105,7 +90,7 @@ describe("runExecuteWithVerify", () => {
 
     try {
       const result = await runExecuteWithVerify(
-        makeCtx(folder),
+        makeCtx({ folder }),
         "apply the fix",
         baseOpts(auditDir, { skipGates: true }),
       );
@@ -123,7 +108,7 @@ describe("runExecuteWithVerify", () => {
 
     try {
       const result = await runExecuteWithVerify(
-        makeCtx(folder),
+        makeCtx({ folder }),
         "apply the fix",
         baseOpts(auditDir, {
           skipGates: false,
@@ -146,7 +131,7 @@ describe("runExecuteWithVerify", () => {
 
     try {
       const result = await runExecuteWithVerify(
-        makeCtx(folder, { config }),
+        makeCtx({ folder, config }),
         "apply the fix",
         baseOpts(auditDir, {
           skipGates: false,
@@ -179,7 +164,7 @@ describe("runExecuteWithVerify", () => {
 
     try {
       const result = await runExecuteWithVerify(
-        makeCtx(folder, { claude: mockClaude }),
+        makeCtx({ folder, claude: mockClaude }),
         "apply the fix",
         baseOpts(auditDir, {
           skipGates: false,
@@ -199,9 +184,7 @@ describe("runExecuteWithVerify", () => {
     const { folder, auditDir } = await makeTempDirs("hone-evv-progress-");
 
     const progressCalls: [string, string][] = [];
-    const ctx = makeCtx(folder, {
-      onProgress: (stage, message) => progressCalls.push([stage, message]),
-    });
+    const ctx = makeCtx({ folder, onProgress: (stage, message) => progressCalls.push([stage, message]) });
 
     try {
       await runExecuteWithVerify(

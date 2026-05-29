@@ -1,26 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { getDefaultConfig } from "./config.ts";
 import { runPreamble } from "./preamble.ts";
 import {
   emptyGateResolver,
   failingCharterChecker,
+  makeCtx,
   passingCharterChecker,
   standardGateResolver,
 } from "./test-helpers.ts";
-import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
-
-function makeCtx(
-  onProgress: PipelineContext["onProgress"] = () => {},
-  claude: PipelineContext["claude"] = async () => "",
-): PipelineContext {
-  return {
-    agent: "test-agent",
-    folder: "/test",
-    config: getDefaultConfig(),
-    claude,
-    onProgress,
-  };
-}
+import type { GateDefinition, GatesRunResult } from "./types.ts";
 
 describe("runPreamble", () => {
   test("charter check skipped: returns passed with null charter check", async () => {
@@ -33,7 +20,7 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: true, // Skip charter check
       skipGates: true,
       gateResolver: emptyGateResolver,
@@ -53,7 +40,7 @@ describe("runPreamble", () => {
     const progress: string[] = [];
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: false,
       skipGates: true,
       gateResolver: emptyGateResolver,
@@ -81,7 +68,7 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: false,
       skipGates: false, // Gates NOT skipped, but should not run
       gateResolver: mockGateResolver,
@@ -116,7 +103,7 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: true,
       skipGates: true, // Skip gates
       gateResolver: mockGateResolver,
@@ -141,7 +128,7 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: true,
       skipGates: false,
       gateResolver: emptyGateResolver, // Returns empty array
@@ -182,7 +169,7 @@ describe("runPreamble", () => {
     };
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: true,
       skipGates: false,
       gateResolver: standardGateResolver, // Returns one gate
@@ -220,7 +207,7 @@ describe("runPreamble", () => {
     });
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: true,
       skipGates: false,
       gateResolver: standardGateResolver,
@@ -253,7 +240,7 @@ describe("runPreamble", () => {
     });
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: false, // Charter check runs
       skipGates: false,
       gateResolver: standardGateResolver,
@@ -277,7 +264,7 @@ describe("runPreamble", () => {
     const progress: string[] = [];
 
     const result = await runPreamble({
-      ctx: makeCtx((stage, msg) => progress.push(`${stage}: ${msg}`)),
+      ctx: makeCtx({ onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`) }),
       skipCharter: false,
       skipGates: false,
       gateResolver: standardGateResolver,

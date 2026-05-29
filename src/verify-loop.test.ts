@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
-import type { AttemptRecord, GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
+import { makeCtx } from "./test-helpers.ts";
+import type { AttemptRecord, GateDefinition, GatesRunResult } from "./types.ts";
 import { verifyWithRetry } from "./verify-loop.ts";
 
 // ---------------------------------------------------------------------------
@@ -37,19 +38,6 @@ async function makeTempDirs(prefix: string) {
   return { folder, auditDir };
 }
 
-/** Builds a PipelineContext for testing. */
-function makeCtx(folder: string, overrides: Partial<PipelineContext> = {}): PipelineContext {
-  const config = getDefaultConfig();
-  return {
-    agent: "test-agent",
-    folder,
-    config,
-    claude: simpleClaude("retry output"),
-    onProgress: () => {},
-    ...overrides,
-  };
-}
-
 /** Builds base opts for verifyWithRetry with sensible defaults for testing. */
 function baseOpts(
   folder: string,
@@ -58,7 +46,7 @@ function baseOpts(
 ): Parameters<typeof verifyWithRetry>[1] {
   const config = getDefaultConfig();
   return {
-    ctx: makeCtx(folder),
+    ctx: makeCtx({ folder }),
     gates: requiredGates,
     gateRunner: async () => passingResult,
     maxRetries: config.maxRetries,
@@ -107,7 +95,7 @@ describe("verifyWithRetry", () => {
       const result = await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
-          ctx: makeCtx(folder, { claude: simpleClaude("retry execution") }),
+          ctx: makeCtx({ folder, claude: simpleClaude("retry execution") }),
           gateRunner,
           maxRetries: 3,
         }),
@@ -149,7 +137,7 @@ describe("verifyWithRetry", () => {
       const result = await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
-          ctx: makeCtx(folder, { onProgress: (_stage, msg) => messages.push(msg) }),
+          ctx: makeCtx({ folder, onProgress: (_stage, msg) => messages.push(msg) }),
           gates: [],
           gateRunner: async () => passingResult,
         }),

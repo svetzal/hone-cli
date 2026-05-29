@@ -4,24 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDefaultConfig } from "./config.ts";
 import { buildMaintainPrompt, buildMaintainRetryPrompt, maintain } from "./maintain.ts";
-import { createMaintainMock, emptyGateResolver, extractPrompt, standardGateResolver } from "./test-helpers.ts";
-import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
-
-function makeCtx(
-  dir: string,
-  claude: PipelineContext["claude"],
-  onProgress: PipelineContext["onProgress"] = () => {},
-  configOverride?: Partial<ReturnType<typeof getDefaultConfig>>,
-): PipelineContext {
-  const config = { ...getDefaultConfig(), ...configOverride };
-  return {
-    agent: "test-agent",
-    folder: dir,
-    config,
-    claude,
-    onProgress,
-  };
-}
+import { createMaintainMock, emptyGateResolver, extractPrompt, makeCtx, standardGateResolver } from "./test-helpers.ts";
+import type { GateDefinition, GatesRunResult } from "./types.ts";
 
 describe("maintain", () => {
   test("no gates resolved → exits with error, no Claude calls", async () => {
@@ -32,7 +16,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         gateResolver: emptyGateResolver,
       });
 
@@ -68,7 +52,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         gateRunner: mockGateRunner,
         gateResolver: standardGateResolver,
       });
@@ -123,7 +107,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         gateRunner: mockGateRunner,
         gateResolver: standardGateResolver,
       });
@@ -159,7 +143,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude, () => {}, { maxRetries: 2 }),
+        ctx: makeCtx({ folder: dir, claude: mockClaude, config: { ...getDefaultConfig(), maxRetries: 2 } }),
         gateRunner: mockGateRunner,
         gateResolver: standardGateResolver,
       });
@@ -197,7 +181,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         gateRunner: mockGateRunner,
         gateResolver: optionalGateResolver,
       });
@@ -228,7 +212,7 @@ describe("maintain", () => {
 
     try {
       const result = await maintain({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         gateRunner: mockGateRunner,
         gateResolver: standardGateResolver,
       });

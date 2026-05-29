@@ -11,26 +11,13 @@ import {
   emptyGateResolver,
   extractPrompt,
   failingCharterChecker,
+  makeCtx,
   passingCharterChecker,
   rejectingBusyWorkTriageRunner,
   rejectingSeverityTriageRunner,
   standardGateResolver,
 } from "./test-helpers.ts";
-import type { GateDefinition, GatesRunResult, PipelineContext } from "./types.ts";
-
-function makeCtx(
-  dir: string,
-  claude: PipelineContext["claude"],
-  onProgress: PipelineContext["onProgress"] = () => {},
-): PipelineContext {
-  return {
-    agent: "test-agent",
-    folder: dir,
-    config: getDefaultConfig(),
-    claude,
-    onProgress,
-  };
-}
+import type { GateDefinition, GatesRunResult } from "./types.ts";
 
 describe("iterate", () => {
   test("runs full cycle with mock claude invoker", async () => {
@@ -52,7 +39,11 @@ describe("iterate", () => {
     try {
       const progress: string[] = [];
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude, (stage, msg) => progress.push(`${stage}: ${msg}`)),
+        ctx: makeCtx({
+          folder: dir,
+          claude: mockClaude,
+          onProgress: (stage, msg) => progress.push(`${stage}: ${msg}`),
+        }),
         skipGates: true,
         skipCharter: true,
         skipTriage: true,
@@ -103,7 +94,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         skipCharter: true,
         skipTriage: true,
@@ -155,7 +146,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -231,7 +222,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -294,7 +285,7 @@ describe("iterate", () => {
       config.maxRetries = 2;
 
       const result = await iterate({
-        ctx: { ...makeCtx(dir, mockClaude), config },
+        ctx: makeCtx({ folder: dir, claude: mockClaude, config }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -354,7 +345,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -419,7 +410,7 @@ describe("iterate", () => {
 
     try {
       await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -473,7 +464,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -509,7 +500,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: false,
         skipCharter: true,
         skipTriage: true,
@@ -540,7 +531,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         charterChecker: failingCharterChecker,
       });
@@ -572,7 +563,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         skipCharter: true,
         triageRunner: rejectingSeverityTriageRunner,
@@ -607,7 +598,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         skipCharter: true,
         triageRunner: rejectingBusyWorkTriageRunner,
@@ -641,7 +632,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         charterChecker: passingCharterChecker,
         triageRunner: acceptingTriageRunner,
@@ -672,7 +663,7 @@ describe("iterate", () => {
 
     try {
       await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         skipCharter: true,
         skipTriage: true,
@@ -700,7 +691,7 @@ describe("iterate", () => {
 
     try {
       const result = await iterate({
-        ctx: makeCtx(dir, mockClaude),
+        ctx: makeCtx({ folder: dir, claude: mockClaude }),
         skipGates: true,
         skipCharter: true,
         skipTriage: true,
