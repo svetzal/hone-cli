@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { warn } from "./errors.ts";
+import { errorMessage, warn } from "./errors.ts";
 import type { CharterCheckResult, CharterSource } from "./types.ts";
 
 async function readFileContent(path: string): Promise<string | null> {
@@ -8,7 +8,7 @@ async function readFileContent(path: string): Promise<string | null> {
     try {
       return await file.text();
     } catch (err) {
-      warn(`Could not read ${path}: ${err instanceof Error ? err.message : String(err)}`);
+      warn(`Could not read ${path}: ${errorMessage(err)}`);
     }
   }
   return null;

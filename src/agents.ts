@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { CliError, warn } from "./errors.ts";
+import { CliError, errorMessage, warn } from "./errors.ts";
 
 const AGENTS_DIR = join(homedir(), ".claude", "agents");
 
@@ -40,7 +40,7 @@ export async function listAgents(agentsDir?: string): Promise<AgentInfo[]> {
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") {
-      warn(`Failed to read agents directory ${dir}: ${err instanceof Error ? err.message : String(err)}`);
+      warn(`Failed to read agents directory ${dir}: ${errorMessage(err)}`);
     }
     return [];
   }
@@ -70,7 +70,7 @@ export async function readAgentContent(name: string, agentsDir?: string): Promis
     const file = Bun.file(filePath);
     return await file.text();
   } catch (err) {
-    warn(`Failed to read agent file ${agent.file}: ${err instanceof Error ? err.message : String(err)}`);
+    warn(`Failed to read agent file ${agent.file}: ${errorMessage(err)}`);
     return null;
   }
 }

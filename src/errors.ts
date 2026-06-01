@@ -15,3 +15,7 @@ export class SilentExitError extends CliError {
 export function warn(message: string): void {
   process.stderr.write(`warning: ${message}\n`);
 }
+
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}

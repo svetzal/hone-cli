@@ -1,6 +1,7 @@
 import { ensureAuditDir, saveStageOutput } from "./audit.ts";
 import { checkCharter } from "./charter.ts";
 import { createCommandRunner } from "./command-runner.ts";
+import { errorMessage } from "./errors.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { gitCommit } from "./git.ts";
@@ -154,7 +155,7 @@ async function executeSingleIssue(
       onProgress("execute", `Issue #${issue.number} failed gate verification.`);
     }
   } catch (err) {
-    outcome.error = err instanceof Error ? err.message : String(err);
+    outcome.error = errorMessage(err);
     onProgress("execute", `Issue #${issue.number} failed: ${outcome.error}`);
   }
 

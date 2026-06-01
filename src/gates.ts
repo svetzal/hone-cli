@@ -1,3 +1,4 @@
+import { errorMessage } from "./errors.ts";
 import { runProcess } from "./process.ts";
 import type { GateDefinition, GateResult, GatesRunResult } from "./types.ts";
 
@@ -30,7 +31,7 @@ export async function runGate(gate: GateDefinition, projectDir: string, timeout:
       command: gate.command,
       passed: false,
       required: gate.required,
-      output: err instanceof Error ? err.message : String(err),
+      output: errorMessage(err),
       exitCode: null,
     };
   }

@@ -1,4 +1,4 @@
-import { warn } from "./errors.ts";
+import { errorMessage, warn } from "./errors.ts";
 import { extractGatesFromAgent } from "./extract-gates.ts";
 import { readGatesFile } from "./gates-file.ts";
 import type { ClaudeContext, GateDefinition } from "./types.ts";
@@ -21,7 +21,7 @@ export async function resolveGates(
     const extracted = await extractGatesFromAgent(agentName, ctx);
     if (extracted.length > 0) return extracted;
   } catch (err) {
-    warn(`Gate extraction failed, treating as no gates found: ${err instanceof Error ? err.message : String(err)}`);
+    warn(`Gate extraction failed, treating as no gates found: ${errorMessage(err)}`);
   }
 
   // Priority 3: No gates
