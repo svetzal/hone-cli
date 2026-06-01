@@ -48,7 +48,11 @@ export function parseTriageResponse(raw: string): {
   const result = extractJsonFromLlmOutput(raw);
   const json = warnOnMalformedJson(result, "Triage response");
   if (!json) {
-    return { changeType: "other", busyWork: false, reason: "Failed to parse triage response" };
+    return {
+      changeType: "unparseable",
+      busyWork: true,
+      reason: "Unparseable triage response — failing closed (treated as busy-work)",
+    };
   }
   return {
     changeType: typeof json.changeType === "string" ? json.changeType : "other",

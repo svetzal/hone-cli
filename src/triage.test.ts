@@ -46,17 +46,17 @@ describe("parseTriageResponse", () => {
     expect(result.reason).toBe("Just renaming");
   });
 
-  test("fail-open on malformed response", () => {
+  test("fail-closed on malformed response", () => {
     const raw = "This is not JSON at all.";
     const result = parseTriageResponse(raw);
-    expect(result.busyWork).toBe(false); // fail-open
-    expect(result.changeType).toBe("other");
+    expect(result.busyWork).toBe(true); // fail-closed
+    expect(result.changeType).toBe("unparseable");
   });
 
-  test("fail-open on invalid JSON", () => {
+  test("fail-closed on invalid JSON", () => {
     const raw = "```json\n{invalid}\n```";
     const result = parseTriageResponse(raw);
-    expect(result.busyWork).toBe(false); // fail-open
+    expect(result.busyWork).toBe(true); // fail-closed
   });
 });
 
@@ -127,5 +127,19 @@ describe("triage", () => {
     });
 
     expect(result.accepted).toBe(true);
+  });
+
+  test("high severity + unparseable triage response — rejected (fail-closed)", async () => {
+    const mockClaude = async () => "not json at all";
+
+    const result = await triage(makeAssessment(4), 3, {
+      model: "haiku",
+      readOnlyTools: "Read Glob Grep",
+      claude: mockClaude,
+    });
+
+    expect(result.accepted).toBe(false);
+    expect(result.busyWork).toBe(true);
+    expect(result.changeType).toBe("unparseable");
   });
 });
