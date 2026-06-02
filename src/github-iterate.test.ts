@@ -141,8 +141,10 @@ describe("githubIterate", () => {
         proposals: 1,
         skipGates: true,
         skipTriage: true,
-        charterChecker: failingCharterChecker,
-        ghRunner: runner,
+        deps: {
+          charterChecker: failingCharterChecker,
+          ghRunner: runner,
+        },
       });
       expect(result.success).toBe(false);
       expect(result.skippedReason).toContain("Charter clarity insufficient");
@@ -191,8 +193,10 @@ describe("githubIterate", () => {
         skipGates: true,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateResolver: emptyGateResolver,
+        deps: {
+          ghRunner: runner,
+          gateResolver: emptyGateResolver,
+        },
       });
 
       expect(result.housekeeping.closed).toContain(5);
@@ -240,8 +244,10 @@ describe("githubIterate", () => {
         skipGates: true,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateResolver: emptyGateResolver,
+        deps: {
+          ghRunner: runner,
+          gateResolver: emptyGateResolver,
+        },
       });
 
       expect(result.executed).toHaveLength(1);
@@ -316,9 +322,11 @@ describe("githubIterate", () => {
         skipGates: false,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateRunner,
-        gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+        deps: {
+          ghRunner: runner,
+          gateRunner,
+          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+        },
       });
 
       expect(result.executed).toHaveLength(1);
@@ -347,9 +355,11 @@ describe("githubIterate", () => {
         skipGates: true,
         skipTriage: false,
         skipCharter: true,
-        ghRunner: runner,
-        gateResolver: emptyGateResolver,
-        triageRunner: rejectingTriageRunner,
+        deps: {
+          ghRunner: runner,
+          gateResolver: emptyGateResolver,
+          triageRunner: rejectingTriageRunner,
+        },
       });
 
       expect(result.skippedTriage).toBe(1);
@@ -381,8 +391,10 @@ describe("githubIterate", () => {
         skipGates: true,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateResolver: emptyGateResolver,
+        deps: {
+          ghRunner: runner,
+          gateResolver: emptyGateResolver,
+        },
       });
 
       expect(result.proposed).toHaveLength(3);
@@ -425,9 +437,11 @@ describe("githubIterate", () => {
         skipGates: false,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateRunner: failingGateRunner,
-        gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+        deps: {
+          ghRunner: runner,
+          gateRunner: failingGateRunner,
+          gateResolver: async () => [{ name: "test", command: "npm test", required: true }],
+        },
       });
 
       expect(result.success).toBe(false);
@@ -460,8 +474,10 @@ describe("githubIterate", () => {
         skipGates: true,
         skipTriage: true,
         skipCharter: true,
-        ghRunner: runner,
-        gateResolver: emptyGateResolver,
+        deps: {
+          ghRunner: runner,
+          gateResolver: emptyGateResolver,
+        },
       });
 
       expect(result.executed).toHaveLength(0);

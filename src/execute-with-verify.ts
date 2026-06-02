@@ -21,7 +21,7 @@ export async function runExecuteWithVerify(
   retries: number;
   success: boolean;
 }> {
-  const { agent, config, onProgress } = ctx;
+  const { agent, onProgress } = ctx;
   const { skipGates, gateRunner, gates, auditDir, name, buildRetryPrompt: buildRetryPromptFn } = opts;
 
   onProgress("execute", "Executing plan...");
@@ -38,8 +38,6 @@ export async function runExecuteWithVerify(
       ctx,
       gates,
       gateRunner,
-      maxRetries: config.maxRetries,
-      gateTimeout: config.gateTimeout,
       auditDir,
       name,
       buildRetryPrompt: buildRetryPromptFn,

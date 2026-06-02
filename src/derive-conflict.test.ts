@@ -107,7 +107,6 @@ function makeConflictContext(agentDir: string, overrides: Partial<ConflictContex
     config,
     claude: async () => "",
     prompt: async () => "a",
-    readOnlyTools: config.readOnlyTools,
     ...overrides,
   };
 }

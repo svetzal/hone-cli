@@ -32,17 +32,21 @@ import type {
   TriageRunnerFn,
 } from "./types.ts";
 
+export interface GitHubIterateDeps {
+  ghRunner?: CommandRunner;
+  gateRunner?: GateRunner;
+  gateResolver?: GateResolverFn;
+  charterChecker?: CharterCheckerFn;
+  triageRunner?: TriageRunnerFn;
+}
+
 export interface GitHubIterateOptions {
   ctx: PipelineContext;
   proposals: number;
   skipGates: boolean;
   skipTriage: boolean;
   skipCharter?: boolean;
-  ghRunner?: CommandRunner;
-  gateRunner?: GateRunner;
-  gateResolver?: GateResolverFn;
-  charterChecker?: CharterCheckerFn;
-  triageRunner?: TriageRunnerFn;
+  deps?: GitHubIterateDeps;
 }
 
 /**
@@ -264,18 +268,14 @@ export async function proposeImprovements(
 }
 
 export async function githubIterate(opts: GitHubIterateOptions): Promise<GitHubIterateResult> {
+  const { ctx, proposals, skipGates, skipTriage, skipCharter = false, deps = {} } = opts;
   const {
-    ctx,
-    proposals,
-    skipGates,
-    skipTriage,
-    skipCharter = false,
     ghRunner = createCommandRunner(),
     gateRunner = runAllGates,
     gateResolver = resolveGates,
     charterChecker = checkCharter,
     triageRunner = runTriageDefault,
-  } = opts;
+  } = deps;
 
   const { folder, onProgress } = ctx;
 

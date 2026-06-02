@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { agentExists, readAgentContent } from "./agents.ts";
+import { claudeCtxFromConfig } from "./claude.ts";
 import type { loadConfig } from "./config.ts";
 import { suggestExpandedName } from "./derive.ts";
 import { CliError, SilentExitError } from "./errors.ts";
@@ -25,7 +26,6 @@ export interface ConflictContext {
   config: Awaited<ReturnType<typeof loadConfig>>;
   claude: ClaudeInvoker;
   prompt: PromptFn;
-  readOnlyTools: string;
 }
 
 export async function resolveConflict(ctx: ConflictContext): Promise<ConflictResolution | null> {
@@ -59,11 +59,12 @@ export async function resolveConflict(ctx: ConflictContext): Promise<ConflictRes
 
     case "e": {
       progress(ctx.isJson, "Generating expanded name...");
-      const expanded = await suggestExpandedName(ctx.agentName, ctx.context, ctx.existingAgentNames, {
-        model: ctx.config.models.triage,
-        readOnlyTools: ctx.readOnlyTools,
-        claude: ctx.claude,
-      });
+      const expanded = await suggestExpandedName(
+        ctx.agentName,
+        ctx.context,
+        ctx.existingAgentNames,
+        claudeCtxFromConfig(ctx.config, "triage", ctx.claude),
+      );
 
       if (await agentExists(expanded, ctx.agentDir)) {
         throw new CliError(`Expanded name "${expanded}" also conflicts. Use --name to specify a name manually.`);
@@ -86,7 +87,7 @@ export async function resolveConflict(ctx: ConflictContext): Promise<ConflictRes
           mixGates: false,
           model: ctx.config.models.mix,
           gatesModel: ctx.config.models.gates,
-          readOnlyTools: ctx.readOnlyTools,
+          readOnlyTools: ctx.config.readOnlyTools,
         },
         ctx.claude,
         readFile,

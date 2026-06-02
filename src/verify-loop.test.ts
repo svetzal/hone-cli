@@ -44,13 +44,10 @@ function baseOpts(
   auditDir: string,
   overrides: Partial<Parameters<typeof verifyWithRetry>[1]> = {},
 ): Parameters<typeof verifyWithRetry>[1] {
-  const config = getDefaultConfig();
   return {
     ctx: makeCtx({ folder }),
     gates: requiredGates,
     gateRunner: async () => passingResult,
-    maxRetries: config.maxRetries,
-    gateTimeout: config.gateTimeout,
     auditDir,
     name: "test-fix",
     buildRetryPrompt: () => "retry prompt",
@@ -95,9 +92,12 @@ describe("verifyWithRetry", () => {
       const result = await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
-          ctx: makeCtx({ folder, claude: simpleClaude("retry execution") }),
+          ctx: makeCtx({
+            folder,
+            claude: simpleClaude("retry execution"),
+            config: { ...getDefaultConfig(), maxRetries: 3 },
+          }),
           gateRunner,
-          maxRetries: 3,
         }),
       );
 
@@ -116,8 +116,8 @@ describe("verifyWithRetry", () => {
       const result = await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
+          ctx: makeCtx({ folder, config: { ...getDefaultConfig(), maxRetries: 2 } }),
           gateRunner: async () => failingResult,
-          maxRetries: 2,
         }),
       );
 
@@ -169,8 +169,8 @@ describe("verifyWithRetry", () => {
       await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
+          ctx: makeCtx({ folder, config: { ...getDefaultConfig(), maxRetries: 3 } }),
           gateRunner,
-          maxRetries: 3,
           buildRetryPrompt: (failedGates, priorAttempts) => {
             promptBuilderCalls.push({ failedGates, priorAttempts });
             return "retry prompt";
@@ -234,9 +234,9 @@ describe("verifyWithRetry", () => {
       await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
+          ctx: makeCtx({ folder, config: { ...getDefaultConfig(), maxRetries: 3 } }),
           name: "my-fix",
           gateRunner,
-          maxRetries: 3,
         }),
       );
 
@@ -265,11 +265,11 @@ describe("verifyWithRetry", () => {
       const result = await verifyWithRetry(
         "initial execution",
         baseOpts(folder, auditDir, {
+          ctx: makeCtx({ folder, config: { ...getDefaultConfig(), maxRetries: 3 } }),
           gateRunner: async () => {
             gateRunnerCallCount++;
             return optionalFailResult;
           },
-          maxRetries: 3,
         }),
       );
 

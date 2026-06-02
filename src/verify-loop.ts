@@ -12,8 +12,6 @@ export interface VerifyWithRetryOpts {
   ctx: PipelineContext;
   gates: GateDefinition[];
   gateRunner: GateRunner;
-  maxRetries: number;
-  gateTimeout: number;
   auditDir: string;
   name: string;
   buildRetryPrompt: RetryPromptBuilder;
@@ -29,8 +27,9 @@ export async function verifyWithRetry(
   initialExecution: string,
   opts: VerifyWithRetryOpts,
 ): Promise<VerifyWithRetryResult> {
-  const { ctx, gates, gateRunner, maxRetries, gateTimeout, auditDir, name, buildRetryPrompt } = opts;
+  const { ctx, gates, gateRunner, auditDir, name, buildRetryPrompt } = opts;
   const { agent, folder, onProgress } = ctx;
+  const { maxRetries, gateTimeout } = ctx.config;
 
   let execution = initialExecution;
   let gatesResult: GatesRunResult | null = null;

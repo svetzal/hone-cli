@@ -88,7 +88,6 @@ export async function deriveCommand(
       config,
       claude,
       prompt,
-      readOnlyTools: config.readOnlyTools,
     });
 
     if (resolved === null) {
