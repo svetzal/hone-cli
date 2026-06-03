@@ -1,6 +1,7 @@
 import { invokeReadOnlyStage } from "./claude.ts";
 import { warn } from "./errors.ts";
 import { extractJsonFromLlmOutput, warnOnMalformedJson } from "./json-extraction.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import type { ClaudeContext, GatesRunResult, StructuredAssessment, TriageResult } from "./types.ts";
 
 export interface SummarizeResult {
@@ -53,7 +54,7 @@ export function buildIterateSummarizePrompt(ctx: IterateSummarizeContext): strin
   const changeType = ctx.triageResult?.changeType ?? "unknown";
 
   return [
-    "Generate a headline and summary for a code improvement.",
+    `${PROMPT_ANCHORS.summarize} for a code improvement.`,
     "",
     "Context:",
     `- Principle: ${principle}`,
@@ -68,7 +69,7 @@ export function buildIterateSummarizePrompt(ctx: IterateSummarizeContext): strin
 
 export function buildMaintainSummarizePrompt(ctx: MaintainSummarizeContext): string {
   return [
-    "Generate a headline and summary for a dependency maintenance update.",
+    `${PROMPT_ANCHORS.summarize} for a dependency maintenance update.`,
     "",
     "Context:",
     `- Retries: ${ctx.retries}`,

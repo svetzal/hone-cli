@@ -1,5 +1,6 @@
 import { invokeReadOnlyStage } from "./claude.ts";
 import { extractJsonFromLlmOutput, warnOnMalformedJson } from "./json-extraction.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import type { ClaudeContext, StructuredAssessment, TriageResult } from "./types.ts";
 
 export function checkSeverityThreshold(severity: number, threshold: number): { passed: boolean; reason: string } {
@@ -14,7 +15,7 @@ export function checkSeverityThreshold(severity: number, threshold: number): { p
 
 export function buildTriagePrompt(assessment: string, principle: string): string {
   return [
-    "You are a skeptical code review triage system. Your job is to determine whether a proposed",
+    `${PROMPT_ANCHORS.triage}. Your job is to determine whether a proposed`,
     "code improvement is substantive or busy-work. When in doubt, classify as busy-work.",
     "",
     "Busy-work signals (reject if any apply):",

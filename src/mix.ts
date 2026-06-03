@@ -1,6 +1,7 @@
 import { invokeReadOnlyStage, invokeWriteStage } from "./claude.ts";
 import { EXTRACTION_PROMPT, parseGatesJson } from "./extract-gates.ts";
 import { extractJsonArrayFromLlmOutput } from "./json-extraction.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import type { ClaudeInvoker, GateDefinition } from "./types.ts";
 
 export type FileReader = (path: string) => Promise<string>;
@@ -23,7 +24,7 @@ export interface MixResult {
 }
 
 export function buildPrinciplesMixPrompt(foreignContent: string, agentPath: string): string {
-  return `You are augmenting a local agent's engineering principles with ideas from a foreign agent.
+  return `${PROMPT_ANCHORS.mixPrinciples} with ideas from a foreign agent.
 
 The local agent file to update is at: ${agentPath}
 Read this file, then use the Edit tool to add missing principles from the foreign agent below.
@@ -49,7 +50,7 @@ Rules:
 }
 
 export function buildGatesMixPrompt(foreignContent: string, agentPath: string): string {
-  return `You are augmenting a local agent's quality assurance checkpoints with ideas from a foreign agent.
+  return `${PROMPT_ANCHORS.mixGates} checkpoints with ideas from a foreign agent.
 
 The local agent file to update is at: ${agentPath}
 Read this file, then use the Edit tool to add missing gate ideas from the foreign agent below.

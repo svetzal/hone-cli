@@ -2,6 +2,7 @@ import { extractAgentName } from "./agent-frontmatter.ts";
 import { invokeReadOnlyStage } from "./claude.ts";
 import { extractGatesFromAgentContent } from "./extract-gates.ts";
 import { gatherContext, type ProjectContext } from "./project-context.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import { renderProjectContextSections } from "./prompt-context.ts";
 import type { ClaudeContext, GateDefinition } from "./types.ts";
 
@@ -14,7 +15,7 @@ export interface DeriveResult {
 
 export function buildDerivePrompt(folder: string, context: ProjectContext, existingAgentNames: string[] = []): string {
   const sections: string[] = [
-    "You are creating a custom craftsperson agent for a software project.",
+    `${PROMPT_ANCHORS.derive} for a software project.`,
     "You have Read, Glob, and Grep tools available. Use them to explore the project",
     "and understand its architecture, conventions, patterns, and tooling before writing the agent.",
     "",

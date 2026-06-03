@@ -2,6 +2,7 @@ import { ensureAuditDir } from "./audit.ts";
 import { claudeCtx } from "./claude.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
@@ -27,7 +28,7 @@ function formatGateList(gates: GateDefinition[]): string {
 
 export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
   return [
-    `You are running inside a hone maintenance run for the project at ${folder}.`,
+    `${PROMPT_ANCHORS.maintain} for the project at ${folder}.`,
     "You are the agent doing the work — do not invoke `hone maintain`, `hone iterate`,",
     "or `hone gates --run` from inside this session. Run the gate commands listed below",
     "directly using your Bash tool.",

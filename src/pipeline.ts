@@ -1,6 +1,7 @@
 import { saveStageOutput } from "./audit.ts";
 import { claudeCtx, invokeReadOnlyStage } from "./claude.ts";
 import { parseAssessment } from "./parse-assessment.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import type { AttemptRecord, PipelineContext, StructuredAssessment, TriageResult, TriageRunnerFn } from "./types.ts";
 
@@ -43,7 +44,7 @@ export function buildRetryPrompt(
 
 export function buildExecutePrompt(folder: string, assessment: string, plan: string): string {
   return [
-    `You are running inside a hone iterate run for the project at ${folder}.`,
+    `${PROMPT_ANCHORS.execute} for the project at ${folder}.`,
     "You are the agent doing the work — do not invoke `hone iterate`, `hone maintain`,",
     "or `hone gates --run` from inside this session. Run any verification commands",
     "directly using your Bash tool.",
@@ -63,7 +64,7 @@ export async function runAssessStage(ctx: PipelineContext): Promise<string> {
   return invokeReadOnlyStage(
     claudeCtx(ctx, "assess"),
     [
-      `Assess the project in ${folder} against your principles.`,
+      `${PROMPT_ANCHORS.assess} ${folder} against your principles.`,
       "Identify the principle that it is most violating,",
       "and describe how we should correct it.",
       "",
@@ -84,7 +85,7 @@ export async function runNameStage(ctx: PipelineContext, assessment: string): Pr
   const rawName = await invokeReadOnlyStage(
     claudeCtx(ctx, "name"),
     [
-      "Output ONLY a short kebab-case filename (no extension) summarizing the main issue.",
+      `${PROMPT_ANCHORS.name} (no extension) summarizing the main issue.`,
       "Rules: lowercase, hyphens only, no spaces, no backticks, no explanation, max 50 chars.",
       "Example: fix-duplicate-api-helpers",
       "",
@@ -101,7 +102,7 @@ export async function runPlanStage(ctx: PipelineContext, assessment: string): Pr
   return invokeReadOnlyStage(
     claudeCtx(ctx, "plan"),
     [
-      "Based on the following assessment, create a step-by-step plan to address the issues identified.",
+      `${PROMPT_ANCHORS.plan}, create a step-by-step plan to address the issues identified.`,
       "Make sure each step is clear and actionable.",
       "",
       "CRITICAL RULES:",

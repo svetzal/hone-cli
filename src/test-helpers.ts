@@ -1,4 +1,5 @@
 import { getDefaultConfig } from "./config.ts";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import type {
   CharterCheckResult,
   ClaudeInvoker,
@@ -62,16 +63,12 @@ export function createIterateMock(
     opts?.onCall?.(args);
     const prompt = extractPrompt(args);
 
-    if (prompt.startsWith("Assess")) return responses.assess;
-    if (prompt.startsWith("Output ONLY")) return responses.name;
-    if (prompt.startsWith("You are a skeptical")) return responses.triage ?? "";
-    if (prompt.startsWith("Based on")) return responses.plan;
-    if (prompt.startsWith("Generate a headline")) return responses.summarize ?? "";
-    if (
-      prompt.includes("Execute the following plan") ||
-      prompt.startsWith("The previous execution") ||
-      prompt.startsWith("## Goal")
-    ) {
+    if (prompt.startsWith(PROMPT_ANCHORS.assess)) return responses.assess;
+    if (prompt.startsWith(PROMPT_ANCHORS.name)) return responses.name;
+    if (prompt.startsWith(PROMPT_ANCHORS.triage)) return responses.triage ?? "";
+    if (prompt.startsWith(PROMPT_ANCHORS.plan)) return responses.plan;
+    if (prompt.startsWith(PROMPT_ANCHORS.summarize)) return responses.summarize ?? "";
+    if (prompt.startsWith(PROMPT_ANCHORS.execute) || prompt.startsWith(PROMPT_ANCHORS.retry)) {
       return responses.execute;
     }
     return "";
@@ -90,7 +87,7 @@ export function createDeriveMock(
     opts?.onCall?.(args);
     const prompt = extractPrompt(args);
 
-    if (prompt.includes("creating a custom craftsperson agent")) {
+    if (prompt.startsWith(PROMPT_ANCHORS.derive)) {
       return responses.derive;
     }
     // Gate extraction call
@@ -216,11 +213,11 @@ export function createMixMock(
     opts?.onCall?.(args);
     const prompt = extractPrompt(args);
 
-    if (prompt.includes("augmenting a local agent's engineering principles")) {
+    if (prompt.startsWith(PROMPT_ANCHORS.mixPrinciples)) {
       opts?.onEdit?.(responses.principles ?? "");
       return ""; // stdout ignored — Claude edits the file directly
     }
-    if (prompt.includes("augmenting a local agent's quality assurance")) {
+    if (prompt.startsWith(PROMPT_ANCHORS.mixGates)) {
       opts?.onEdit?.(responses.gates ?? "");
       return ""; // stdout ignored — Claude edits the file directly
     }
@@ -247,7 +244,7 @@ export function createMaintainMock(
     opts?.onCall?.(args);
     if (typeof response === "string") return response;
     const prompt = extractPrompt(args);
-    if (prompt.startsWith("Generate a headline")) return response.summarize ?? "";
+    if (prompt.startsWith(PROMPT_ANCHORS.summarize)) return response.summarize ?? "";
     return response.execute;
   };
 }

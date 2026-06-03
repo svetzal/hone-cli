@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
 import { createDeriveMock, createIterateMock, createMixMock, extractPrompt } from "./test-helpers.ts";
 
 describe("extractPrompt", () => {
@@ -23,7 +24,7 @@ describe("createIterateMock", () => {
       plan: "plan result",
       execute: "execute result",
     });
-    const result = await mock(["--model", "opus", "-p", "Assess the project..."]);
+    const result = await mock(["--model", "opus", "-p", `${PROMPT_ANCHORS.assess} /test/project...`]);
     expect(result).toBe("assessment result");
   });
 
@@ -34,7 +35,7 @@ describe("createIterateMock", () => {
       plan: "p",
       execute: "e",
     });
-    const result = await mock(["-p", "Output ONLY a short kebab-case..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.name}...`]);
     expect(result).toBe("name result");
   });
 
@@ -45,7 +46,7 @@ describe("createIterateMock", () => {
       plan: "plan result",
       execute: "e",
     });
-    const result = await mock(["-p", "Based on the following assessment..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.plan}...`]);
     expect(result).toBe("plan result");
   });
 
@@ -56,7 +57,7 @@ describe("createIterateMock", () => {
       plan: "p",
       execute: "execute result",
     });
-    const result = await mock(["-p", "Execute the following plan..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.execute} for the project...`]);
     expect(result).toBe("execute result");
   });
 
@@ -67,7 +68,7 @@ describe("createIterateMock", () => {
       plan: "p",
       execute: "retry result",
     });
-    const result = await mock(["-p", "The previous execution introduced..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.retry}\n\nSome goal content...`]);
     expect(result).toBe("retry result");
   });
 
@@ -77,7 +78,7 @@ describe("createIterateMock", () => {
       { assess: "a", name: "n", plan: "p", execute: "e" },
       { onCall: (args) => calls.push(args) },
     );
-    await mock(["-p", "Assess..."]);
+    await mock(["-p", `${PROMPT_ANCHORS.assess} /some/project...`]);
     expect(calls.length).toBe(1);
   });
 });
@@ -88,7 +89,7 @@ describe("createDeriveMock", () => {
       derive: "agent content",
       gateExtraction: "[]",
     });
-    const result = await mock(["-p", "You are creating a custom craftsperson agent..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.derive} for a project...`]);
     expect(result).toBe("agent content");
   });
 
@@ -113,7 +114,7 @@ describe("createMixMock", () => {
         },
       },
     );
-    const result = await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.mixPrinciples}...`]);
     expect(result).toBe(""); // stdout ignored for edit stages
     expect(edited).toBe("principles result");
   });
@@ -128,7 +129,7 @@ describe("createMixMock", () => {
         },
       },
     );
-    const result = await mock(["-p", "You are augmenting a local agent's quality assurance..."]);
+    const result = await mock(["-p", `${PROMPT_ANCHORS.mixGates} checkpoints...`]);
     expect(result).toBe(""); // stdout ignored for edit stages
     expect(edited).toBe("gates result");
   });
@@ -144,7 +145,7 @@ describe("createMixMock", () => {
   test("calls onCall callback with args", async () => {
     const calls: string[][] = [];
     const mock = createMixMock({ principles: "p" }, { onCall: (args) => calls.push(args) });
-    await mock(["-p", "You are augmenting a local agent's engineering principles..."]);
+    await mock(["-p", `${PROMPT_ANCHORS.mixPrinciples}...`]);
     expect(calls.length).toBe(1);
   });
 });
