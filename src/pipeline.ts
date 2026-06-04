@@ -2,6 +2,7 @@ import { saveStageOutput } from "./audit.ts";
 import { claudeCtx, invokeReadOnlyStage } from "./claude.ts";
 import { parseAssessment } from "./parse-assessment.ts";
 import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
+import { RECURSION_GUARD } from "./recursion-guard.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import type { AttemptRecord, PipelineContext, StructuredAssessment, TriageResult, TriageRunnerFn } from "./types.ts";
 
@@ -45,9 +46,7 @@ export function buildRetryPrompt(
 export function buildExecutePrompt(folder: string, assessment: string, plan: string): string {
   return [
     `${PROMPT_ANCHORS.execute} for the project at ${folder}.`,
-    "You are the agent doing the work — do not invoke `hone iterate`, `hone maintain`,",
-    "or `hone gates --run` from inside this session. Run any verification commands",
-    "directly using your Bash tool.",
+    RECURSION_GUARD,
     "",
     `Execute the following plan to improve the project in ${folder}.`,
     "",

@@ -256,7 +256,7 @@ describe("buildMaintainPrompt", () => {
   test("contains do-not-invoke hone maintain instruction", () => {
     const gates: GateDefinition[] = [{ name: "test", command: "bun test", required: true }];
     const prompt = buildMaintainPrompt("/my/project", gates);
-    expect(prompt).toContain("do not invoke `hone maintain`");
+    expect(prompt).toContain("do not invoke `hone iterate`, `hone maintain`");
   });
 });
 

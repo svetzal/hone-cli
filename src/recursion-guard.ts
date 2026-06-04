@@ -1,5 +1,11 @@
 const DEPTH_KEY = "HONE_AGENT_DEPTH";
 
+// Safety-critical: must not be re-inlined at call sites. See AGENTS.md.
+export const RECURSION_GUARD =
+  "You are the agent doing the work — do not invoke `hone iterate`, `hone maintain`,\n" +
+  "or `hone gates --run` from inside this session. Run any verification or gate\n" +
+  "commands directly using your Bash tool.";
+
 export function nextDepthEnv(parent: NodeJS.ProcessEnv): Record<string, string> {
   const current = parseInt(parent[DEPTH_KEY] ?? "0", 10);
   const next = Number.isNaN(current) ? 1 : current + 1;

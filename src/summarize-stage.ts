@@ -27,3 +27,12 @@ export async function runSummarizeStage(
   }
   return { headline: null, summary: null };
 }
+
+export async function summarizeOnSuccess(
+  success: boolean,
+  buildPrompt: () => string,
+  ctx: PipelineContext,
+): Promise<SummarizeStageResult> {
+  if (!success) return { headline: null, summary: null };
+  return runSummarizeStage(buildPrompt, ctx);
+}

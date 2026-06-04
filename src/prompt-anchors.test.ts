@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { buildDerivePrompt } from "./derive.ts";
 import { buildDeriveGatesPrompt } from "./derive-gates.ts";
+import { buildMaintainPrompt } from "./maintain.ts";
 import { buildGatesMixPrompt, buildPrinciplesMixPrompt } from "./mix.ts";
 import { buildExecutePrompt, runAssessStage, runNameStage, runPlanStage } from "./pipeline.ts";
 import type { ProjectContext } from "./project-context.ts";
 import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
+import { RECURSION_GUARD } from "./recursion-guard.ts";
 import { buildIterateSummarizePrompt, buildMaintainSummarizePrompt } from "./summarize.ts";
 import { buildTriagePrompt } from "./triage.ts";
 
@@ -75,6 +77,16 @@ describe("PROMPT_ANCHORS enforcement", () => {
   test("execute anchor matches buildExecutePrompt opening", () => {
     const prompt = buildExecutePrompt("/test/project", "assessment text", "plan text");
     expect(prompt.startsWith(PROMPT_ANCHORS.execute)).toBe(true);
+  });
+
+  test("buildExecutePrompt embeds RECURSION_GUARD", () => {
+    const prompt = buildExecutePrompt("/test/project", "assessment text", "plan text");
+    expect(prompt.includes(RECURSION_GUARD)).toBe(true);
+  });
+
+  test("buildMaintainPrompt embeds RECURSION_GUARD", () => {
+    const prompt = buildMaintainPrompt("/test/project", []);
+    expect(prompt.includes(RECURSION_GUARD)).toBe(true);
   });
 
   test("triage anchor matches buildTriagePrompt opening", () => {

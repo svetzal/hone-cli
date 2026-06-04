@@ -6,7 +6,7 @@ import { buildExecutePrompt, buildRetryPrompt, runPlanStage, runProposalPipeline
 import { runPreamble } from "./preamble.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildIterateSummarizePrompt } from "./summarize.ts";
-import { runSummarizeStage } from "./summarize-stage.ts";
+import { summarizeOnSuccess } from "./summarize-stage.ts";
 import { triage as runTriage } from "./triage.ts";
 import type {
   CharterCheckerFn,
@@ -190,25 +190,19 @@ export async function iterate(opts: IterateOptions): Promise<IterationResult> {
   });
 
   // --- Stage 6: Summarize (only on success) ---
-  let headline: string | null = null;
-  let summary: string | null = null;
-
-  if (execResult.success) {
-    const summarizeResult = await runSummarizeStage(
-      () =>
-        buildIterateSummarizePrompt({
-          name,
-          structuredAssessment,
-          triageResult,
-          execution: execResult.execution,
-          retries: execResult.retries,
-          gatesResult: execResult.gatesResult,
-        }),
-      ctx,
-    );
-    headline = summarizeResult.headline;
-    summary = summarizeResult.summary;
-  }
+  const { headline, summary } = await summarizeOnSuccess(
+    execResult.success,
+    () =>
+      buildIterateSummarizePrompt({
+        name,
+        structuredAssessment,
+        triageResult,
+        execution: execResult.execution,
+        retries: execResult.retries,
+        gatesResult: execResult.gatesResult,
+      }),
+    ctx,
+  );
 
   onProgress("done", execResult.success ? `Complete: ${name}` : `Incomplete: ${name} (gate failures remain)`);
 

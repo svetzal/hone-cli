@@ -3,10 +3,11 @@ import { claudeCtx } from "./claude.ts";
 import { runExecuteWithVerify } from "./execute-with-verify.ts";
 import { runAllGates } from "./gates.ts";
 import { PROMPT_ANCHORS } from "./prompt-anchors.ts";
+import { RECURSION_GUARD } from "./recursion-guard.ts";
 import { resolveGates } from "./resolve-gates.ts";
 import { buildRetryPromptScaffold } from "./retry-formatting.ts";
 import { buildMaintainSummarizePrompt } from "./summarize.ts";
-import { runSummarizeStage } from "./summarize-stage.ts";
+import { summarizeOnSuccess } from "./summarize-stage.ts";
 import type {
   AttemptRecord,
   GateDefinition,
@@ -29,9 +30,7 @@ function formatGateList(gates: GateDefinition[]): string {
 export function buildMaintainPrompt(folder: string, gates: GateDefinition[]): string {
   return [
     `${PROMPT_ANCHORS.maintain} for the project at ${folder}.`,
-    "You are the agent doing the work — do not invoke `hone maintain`, `hone iterate`,",
-    "or `hone gates --run` from inside this session. Run the gate commands listed below",
-    "directly using your Bash tool.",
+    RECURSION_GUARD,
     "",
     "Update the project dependencies to their latest compatible versions.",
     "",
@@ -126,17 +125,11 @@ export async function maintain(opts: MaintainOptions): Promise<MaintainResult> {
   const success = gatesResult?.requiredPassed ?? false;
 
   // Summarize (only on success)
-  let headline: string | null = null;
-  let summary: string | null = null;
-
-  if (success) {
-    const summarizeResult = await runSummarizeStage(
-      () => buildMaintainSummarizePrompt({ name, execution, retries, gatesResult }),
-      ctx,
-    );
-    headline = summarizeResult.headline;
-    summary = summarizeResult.summary;
-  }
+  const { headline, summary } = await summarizeOnSuccess(
+    success,
+    () => buildMaintainSummarizePrompt({ name, execution, retries, gatesResult }),
+    ctx,
+  );
 
   return { name, execution, gatesResult, retries, success, headline, summary };
 }
