@@ -41,6 +41,31 @@ function findBalancedJson(raw: string, openChar: string, closeChar: string): str
   return null;
 }
 
+export function findFencedJson(
+  raw: string,
+  openChar: string,
+  closeChar: string,
+): { json: string; start: number; end: number } | null {
+  const fenceOpenMatch = /```(?:json)?\s*\n?/.exec(raw);
+  if (!fenceOpenMatch) return null;
+
+  const fenceStart = fenceOpenMatch.index;
+  const afterFenceHeader = fenceStart + fenceOpenMatch[0].length;
+  const textAfterFence = raw.slice(afterFenceHeader);
+
+  const openCharOffset = textAfterFence.indexOf(openChar);
+  if (openCharOffset === -1) return null;
+
+  const json = findBalancedJson(textAfterFence, openChar, closeChar);
+  if (!json) return null;
+
+  const jsonAbsEnd = afterFenceHeader + openCharOffset + json.length;
+  const closingMatch = /^\s*```/.exec(raw.slice(jsonAbsEnd));
+  if (!closingMatch) return null;
+
+  return { json, start: fenceStart, end: jsonAbsEnd + closingMatch[0].length };
+}
+
 export function findBareJsonArray(raw: string): string | null {
   return findBalancedJson(raw, "[", "]");
 }
@@ -59,11 +84,11 @@ export function extractJsonArrayFromLlmOutput(raw: string): JsonExtractionResult
   let foundCandidate = false;
 
   // Try fenced code block first: ```json [...] ```
-  const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\[[\s\S]*?\])\s*\n?\s*```/);
-  if (fencedMatch?.[1]) {
+  const fenced = findFencedJson(raw, "[", "]");
+  if (fenced) {
     foundCandidate = true;
     try {
-      const parsed = JSON.parse(fencedMatch[1]);
+      const parsed = JSON.parse(fenced.json);
       if (Array.isArray(parsed)) return { kind: "parsed", value: parsed };
     } catch {
       // Fall through
@@ -95,11 +120,11 @@ export function extractJsonFromLlmOutput(raw: string): JsonExtractionResult<Reco
   let foundCandidate = false;
 
   // Try fenced code block first: ```json ... ```
-  const fencedMatch = raw.match(/```(?:json)?\s*\n?\s*(\{[\s\S]*?\})\s*\n?\s*```/);
-  if (fencedMatch?.[1]) {
+  const fenced = findFencedJson(raw, "{", "}");
+  if (fenced) {
     foundCandidate = true;
     try {
-      return { kind: "parsed", value: JSON.parse(fencedMatch[1]) };
+      return { kind: "parsed", value: JSON.parse(fenced.json) };
     } catch {
       // Fall through
     }

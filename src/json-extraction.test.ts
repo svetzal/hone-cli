@@ -4,6 +4,7 @@ import {
   extractJsonFromLlmOutput,
   findBareJsonArray,
   findBareJsonObject,
+  findFencedJson,
 } from "./json-extraction.ts";
 
 describe("extractJsonFromLlmOutput", () => {
@@ -110,6 +111,12 @@ describe("extractJsonFromLlmOutput", () => {
       const raw = '```json\n{ "severity": 4, "principle": "SRP", "category": "architecture" }\n```';
       const result = extractJsonFromLlmOutput(raw);
       expect(result).toEqual({ kind: "parsed", value: { severity: 4, principle: "SRP", category: "architecture" } });
+    });
+
+    test("correctly parses deeply nested object inside a fenced block via balanced scanning", () => {
+      const raw = '```json\n{ "outer": { "inner": { "deep": true } } }\n```';
+      const result = extractJsonFromLlmOutput(raw);
+      expect(result).toEqual({ kind: "parsed", value: { outer: { inner: { deep: true } } } });
     });
 
     test("extracts object with boolean and null values", () => {
@@ -268,5 +275,46 @@ describe("findBareJsonObject", () => {
 
   test("returns null when braces are unbalanced", () => {
     expect(findBareJsonObject('{ "key": "value"')).toBeNull();
+  });
+});
+
+describe("findFencedJson", () => {
+  test("returns null when no fence is present", () => {
+    expect(findFencedJson('{ "key": "value" }', "{", "}")).toBeNull();
+  });
+
+  test("finds a simple fenced object", () => {
+    const raw = '```json\n{ "key": "value" }\n```';
+    const result = findFencedJson(raw, "{", "}");
+    expect(result).not.toBeNull();
+    expect(result?.json).toBe('{ "key": "value" }');
+    expect(result?.start).toBe(0);
+    expect(result?.end).toBe(raw.length);
+  });
+
+  test("finds a simple fenced array", () => {
+    const raw = "```json\n[1, 2, 3]\n```";
+    const result = findFencedJson(raw, "[", "]");
+    expect(result).not.toBeNull();
+    expect(result?.json).toBe("[1, 2, 3]");
+  });
+
+  test("finds a nested object inside a fence using balanced scanning", () => {
+    const raw = '```json\n{ "outer": { "inner": true } }\n```';
+    const result = findFencedJson(raw, "{", "}");
+    expect(result).not.toBeNull();
+    expect(result?.json).toBe('{ "outer": { "inner": true } }');
+  });
+
+  test("returns correct start/end offsets with surrounding prose", () => {
+    const raw = 'Some text before.\n```json\n{ "key": 1 }\n```\nSome text after.';
+    const result = findFencedJson(raw, "{", "}");
+    expect(result).not.toBeNull();
+    expect(result?.json).toBe('{ "key": 1 }');
+    expect(raw.slice(result?.start, result?.end)).toBe('```json\n{ "key": 1 }\n```');
+  });
+
+  test("returns null when no closing fence is present", () => {
+    expect(findFencedJson('```json\n{ "key": "value" }', "{", "}")).toBeNull();
   });
 });
