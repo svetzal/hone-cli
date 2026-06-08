@@ -10,12 +10,17 @@ export function truncateOutput(output: string, maxLines: number = 200): string {
 
 export async function runGate(gate: GateDefinition, projectDir: string, timeout: number): Promise<GateResult> {
   try {
-    const { stdout, stderr, exitCode } = await runProcess(["sh", "-c", gate.command], {
+    const { stdout, stderr, exitCode, timedOut } = await runProcess(["sh", "-c", gate.command], {
       cwd: projectDir,
       timeout: gate.timeout ?? timeout,
     });
 
-    const output = truncateOutput(`${stdout}\n${stderr}`.trim());
+    const effectiveTimeout = gate.timeout ?? timeout;
+    const rawOutput = `${stdout}\n${stderr}`.trim();
+    const banner = timedOut
+      ? `[GATE TIMED OUT after ${effectiveTimeout}ms — process was killed; the command did NOT finish and the output below is partial]\n`
+      : "";
+    const output = truncateOutput(`${banner}${rawOutput}`);
 
     return {
       name: gate.name,
@@ -24,6 +29,7 @@ export async function runGate(gate: GateDefinition, projectDir: string, timeout:
       required: gate.required,
       output,
       exitCode,
+      timedOut,
     };
   } catch (err) {
     return {
@@ -33,6 +39,7 @@ export async function runGate(gate: GateDefinition, projectDir: string, timeout:
       required: gate.required,
       output: errorMessage(err),
       exitCode: null,
+      timedOut: false,
     };
   }
 }

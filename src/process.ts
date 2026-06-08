@@ -2,6 +2,7 @@ export interface ProcessResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  timedOut: boolean;
 }
 
 export interface RunProcessOptions {
@@ -18,9 +19,13 @@ export async function runProcess(command: string[], opts?: RunProcessOptions): P
     stderr: "pipe",
   });
 
+  let timedOut = false;
   let timeoutId: Timer | undefined;
   if (opts?.timeout) {
-    timeoutId = setTimeout(() => proc.kill(), opts.timeout);
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+    }, opts.timeout);
   }
 
   const stdout = await new Response(proc.stdout).text();
@@ -31,5 +36,5 @@ export async function runProcess(command: string[], opts?: RunProcessOptions): P
     clearTimeout(timeoutId);
   }
 
-  return { stdout, stderr, exitCode };
+  return { stdout, stderr, exitCode, timedOut };
 }

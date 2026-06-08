@@ -11,6 +11,7 @@ describe("runProcess", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe("hello world");
     expect(result.stderr).toBe("");
+    expect(result.timedOut).toBe(false);
   });
 
   it("should capture non-zero exit code for failed command", async () => {
@@ -37,6 +38,7 @@ describe("runProcess", () => {
     // Process should be killed within ~100ms, not run for 10 seconds
     expect(duration).toBeLessThan(1000);
     expect(result.exitCode).not.toBe(0);
+    expect(result.timedOut).toBe(true);
   });
 
   it("should respect cwd option", async () => {

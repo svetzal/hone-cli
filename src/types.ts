@@ -24,6 +24,7 @@ export interface GateResult {
   required: boolean;
   output: string;
   exitCode: number | null;
+  timedOut?: boolean;
 }
 
 export interface GatesRunResult {

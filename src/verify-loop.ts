@@ -51,6 +51,14 @@ export async function verifyWithRetry(
       break;
     }
 
+    const timedOutRequired = gatesResult.results.some((r) => r.required && r.timedOut);
+    if (timedOutRequired) {
+      onProgress(
+        "verify",
+        "A required gate timed out — this indicates an environment hang, not necessarily a code defect.",
+      );
+    }
+
     if (attempt === maxRetries) {
       onProgress("verify", `Required gates still failing after ${maxRetries} retries.`);
       break;

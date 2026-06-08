@@ -14,6 +14,7 @@ describe("runGate", () => {
       expect(result.passed).toBe(true);
       expect(result.exitCode).toBe(0);
       expect(result.output).toContain("hello");
+      expect(result.timedOut).toBeFalsy();
     } finally {
       await rm(dir, { recursive: true });
     }
@@ -65,6 +66,8 @@ describe("runGate", () => {
       );
 
       expect(result.passed).toBe(false);
+      expect(result.timedOut).toBe(true);
+      expect(result.output).toContain("TIMED OUT");
     } finally {
       await rm(dir, { recursive: true });
     }

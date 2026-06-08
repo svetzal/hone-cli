@@ -248,6 +248,43 @@ describe("verifyWithRetry", () => {
     }
   });
 
+  test("timed-out required gate emits timeout progress message", async () => {
+    const { folder, auditDir } = await makeTempDirs("hone-vl-timeout-");
+
+    const messages: string[] = [];
+
+    const timedOutResult: GatesRunResult = {
+      allPassed: false,
+      requiredPassed: false,
+      results: [
+        {
+          name: "test",
+          command: "npm test",
+          passed: false,
+          required: true,
+          output:
+            "[GATE TIMED OUT after 500ms — process was killed; the command did NOT finish and the output below is partial]\n",
+          exitCode: null,
+          timedOut: true,
+        },
+      ],
+    };
+
+    try {
+      await verifyWithRetry(
+        "initial execution",
+        baseOpts(folder, auditDir, {
+          ctx: makeCtx({ folder, onProgress: (_stage, msg) => messages.push(msg) }),
+          gateRunner: async () => timedOutResult,
+        }),
+      );
+
+      expect(messages.some((m) => m.includes("timed out"))).toBe(true);
+    } finally {
+      await rm(folder, { recursive: true });
+    }
+  });
+
   test("only required gate failures trigger retry — optional gate failure does not", async () => {
     const { folder, auditDir } = await makeTempDirs("hone-vl-optional-");
 
