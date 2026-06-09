@@ -68,4 +68,14 @@ describe("runProcess", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe("hello");
   });
+
+  it("should not deadlock when stderr exceeds the pipe buffer while stdout is open", async () => {
+    // ~200KB to stderr (well past the ~64KB OS pipe buffer), then a line to stdout
+    const result = await runProcess(["sh", "-c", "yes 0123456789 | head -c 200000 >&2; echo done"], { timeout: 5000 });
+
+    expect(result.timedOut).toBe(false);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("done");
+    expect(result.stderr.length).toBeGreaterThanOrEqual(200000);
+  });
 });
