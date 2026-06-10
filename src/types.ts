@@ -207,3 +207,12 @@ export type AttemptRecord = {
   attempt: number;
   failedGates: { name: string; output: string }[];
 };
+
+export interface DeriveOutcome {
+  agentName: string;
+  agentPath: string;
+  agentWrite: "written" | "merged";
+  gates: GateDefinition[];
+  gatesPath: string | null;
+  gateValidation: GateResult[] | null;
+}

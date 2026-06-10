@@ -1,145 +1,39 @@
-import { mkdir } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { agentExists, listAgents } from "../agents.ts";
-import { claudeCtxFromConfig, createClaudeInvoker } from "../claude.ts";
+import { createClaudeInvoker } from "../claude.ts";
 import { loadConfig } from "../config.ts";
-import { derive } from "../derive.ts";
-import { resolveConflict, updateFrontmatterName } from "../derive-conflict.ts";
-import { CliError } from "../errors.ts";
-import { writeGatesFile } from "../gates-file.ts";
-import { progress, writeJson } from "../output.ts";
+import { runDerive } from "../derive-command.ts";
+import { createProgressCallback, writeJson } from "../output.ts";
 import type { PromptFn } from "../prompt.ts";
 import { promptChoice } from "../prompt.ts";
-import type { ClaudeInvoker, GateResult, ParsedArgs } from "../types.ts";
-import { validateAndReportGates } from "./validate-and-report-gates.ts";
+import type { ClaudeInvoker, ParsedArgs } from "../types.ts";
+import { resolveDeriveArgs } from "./resolve-derive-args.ts";
 
 export async function deriveCommand(
   parsed: ParsedArgs,
   deps?: { prompt?: PromptFn; claude?: ClaudeInvoker },
 ): Promise<void> {
-  const folder = parsed.positional[0];
-
-  if (!folder) {
-    throw new CliError(
-      "Usage: hone derive <folder> [--local | --global] [--name <name>]\n" +
-        "  folder   - Project folder to inspect\n" +
-        "  --local  - Write agent to <folder>/.claude/agents/ (default)\n" +
-        "  --global - Write agent to ~/.claude/agents/\n" +
-        "  --name   - Override agent name (skip Claude's naming)",
-    );
-  }
-
-  const resolvedFolder = resolve(folder);
-  const isGlobal = parsed.flags.global === true;
-  const isJson = parsed.flags.json === true;
-  const nameOverride = typeof parsed.flags.name === "string" ? parsed.flags.name : undefined;
+  const args = resolveDeriveArgs(parsed);
   const config = await loadConfig();
   const claude = deps?.claude ?? createClaudeInvoker();
   const prompt = deps?.prompt ?? promptChoice;
+  const onProgress = createProgressCallback(args.isJson);
 
-  // Determine target directory
-  const agentDir = isGlobal ? join(homedir(), ".claude", "agents") : join(resolvedFolder, ".claude", "agents");
+  const outcome = await runDerive(args, { claude, prompt, config }, onProgress);
 
-  // Gather existing agent names from both global and target directories
-  const globalAgentsDir = join(homedir(), ".claude", "agents");
-  const existingAgents = await listAgents(globalAgentsDir);
-  if (!isGlobal) {
-    const localAgents = await listAgents(agentDir);
-    for (const la of localAgents) {
-      if (!existingAgents.some((a) => a.name === la.name)) {
-        existingAgents.push(la);
-      }
-    }
-  }
-  const existingAgentNames = existingAgents.map((a) => a.name);
-
-  progress(isJson, `Inspecting project at ${resolvedFolder}...`);
-
-  const result = await derive(
-    resolvedFolder,
-    claudeCtxFromConfig(config, "derive", claude),
-    claudeCtxFromConfig(config, "gates", claude),
-    existingAgentNames,
-  );
-
-  // Apply --name override if provided
-  let agentName = nameOverride ?? result.agentName;
-  let agentContent = result.agentContent;
-
-  // If name was overridden, update the frontmatter to match
-  if (nameOverride) {
-    agentContent = updateFrontmatterName(agentContent, nameOverride);
+  if (outcome === null) {
+    onProgress("derive", "Aborted.");
+    return;
   }
 
-  // Conflict detection
-  await mkdir(agentDir, { recursive: true });
-  const hasConflict = await agentExists(agentName, agentDir);
-  let skipAgentWrite = false;
-
-  if (hasConflict) {
-    const resolved = await resolveConflict({
-      agentName,
-      agentDir,
-      agentContent,
-      context: result.context,
-      existingAgentNames,
-      isJson,
-      config,
-      claude,
-      prompt,
-    });
-
-    if (resolved === null) {
-      progress(isJson, "Aborted.");
-      return;
-    }
-
-    agentName = resolved.agentName;
-    agentContent = resolved.agentContent;
-    skipAgentWrite = resolved.skipWrite;
-  }
-
-  // Write agent file (unless merge handled it)
-  const agentPath = join(agentDir, `${agentName}.md`);
-  if (skipAgentWrite) {
-    progress(isJson, `Agent merged into existing: ${agentPath}`);
-  } else {
-    await Bun.write(agentPath, agentContent);
-    progress(isJson, `Agent written to: ${agentPath}`);
-  }
-
-  // Write .hone-gates.json
-  let gatesPath: string | null = null;
-  if (result.gates.length > 0) {
-    gatesPath = await writeGatesFile(resolvedFolder, result.gates);
-    progress(isJson, `Gates written to: ${gatesPath}`);
-  } else {
-    progress(isJson, "No quality gates extracted from agent.");
-  }
-
-  // Validate generated gates
-  let gateValidation: GateResult[] | null = null;
-  if (result.gates.length > 0) {
-    gateValidation = await validateAndReportGates(
-      result.gates,
-      resolvedFolder,
-      config.gateTimeout,
-      isJson,
-      "Validating generated gates...",
-    );
-  }
-
-  if (isJson) {
+  if (args.isJson) {
     writeJson({
-      agentName,
-      agentPath,
-      gates: result.gates,
-      gatesPath,
-      gateValidation,
+      agentName: outcome.agentName,
+      agentPath: outcome.agentPath,
+      gates: outcome.gates,
+      gatesPath: outcome.gatesPath,
+      gateValidation: outcome.gateValidation,
     });
   } else {
-    console.log(`\nDone. Agent name: ${agentName}`);
-    console.log(`Run: hone iterate ${agentName} ${resolvedFolder}`);
+    console.log(`\nDone. Agent name: ${outcome.agentName}`);
+    console.log(`Run: hone iterate ${outcome.agentName} ${args.resolvedFolder}`);
   }
 }
