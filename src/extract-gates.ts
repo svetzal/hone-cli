@@ -62,7 +62,7 @@ export function parseGatesJson(raw: string): GateDefinition[] {
 
   return value
     .filter(
-      (g: unknown): g is { name: string; command: string; required?: boolean } =>
+      (g: unknown): g is { name: string; command: string; required?: boolean; fix_command?: string } =>
         typeof g === "object" &&
         g !== null &&
         typeof (g as Record<string, unknown>).name === "string" &&
@@ -72,5 +72,6 @@ export function parseGatesJson(raw: string): GateDefinition[] {
       name: g.name,
       command: g.command,
       required: g.required ?? true,
+      ...(typeof g.fix_command === "string" && { fix_command: g.fix_command }),
     }));
 }

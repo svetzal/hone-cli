@@ -32,6 +32,53 @@ describe("runGate", () => {
     }
   });
 
+  test("self-heals a failing gate via fix_command and flags fixApplied", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      // command fails until the sentinel exists; fix_command creates it.
+      const result = await runGate(
+        { name: "format", command: "test -f sentinel", required: true, fix_command: "touch sentinel" },
+        dir,
+        10000,
+      );
+
+      expect(result.passed).toBe(true);
+      expect(result.fixApplied).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("leaves gate failed when fix_command does not resolve it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      // fix runs but the check still fails afterward.
+      const result = await runGate(
+        { name: "compile", command: "exit 1", required: true, fix_command: "echo fixing" },
+        dir,
+        10000,
+      );
+
+      expect(result.passed).toBe(false);
+      expect(result.fixApplied).toBeFalsy();
+      expect(result.output).toContain("autofix attempted");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
+  test("does not self-heal a gate without a fix_command", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
+    try {
+      const result = await runGate({ name: "test", command: "exit 1", required: true }, dir, 10000);
+
+      expect(result.passed).toBe(false);
+      expect(result.fixApplied).toBeFalsy();
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
+
   test("captures stderr in output", async () => {
     const dir = await mkdtemp(join(tmpdir(), "hone-test-"));
     try {

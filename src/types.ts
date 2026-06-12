@@ -15,6 +15,15 @@ export interface GateDefinition {
   command: string;
   required: boolean;
   timeout?: number;
+  /**
+   * Optional in-place command that mechanically fixes this gate's failure
+   * (e.g. a formatter or lint autofixer). When present and the gate `command`
+   * fails, the runner runs `fix_command` and re-checks; a passing re-check
+   * resolves the failure and the repaired tree is committed. This is what lets
+   * formatter/lint gates self-heal instead of deadlocking a maintenance run.
+   * Only set for safely auto-fixable gates — never tests, build, or security.
+   */
+  fix_command?: string;
 }
 
 export interface GateResult {
@@ -25,6 +34,12 @@ export interface GateResult {
   output: string;
   exitCode: number | null;
   timedOut?: boolean;
+  /**
+   * True when the gate initially failed but its `fix_command` repaired the tree
+   * and the re-check then passed (a self-healed gate). Distinguishes a clean
+   * pass from a pass-after-autofix.
+   */
+  fixApplied?: boolean;
 }
 
 export interface GatesRunResult {

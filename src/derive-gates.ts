@@ -45,15 +45,17 @@ export function buildDeriveGatesPrompt(folder: string, context: ProjectContext, 
     "",
     "- Output ONLY a JSON array of gate objects, no markdown, no explanation, no backticks",
     "- Each gate has: `name` (short identifier), `command` (exact shell command), `required` (boolean)",
+    "- Optionally a gate may have `fix_command`: an in-place command that mechanically repairs the failure (a formatter or lint autofixer). Include it ONLY for safely auto-fixable gates — formatters and lint --fix variants — never for tests, typecheck, build, or security gates. The runner runs it and re-checks when the gate fails, so the project self-heals instead of deadlocking.",
     "- Never invent commands — every gate command must come from a file you actually read",
     "- Combine related commands with && when they form a single gate (e.g., lint + format check)",
     "- Mark security/audit gates as `required: false`",
     "- Mark test, lint, typecheck, and format gates as `required: true`",
+    "- Prefer check/dry-run variants for format/lint gates (e.g. `cargo fmt --check`) paired with the in-place `fix_command` (e.g. `cargo fmt`)",
     "- If no quality commands are found, output an empty array: []",
     "",
     "## Example Output",
     "",
-    '[{"name":"test","command":"bun test","required":true},{"name":"typecheck","command":"bunx tsc --noEmit","required":true}]',
+    '[{"name":"test","command":"bun test","required":true},{"name":"format","command":"biome check","required":true,"fix_command":"biome check --write"}]',
   );
 
   return sections.join("\n");

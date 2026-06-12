@@ -33,6 +33,7 @@ export function validateGateArray(parsed: unknown): GateDefinition[] {
       command: g.command as string,
       required: typeof g.required === "boolean" ? g.required : true,
       ...(typeof g.timeout === "number" && { timeout: g.timeout }),
+      ...(typeof g.fix_command === "string" && { fix_command: g.fix_command }),
     }));
 }
 
