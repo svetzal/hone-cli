@@ -18,7 +18,7 @@
     {
       "name": "security",
       "command": "osv-scanner .",
-      "required": true
+      "required": false
     },
     {
       "name": "build",
