@@ -48,9 +48,9 @@ describe("runDerive", () => {
         );
 
         expect(outcome).not.toBeNull();
-        expect(outcome!.agentName).toBe("bun-typescript-craftsperson");
-        expect(outcome!.agentPath).toContain("bun-typescript-craftsperson.md");
-        expect(outcome!.agentWrite).toBe("written");
+        expect(outcome?.agentName).toBe("bun-typescript-craftsperson");
+        expect(outcome?.agentPath).toContain("bun-typescript-craftsperson.md");
+        expect(outcome?.agentWrite).toBe("written");
       } finally {
         await rm(tmpDir, { recursive: true });
       }
@@ -67,9 +67,9 @@ describe("runDerive", () => {
           () => {},
         );
 
-        expect(outcome!.gates).toHaveLength(1);
-        expect(outcome!.gates[0]!.name).toBe("test");
-        expect(outcome!.gatesPath).toContain(".hone-gates.json");
+        expect(outcome?.gates).toHaveLength(1);
+        expect(outcome?.gates[0]?.name).toBe("test");
+        expect(outcome?.gatesPath).toContain(".hone-gates.json");
       } finally {
         await rm(tmpDir, { recursive: true });
       }
@@ -86,9 +86,9 @@ describe("runDerive", () => {
           () => {},
         );
 
-        expect(outcome!.gates).toHaveLength(0);
-        expect(outcome!.gatesPath).toBeNull();
-        expect(outcome!.gateValidation).toBeNull();
+        expect(outcome?.gates).toHaveLength(0);
+        expect(outcome?.gatesPath).toBeNull();
+        expect(outcome?.gateValidation).toBeNull();
       } finally {
         await rm(tmpDir, { recursive: true });
       }
@@ -107,10 +107,10 @@ describe("runDerive", () => {
           () => {},
         );
 
-        expect(outcome!.agentName).toBe("my-custom-agent");
-        expect(outcome!.agentPath).toContain("my-custom-agent.md");
+        expect(outcome?.agentName).toBe("my-custom-agent");
+        expect(outcome?.agentPath).toContain("my-custom-agent.md");
 
-        const written = await Bun.file(outcome!.agentPath).text();
+        const written = await Bun.file(outcome?.agentPath).text();
         expect(written).toContain("name: my-custom-agent");
       } finally {
         await rm(tmpDir, { recursive: true });
