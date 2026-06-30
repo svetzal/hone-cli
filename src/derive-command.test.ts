@@ -107,10 +107,11 @@ describe("runDerive", () => {
           () => {},
         );
 
+        expect(outcome).not.toBeNull();
         expect(outcome?.agentName).toBe("my-custom-agent");
         expect(outcome?.agentPath).toContain("my-custom-agent.md");
 
-        const written = await Bun.file(outcome?.agentPath).text();
+        const written = await Bun.file(outcome!.agentPath).text();
         expect(written).toContain("name: my-custom-agent");
       } finally {
         await rm(tmpDir, { recursive: true });
