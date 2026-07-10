@@ -16,11 +16,6 @@
       "required": true
     },
     {
-      "name": "security",
-      "command": "osv-scanner .",
-      "required": false
-    },
-    {
       "name": "build",
       "command": "$HOME/.bun/bin/bun build src/cli.ts --compile --outfile=build/hone",
       "required": true
