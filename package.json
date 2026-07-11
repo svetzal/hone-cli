@@ -34,9 +34,9 @@
   },
   "overrides": {
     "esbuild": "^0.28.1",
-    "rollup": "^4.60.4",
+    "rollup": "^4.62.2",
     "vite": "^6.4.3",
-    "postcss": "^8.5.15"
+    "postcss": "^8.5.16"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
