@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated dev dependencies: `@biomejs/biome` 2.5.14, `@types/bun` 1.4.2
 - Migrated `biome.json` to the 2.5 configuration schema
 
+### Fixed
+
+- **Docs build** — relaxed the `esbuild` override from `^0.28.2` to `^0.25.12`,
+  back inside the `^0.25.0` range `vite` 6.4.3 declares. esbuild 0.28 broke
+  `vitepress build` with "Transforming destructuring to the configured target
+  environment is not supported yet". The override was originally raised for the
+  esbuild dev-server CORS advisory (GHSA-67mh-4wv8-2f99), which was fixed in
+  0.25.0 — so vite's own constraint already covers it and the higher pin bought
+  no security while breaking the docs site.
+
 ## [2.0.2] - 2026-05-09
 
 ### Fixed
