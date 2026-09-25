@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated dev dependencies: `@biomejs/biome` 2.5.14, `@types/bun` 1.4.2
 - Migrated `biome.json` to the 2.5 configuration schema
+- Bumped the `rollup` override floor to `^4.63.5` (patch release, 2026-09-24)
 
 ### Fixed
 
