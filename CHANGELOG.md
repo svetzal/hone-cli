@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated `biome.json` to the 2.5 configuration schema
 - Bumped the `rollup` override floor to `^4.63.5` (patch release, 2026-09-24)
 
+### Security
+
+- Bumped the `vite` override floor from `^6.4.3` to `^6.4.5` (resolves 6.4.5)
+  for CVE-2026-112942 / GHSA-587h-7wmj-h5pm (bundled `launch-editor`
+  `fs.existsSync()` check bypass on Windows). It also covers CVE-2026-112943 /
+  GHSA-698v-4r3x-3vcv and CVE-2026-112944 / GHSA-r825-w8mm-5pxw. All three are
+  fixed in vite 6.4.4. vite is only a docs-site (vitepress) dev dependency and
+  is not shipped in the `hone` binary.
+
 ### Fixed
 
 - **Docs build** — relaxed the `esbuild` override from `^0.28.2` to `^0.25.12`,
