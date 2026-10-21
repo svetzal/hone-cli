@@ -1,0 +1,12 @@
+bun audit v1.4.3 (c6da4a4d3)
+
+vite@6.4.3
+  vitepress > @vitejs/plugin-vue > vite
+  moderate: launch-editor: escapeCmdArgs() omits % escaping on Windows (<=6.4.3) - https://github.com/advisories/GHSA-698v-4r3x-3vcv
+  moderate: launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors (<=6.4.3) - https://github.com/advisories/GHSA-r825-w8mm-5pxw
+  high: launch-editor: `fs.existsSync()` existence check can be bypassed on Windows (<=6.4.3) - https://github.com/advisories/GHSA-587h-7wmj-h5pm
+
+3 vulnerabilities (1 high, 2 moderate)
+
+  bun audit fix           upgrade the vulnerable packages within their ranges
+  bun audit fix --latest  also cross major versions
