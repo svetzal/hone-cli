@@ -1,0 +1,21 @@
+bun test v1.4.3 (c6da4a4d3)
+Validating generated gates...
+  FAIL: test (bun test)
+Some gates failed. Review and fix before running hone iterate.
+Validating generated gates...
+  FAIL: test (bun test)
+Some gates failed. Review and fix before running hone iterate.
+Inspecting project at /tmp/hone-derive-gates-cmd-dS0dag...
+Gates written to: /tmp/hone-derive-gates-cmd-dS0dag/.hone-gates.json
+
+Done. 2 gate(s) discovered.
+Inspecting project at /tmp/hone-derive-gates-cmd-BEM8DF...
+No quality gates discovered from project inspection.
+
+Done. No gates discovered.
+Inspecting project at /tmp/hone-derive-gates-cmd-Aow1wb...
+Gates written to: /tmp/hone-derive-gates-cmd-Aow1wb/.hone-gates.json
+Running discovered gates...
+  pass: test (true)
+
+Done. 1 gate(s) discovered.
