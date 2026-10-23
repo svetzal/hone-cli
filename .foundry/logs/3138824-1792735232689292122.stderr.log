@@ -1,0 +1,26 @@
+warning: /tmp/hone-test-wWht9F/.hone-gates.json has invalid JSON — falling through to agent gate extraction
+warning: Assessment response contained malformed JSON: ```json
+{invalid json}
+```
+Some assessment.
+warning: Assessment response contained malformed JSON: { "severity": NaN, "principle": "test", "category": "test" }
+warning: Failed to fetch reactions for issue #1: 
+warning: Gate extraction failed: Claude process crashed
+warning: Config file /tmp/hone-test-dkslB4/config.json has invalid JSON — using defaults
+warning: /tmp/hone-charter-kiNKby/package.json has invalid JSON — skipping package description
+
+src/derive-command.test.ts:
+warning: Triage response contained malformed JSON: ```json
+{invalid}
+```
+warning: Summarize response missing required fields: headline and summary
+warning: Failed to read agent file locked.agent.md: EACCES: permission denied, open '/tmp/agents-test-jPl9yP/locked.agent.md'
+
+src/commands/derive-gates.test.ts:
+Inspecting project at /tmp/hone-derive-gates-cmd-Uip1qP...
+Gates written to: /tmp/hone-derive-gates-cmd-Uip1qP/.hone-gates.json
+
+ 670 pass
+ 0 fail
+ 1527 expect() calls
+Ran 670 tests across 56 files. [6.83s]
